@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Hear Me Out — Rehearsal replay</title>
+    <style>
+      body {
+        margin: 0;
+        background: #20102e;
+        color: #fff0ce;
+        font:
+          16px system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 1000px;
+        margin: auto;
+        padding: 32px;
+      }
+      a {
+        color: #d8ff3e;
+      }
+      header {
+        border-bottom: 1px solid #fff0ce40;
+        padding-bottom: 25px;
+      }
+      label {
+        display: inline-block;
+        background: #d8ff3e;
+        color: #20102e;
+        font-weight: 900;
+        padding: 10px 16px;
+        letter-spacing: 2px;
+      }
+      h1 {
+        font-size: clamp(30px, 5vw, 60px);
+        margin: 25px 0 12px;
+        letter-spacing: -2px;
+      }
+      h2 {
+        margin-top: 32px;
+      }
+      small {
+        color: #fff0ce99;
+      }
+      article {
+        padding: 18px 22px;
+        border: 1px solid #fff0ce35;
+        border-radius: 8px;
+        margin: 12px 0;
+        background: #fff0ce09;
+      }
+      article b {
+        color: #39d8f2;
+      }
+      p {
+        line-height: 1.5;
+        margin: 8px 0;
+      }
+      #results {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      #results article {
+        flex: 1;
+        min-width: 220px;
+      }
+      .winner {
+        background: #fff0ce;
+        color: #20102e;
+        padding: 25px;
+        border-radius: 10px;
+      }
+      .winner b {
+        color: #20102e;
+      }
+      footer {
+        margin: 40px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <label>REHEARSAL REPLAY</label>
+        <h1>Hear Me Out.</h1>
+        <p>
+          Generated test speech. Real transcription, AI judging, and committed
+          scores.
+        </p>
+        <small
+          >This is a saved integration rehearsal, not a live multiplayer match.
+          Player recordings are off.</small
+        >
+      </header>
+      <section id="verdict"><p>Loading the saved rehearsal…</p></section>
+      <div id="results"></div>
+      <h2>What Bonk said</h2>
+      <section id="judge"></section>
+      <h2>Transcribed arguments</h2>
+      <section id="transcripts"></section>
+      <footer><a href="/">Back to the live game ↗</a></footer>
+    </main>
+    <script src="/rehearsal.js"></script>
+  </body>
+</html>
