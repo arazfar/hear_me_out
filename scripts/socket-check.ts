@@ -28,6 +28,7 @@ class Peer {
   voiceHashes: string[] = [];
   interventions: string[] = [];
   cancelled = 0;
+  timing: Array<{text:string;cueMs:number;turnDoneMs:number|null}> = [];
   readyEpochs = new Set<number>();
   errors: string[] = [];
   transcripts: Array<{
@@ -99,6 +100,10 @@ class Peer {
           });
         if (event.type === "judge_buffer")
           this.interventions.push(this.state.judge!.text);
+        if (event.type === "judge_started") {
+          const judge=this.state.judge!;
+          this.timing.push({text:judge.text,cueMs:judge.startAt!-(judge.cueAt || event.serverNowMs),turnDoneMs:judge.turnDoneAt ? judge.startAt!-judge.turnDoneAt : null});
+        }
         if (event.type === "judge_cancelled") this.cancelled++;
         if (event.type === "ack" && !event.ok) this.errors.push(event.error);
       });
@@ -137,6 +142,7 @@ async function wait(check: () => boolean, timeout = 40000) {
   const at = Date.now();
   while (!check()) {
     if (pa.state.phase === "ABORTED") throw Error(pa.state.status);
+    if (pa.state.degraded.stt) throw Error("Voice integration entered typed STT recovery: " + pa.state.status);
     if (Date.now() - at > timeout)
       throw Error(`Wait expired in ${pa.state.phase}: ${pa.state.status}`);
     await sleep(100);
@@ -279,7 +285,12 @@ while (pa.state.phase !== "MATCH_RESULT") {
     }),
   );
 }
-await sleep(800);
+await wait(
+  () => pb.state.phase === "MATCH_RESULT" && pa.state.judge?.status === "silent" && pb.state.judge?.status === "silent",
+);
+// Compare complete utterances after playback settles, not while the final
+// provider stream is still delivering chunks to the two independent sockets.
+await sleep(150);
 const sameResult =
   JSON.stringify(pa.state.results) === JSON.stringify(pb.state.results) &&
   pa.state.winnerId === pb.state.winnerId;
@@ -293,7 +304,10 @@ console.log(
     sameResult,
     sharedAudio,
     audioChunks: pa.voiceHashes.length,
+    peerAudioChunks: pb.voiceHashes.length,
+    cancelledUtterances: pa.cancelled,
     interventions: pa.interventions,
+    scheduledPlaybackTimings: pa.timing,
     errors: [...pa.errors, ...pb.errors],
   }),
 );

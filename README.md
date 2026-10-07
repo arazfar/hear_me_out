@@ -70,6 +70,8 @@ Provider defaults are **Cartesia Ink 2**, **OpenAI GPT-6 Luna with no reasoning*
 
 Source boundaries: `shared/types.ts` contracts; `server/game.ts` rules/ledger; `server/controller.ts` orchestration; `server/providers.ts` adapters/prompts; `server/index.ts` authentication/HTTP/WS; `src/client.ts` capture/transport/playback; `src/App.tsx` presentation; `src/Stage.tsx` procedural 3D.
 
+Bonk now hosts the welcome, coin reveal, topic invitation/nudge, and round resets with short rotating lines. Evidence-linked reactions arrive in the scoring response and combine with the next named handoff; routine commentary does not spend strategic-intervention allowances. Fixed lines warm asynchronously in a bounded memory cache, and each room prepares one replaceable reaction/handoff candidate. Turn settlement waits for the 500 ms microphone drain, final STT stream completion, and eligible scoring jobs rather than a fixed three-second delay. Provider stalls retain bounded recovery; evidence is never skipped for speed. Silent packets cannot overflow an STT startup buffer.
+
 Commands carry an idempotency ID, connection epoch, match ID, and phase version. Events carry a room sequence and complete authoritative snapshot. Stale commands/audio/provider results are rejected. Sequence gaps request a snapshot. Four-digit codes locate rooms; separate 256-bit seat tokens protect reconnects and never appear in URLs. Capacity, code collision checks, create/join/control rate limits, idle expiration, one-hour room lifetime, and provider/socket cleanup are enforced. Only one match runs concurrently on the demo server.
 
 ## Verification and limits

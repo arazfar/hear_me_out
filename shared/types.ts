@@ -48,6 +48,7 @@ export interface Turn {
   deadline: number | null;
   pausedReason: string | null;
   sealing: boolean;
+  settlement?: "draining" | "scoring" | "ready";
   targets: Record<Criterion, number>;
   overlapRefundMs: number;
   suppressOpponent: boolean;
@@ -98,6 +99,8 @@ export interface JudgeState {
   startAt: number | null;
   expression: string;
   targetPlayerId: string | null;
+  cueAt?: number;
+  turnDoneAt?: number;
 }
 export interface Snapshot {
   roomId: string;

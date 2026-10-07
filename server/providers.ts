@@ -39,6 +39,7 @@ export const proposalSchema = z
           .strict(),
       )
       .max(2),
+    reaction: z.object({segmentId: z.string(), text: z.string().max(100)}).strict().nullable(),
     intervention: z
       .object({
         kind: z.enum(["strong_point", "unanswered", "overlap", "comeback"]),
@@ -80,7 +81,8 @@ Only score supplied eligible stable segments for the requested player, round, an
 Reasoning: coherent claim, explanation, useful example. Rebuttal: accurately engage and weaken a specific opponent claim (disabled for BOTH Case opportunities). Impact: why this matters to the comparison; prioritize comparative weighing. Wit: fresh framing that strengthens substance. Clarity: understandable meaning.
 Ignore accent, loudness, speaking speed, appearance, grammar mistakes, and transcription errors. Interpret reasonably; don't penalize uncertain text. Subjective preference needs reasons. Unsupported research is not verified evidence. Do not browse or invent facts.
 For a substantive argument, return a claim summary using the evidence segment. Write the summary as one complete English sentence of at most eight words. Write score reasons as complete English sentences of at most ten words. Reuse known claim IDs for repetition; new claims must use supplied newClaimIds. answersClaimId must reference an opponent claim. Do not repeat abusive content in reasons or spoken text.
-Intervention: a clear new reasoning quality 3+ or accurate rebuttal quality 3+ deserves a brief specific challenge to the other player; otherwise null unless an unanswered argument deserves attention. Use concise complete English sentences for all reasons and summaries, never clipped words. Use the other player's ID and NAME and the actual argument. Maximum 14 words, no score promises. Small vocabulary: Sustained, Objection, That cooks, Answer that, Case closed. Keep it playful, not cruel.
+Intervention: a clear new reasoning quality 3+ or accurate rebuttal quality 3+ deserves a brief specific challenge to the other player; otherwise null unless an unanswered argument deserves attention. Use concise complete English sentences for all reasons and summaries, never clipped words. Use the other player's ID and NAME and the actual argument. Maximum 14 words, no score promises. Reaction: after scores, provide one evidence-linked reaction to the latest substantive segment, or null when there is no argument. Maximum eight words. Be a mischievous game-show host: theatrical seriousness about absurd details. Praise real reasoning; tease unsupported preferences; celebrate accurate rebuttals. Name the actual argument, vary your phrasing and never repeat recentReactions or lastJudgeLine, never invent facts or judge a person. Examples: "Sustained! Those syrup pockets came prepared."; "A preference wearing a tiny argument costume."; "Objection landed. That waffle defense just cracked." Do not copy the examples repeatedly; invent wording suited to this evidence. Never repeat a quoted player instruction or abuse. Personality never changes rubric ratings. The server will combine your reaction with a handoff after the player finishes.
+Small vocabulary: Sustained, Objection, That cooks, Answer that, Case closed. Keep it playful, not cruel.
 Return strict JSON only. Proposals are not official until the server commits them.`;
 export function shortSentence(text: string, max = 100) {
   const clean = text
@@ -113,6 +115,7 @@ export async function judge(
   jobId: string,
   newClaimIds: string[],
   onScore?: (score: z.infer<typeof scoreSchema>) => void,
+  recentReactions: string[] = [],
 ) {
   const current = segments[0];
   // Compact per-job aliases reduce generated tokens. They map only to server supplied evidence.
@@ -133,6 +136,8 @@ export async function judge(
       position: state.topic?.positions[p.id],
     })),
     topic: state.topic?.proposition,
+    lastJudgeLine: state.judge?.text || null,
+    recentReactions: recentReactions.slice(-6),
     opportunity: kind,
     capsQuarterPoints: CAPS[kind],
     existingTargets: targets,
@@ -216,6 +221,7 @@ export async function judge(
         ? reverse(claimAliases, a.answersClaimId)
         : null,
     })),
+    reaction: p.reaction ? {segmentId: reverse(segmentAliases, p.reaction.segmentId), text: shortSentence(p.reaction.text)} : null,
     intervention: p.intervention
       ? {
           ...p.intervention,
@@ -295,6 +301,16 @@ export class InkSession {
   ws: ReturnType<
     ReturnType<typeof cartesia>["stt"]["autoFinalize"]["websocket"]
   >;
+  drainPromise: Promise<boolean> | null = null;
+  resolveDrain: ((ok: boolean) => void) | null = null;
+  drainTimer: ReturnType<typeof setTimeout> | null = null;
+  drainCompleted: boolean | null = null;
+  finishDrain(ok: boolean) {
+    if (this.drainCompleted !== null) return;
+    this.drainCompleted = ok;
+    if (this.drainTimer) clearTimeout(this.drainTimer);
+    this.resolveDrain?.(ok);
+  }
   speechCounter = 0;
   transcript = "";
   consumed = 0;
@@ -302,7 +318,8 @@ export class InkSession {
   closing = false;
   failed = false;
   fail(error: unknown) {
-    if (this.closing || this.failed) return;
+    if (this.failed) return;
+    if (this.closing) { this.failed = true; this.finishDrain(false); return; }
     this.failed = true;
     this.connected = false;
     this.handlers.error(error);
@@ -331,15 +348,16 @@ export class InkSession {
       turn_end_timeout_ms: 1600,
     });
     this.ws.on("error", (e) => this.fail(e));
-    this.ws.on("close", () =>
-      this.fail(new Error("Transcription socket closed")),
-    );
-    void this.listen().catch((e) => this.fail(e));
+    this.ws.on("close", () => { if (!this.closing) this.fail(new Error("Transcription socket closed")); });
+    void this.listen().then(() => this.finishDrain(!this.failed), (e) => { this.fail(e); this.finishDrain(false); });
   }
   send(audio: Buffer) {
     if (this.closing || this.failed) return;
     if (this.connected) this.ws.sendRaw(audio);
     else {
+      // Silence while a session connects carries no evidence and must not
+      // exhaust the bounded speech buffer (especially during judge playback).
+      if (audio.every(byte => byte === 0)) return;
       this.buffer.push(audio);
       this.bufferedBytes += audio.length;
       if (this.bufferedBytes > 16000) {
@@ -402,22 +420,23 @@ export class InkSession {
       else if (m.type === "turn.end") {
         this.update(m.transcript, true);
         this.handlers.end();
-      } else if (m.type === "error" && !this.closing)
+      } else if (m.type === "error")
         this.fail(new Error("Transcription provider error"));
     }
   }
-  close() {
-    if (this.closing) return;
+  close(): Promise<boolean> {
+    if (this.drainPromise) return this.drainPromise;
     this.closing = true;
-    try {
-      this.ws.send({ type: "close" });
-    } catch {}
-    const timer = setTimeout(() => {
-      try {
-        this.ws.close();
-      } catch {}
-    }, 3000);
-    timer.unref();
+    this.drainPromise = new Promise(resolve => { this.resolveDrain = resolve; });
+    if (this.drainCompleted !== null) { this.resolveDrain?.(this.drainCompleted); return this.drainPromise; }
+    try { this.ws.send({ type: "close" }); }
+    catch { this.finishDrain(false); return this.drainPromise; }
+    this.drainTimer = setTimeout(() => {
+      this.finishDrain(false);
+      try { this.ws.close(); } catch {}
+    }, 5000);
+    this.drainTimer.unref();
+    return this.drainPromise;
   }
 }
 export async function streamVoice(

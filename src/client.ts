@@ -731,11 +731,13 @@ export class Client {
         this.judgeStartContext.get(s.epoch)! + c.offset / 44100,
       );
       this.play(c.pcm, 44100, at, this.judgeGain!, true);
-      if (c.offset === 0)
-        this.send({
-          type: "playback_metric",
-          latencyMs: Math.max(0, Date.now() + this.offset - s.startAt),
-        });
+      if (c.offset === 0) {
+        setTimeout(() => {
+          if (this.cancelled.has(s.epoch) || this.state?.judge?.epoch !== s.epoch) return;
+          const now = Date.now() + this.offset;
+          this.send({type:"playback_metric",latencyMs:Math.max(0,now-s.startAt!),cueToPlaybackMs:s.cueAt ? Math.max(0,now-s.cueAt) : undefined,turnDoneToPlaybackMs:s.turnDoneAt ? Math.max(0,now-s.turnDoneAt) : undefined});
+        }, Math.max(0,(at-this.context.currentTime)*1000));
+      }
     }
     for (const epoch of this.judgeChunks.keys())
       if (epoch < s.epoch - 1) this.judgeChunks.delete(epoch);
@@ -765,6 +767,15 @@ export class Client {
       } catch {}
     }
     this.nodes.clear();
+  }
+  resetJudgePlayback() {
+    this.stopJudge();
+    this.judgeChunks.clear();
+    this.cancelled.clear();
+    this.readySent.clear();
+    this.played.clear();
+    this.judgeStartContext.clear();
+    this.bargeEpoch = -1;
   }
   muteMic() {
     this.micMuted = !this.micMuted;
@@ -852,7 +863,7 @@ export class Client {
     this.peerPlayback?.port.postMessage({ type: "flush" });
     for (const timer of [this.frameTimer, this.statusTimer, this.pingTimer])
       if (timer) clearInterval(timer);
-    this.stopJudge();
+    this.resetJudgePlayback();
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
     this.capture?.disconnect();

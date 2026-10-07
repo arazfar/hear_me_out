@@ -14,7 +14,7 @@ function setup() {
   a.mediaReady = b.mediaReady = true;
   g.ready(a.id, true);
   g.ready(b.id, true);
-  time += 6001;
+  time += 8001;
   g.tick();
   g.proposeTopic(
     g.state.tailsId!,
@@ -135,7 +135,7 @@ test("six equal opportunities, alternating opener, reset score, first to two and
     assert.equal(seen.get(heads), 3);
     assert.equal(seen.get(g.other(heads).id), 3);
     assert.equal(g.state.results.at(-1)!.scores[heads], 120);
-    advance(7001);
+    advance(12001);
     if (round === 2) break;
     assert.equal(g.player(heads).scoreUnits, 0);
   }
@@ -179,7 +179,7 @@ test("topic requires both confirmations and connection recovery cannot invent wi
   a.mediaReady = b.mediaReady = true;
   g.ready(a.id, true);
   g.ready(b.id, true);
-  time = 6001;
+  time = 8001;
   g.tick();
   time += 45001;
   g.tick();
@@ -223,7 +223,7 @@ test("reconnect during judge pause restores clock and timed intro resumes", () =
   g.recover("intro lost");
   advance(5000);
   g.resumeRecovery();
-  advance(4001);
+  advance(6001);
   assert.equal(g.state.phase, "TOPIC_SELECT");
 });
 test("complete score JSON objects stream atomically despite braces and escaped quotes in reasons", async () => {

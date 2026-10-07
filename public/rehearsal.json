@@ -1,500 +1,503 @@
 {
   "label": "Rehearsal replay — generated test speech, real providers",
-  "recordedAt": "2026-10-07T21:50:08.646Z",
+  "recordedAt": "2026-10-07T22:17:48.456Z",
   "topic": {
-    "proposition": "Are waffles better than pancakes?",
+    "proposition": "Waffles are better than pancakes.",
     "positions": {
-      "b80937f1-82bf-4b2a-bd54-747e690d6521": "Waffles are better.",
-      "0e8b995e-a6d8-4efd-bdd6-64def8392788": "Pancakes are better."
+      "ebc799a4-925d-450d-a731-42aef9ebe1e2": "Waffles are better.",
+      "439750e9-e06f-4c65-a1a8-cabf5a1c83f8": "Pancakes are better."
     },
     "revision": 1,
     "confirmations": [
-      "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "0e8b995e-a6d8-4efd-bdd6-64def8392788"
+      "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "ebc799a4-925d-450d-a731-42aef9ebe1e2"
     ]
   },
   "players": [
     {
-      "id": "b80937f1-82bf-4b2a-bd54-747e690d6521",
+      "id": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
       "name": "Sam",
-      "wins": 2
+      "wins": 0
     },
     {
-      "id": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
+      "id": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
       "name": "Alex",
-      "wins": 0
+      "wins": 2
     }
   ],
-  "winnerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
+  "winnerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
   "results": [
     {
       "round": 1,
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "winnerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "winnerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
       "scores": {
-        "b80937f1-82bf-4b2a-bd54-747e690d6521": 68,
-        "0e8b995e-a6d8-4efd-bdd6-64def8392788": 11
+        "439750e9-e06f-4c65-a1a8-cabf5a1c83f8": 10,
+        "ebc799a4-925d-450d-a731-42aef9ebe1e2": 72
       },
-      "reason": "Syrup pockets explain how waffles distribute sweetness evenly.",
+      "reason": "Syrup pockets explain how waffles distribute sweetness across bites.",
       "tieBreak": null
     },
     {
       "round": 2,
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "winnerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "winnerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
       "scores": {
-        "b80937f1-82bf-4b2a-bd54-747e690d6521": 71,
-        "0e8b995e-a6d8-4efd-bdd6-64def8392788": 14
+        "439750e9-e06f-4c65-a1a8-cabf5a1c83f8": 15,
+        "ebc799a4-925d-450d-a731-42aef9ebe1e2": 76
       },
-      "reason": "Syrup pockets distribute sweetness across each bite.",
+      "reason": "Syrup pockets provide a clear mechanism and a useful contrast.",
       "tieBreak": null
     }
   ],
   "ledger": [
     {
-      "segmentId": "f8bb8c11b0cf9e3c2e432b93",
+      "segmentId": "101b48512bff99498781fc0c",
       "criterion": "reasoning",
       "quality": 1,
-      "reason": "Personal preference supports the claim, but offers no explanation.",
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "e3594f50-f29d-401b-a92a-3bc64b15b333",
-      "id": "31111f2d-81cd-40df-a246-06b2cf4a5c94",
+      "reason": "Personal preference supports the claim, but gives no further reason.",
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "78362168-272a-4d1a-9725-edaf462bd869",
+      "id": "313480d8-a0f8-466b-a9b0-5ec145b77d20",
       "deltaUnits": 5,
-      "at": 1791409638883
+      "at": 1791411302794
     },
     {
-      "segmentId": "f8bb8c11b0cf9e3c2e432b93",
+      "segmentId": "101b48512bff99498781fc0c",
       "criterion": "impact",
       "quality": 1,
-      "reason": "The preference implies pancakes are better for this speaker.",
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "e3594f50-f29d-401b-a92a-3bc64b15b333",
-      "id": "2036d786-4b29-496d-aec1-43c6b9ca21b5",
+      "reason": "The preference is stated without comparative weighing.",
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "78362168-272a-4d1a-9725-edaf462bd869",
+      "id": "da2cdbb7-1455-4af1-8fb5-0c9a992273e1",
       "deltaUnits": 3,
-      "at": 1791409639289
+      "at": 1791411303091
     },
     {
-      "segmentId": "f8bb8c11b0cf9e3c2e432b93",
+      "segmentId": "101b48512bff99498781fc0c",
       "criterion": "clarity",
       "quality": 4,
       "reason": "The preference and conclusion are understandable.",
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "e3594f50-f29d-401b-a92a-3bc64b15b333",
-      "id": "4b10472a-5893-48f3-901e-9231209089a9",
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "78362168-272a-4d1a-9725-edaf462bd869",
+      "id": "e0e4ab12-d69d-497d-b16a-59e874f67402",
       "deltaUnits": 2,
-      "at": 1791409639608
+      "at": 1791411303347
     },
     {
-      "segmentId": "f4c20bea1fb7201b93ba274f",
+      "segmentId": "37d18f82706b435a667c2ae1",
       "criterion": "reasoning",
       "quality": 3,
-      "reason": "Syrup pockets explain how waffles distribute sweetness evenly.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "2dfbdd7a-1093-4a31-908a-75288ca15474",
-      "id": "ce0e6fc3-42d7-41ad-af39-e3f0e37bfa4c",
+      "reason": "Syrup pockets explain how waffles distribute sweetness across bites.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "62245c69-a471-49e1-b381-40526bb4f6bf",
+      "id": "93018c45-f94f-45a3-8515-6d88993bed75",
       "deltaUnits": 15,
-      "at": 1791409657620
+      "at": 1791411319561
     },
     {
-      "segmentId": "f4c20bea1fb7201b93ba274f",
+      "segmentId": "37d18f82706b435a667c2ae1",
       "criterion": "impact",
       "quality": 2,
-      "reason": "Even sweetness offers a comparative benefit over pancakes.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "2dfbdd7a-1093-4a31-908a-75288ca15474",
-      "id": "d1519b8a-41b3-4cd5-9928-8fa5ccfbe80a",
+      "reason": "Even sweetness is a comparative benefit for waffles.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "62245c69-a471-49e1-b381-40526bb4f6bf",
+      "id": "f5fed676-3418-4e51-8619-83967d385b16",
       "deltaUnits": 6,
-      "at": 1791409657922
+      "at": 1791411319882
     },
     {
-      "segmentId": "f4c20bea1fb7201b93ba274f",
+      "segmentId": "37d18f82706b435a667c2ae1",
+      "criterion": "wit",
+      "quality": 1,
+      "reason": "Syrup pockets make a fresh, relevant phrase.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "62245c69-a471-49e1-b381-40526bb4f6bf",
+      "id": "5c9c27c5-a1ca-4869-9745-b8c575603ba9",
+      "deltaUnits": 2,
+      "at": 1791411320109
+    },
+    {
+      "segmentId": "37d18f82706b435a667c2ae1",
       "criterion": "clarity",
       "quality": 4,
-      "reason": "The comparative sweetness argument is understandable.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "2dfbdd7a-1093-4a31-908a-75288ca15474",
-      "id": "12b28ce8-590f-47d2-ab7c-bb505094c4d3",
+      "reason": "The sweetness comparison is readily understandable.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "62245c69-a471-49e1-b381-40526bb4f6bf",
+      "id": "149fd11b-ee63-4f66-a839-7469f525a60d",
       "deltaUnits": 2,
-      "at": 1791409658270
+      "at": 1791411320282
     },
     {
-      "segmentId": "e9c45a76aaba3d41afa797c3",
-      "criterion": "clarity",
-      "quality": 1,
-      "reason": "The preference is understandable, but lacks substantive support.",
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "42a2e1f6-b0ff-473a-8588-992d1181a591",
-      "id": "9f30e526-e717-43a1-a104-913d980ab372",
-      "deltaUnits": 1,
-      "at": 1791409671022
-    },
-    {
-      "segmentId": "2e858a595e20197c8a329462",
+      "segmentId": "b38a17f507c41c6ebb2fc24d",
       "criterion": "reasoning",
       "quality": 3,
-      "reason": "It explains how syrup damages pancake texture while waffles stay crisp.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "d946fccd-6f44-46af-af47-ba57e2ba487c",
-      "id": "cfd9f8d1-ed9b-4b74-bd92-092408f4333c",
+      "reason": "It explains how waffles preserve texture compared with syrup-soaked pancakes.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "34c58358-7f2f-498b-8e6f-23fa2e5f7882",
+      "id": "276ed666-66b0-4004-915b-8764c76eeede",
       "deltaUnits": 11,
-      "at": 1791409684595
+      "at": 1791411346577
     },
     {
-      "segmentId": "2e858a595e20197c8a329462",
+      "segmentId": "b38a17f507c41c6ebb2fc24d",
       "criterion": "rebuttal",
       "quality": 3,
-      "reason": "It counters softness by explaining pancakes lose texture under syrup.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "d946fccd-6f44-46af-af47-ba57e2ba487c",
-      "id": "faf74036-3c77-4f79-910f-f16af3219c01",
+      "reason": "It answers the softness preference by contrasting syrup absorption and crispness.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "34c58358-7f2f-498b-8e6f-23fa2e5f7882",
+      "id": "4c6aa1df-c3b7-427f-962a-7a6971ae2a86",
       "deltaUnits": 9,
-      "at": 1791409684855
+      "at": 1791411346809
     },
     {
-      "segmentId": "2e858a595e20197c8a329462",
-      "criterion": "impact",
-      "quality": 2,
-      "reason": "It compares which texture better survives syrup.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "d946fccd-6f44-46af-af47-ba57e2ba487c",
-      "id": "7569ece9-e311-4ebd-b3b5-8b5c0c960042",
-      "deltaUnits": 4,
-      "at": 1791409685102
-    },
-    {
-      "segmentId": "2e858a595e20197c8a329462",
-      "criterion": "clarity",
-      "quality": 4,
-      "reason": "The text clearly compares texture after adding syrup.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "d946fccd-6f44-46af-af47-ba57e2ba487c",
-      "id": "e4a1bedc-310a-40a8-a5b6-45164eeba67c",
-      "deltaUnits": 2,
-      "at": 1791409685386
-    },
-    {
-      "segmentId": "bf935d97c134fef92258c9d1",
-      "criterion": "reasoning",
-      "quality": 3,
-      "reason": "Balanced flavor throughout breakfast is a clear explanatory mechanism.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "3346d44e-0f14-4c98-9c10-07dad6fe6608",
-      "id": "21602f5a-db48-4650-bdcb-58933aa0ee96",
-      "deltaUnits": 11,
-      "at": 1791409711352
-    },
-    {
-      "segmentId": "bf935d97c134fef92258c9d1",
+      "segmentId": "b38a17f507c41c6ebb2fc24d",
       "criterion": "impact",
       "quality": 3,
-      "reason": "Consistent flavor matters because it improves the whole breakfast.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "3346d44e-0f14-4c98-9c10-07dad6fe6608",
-      "id": "fb881abc-3b60-4265-a906-80f246636a40",
+      "reason": "Keeping crispness makes waffles a better textured syrup experience.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "34c58358-7f2f-498b-8e6f-23fa2e5f7882",
+      "id": "74a0ea50-a170-4682-a31e-051feca5e90c",
       "deltaUnits": 6,
-      "at": 1791409711727
+      "at": 1791411346997
     },
     {
-      "segmentId": "bf935d97c134fef92258c9d1",
-      "criterion": "clarity",
-      "quality": 4,
-      "reason": "The substantive point is fully understandable.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "3346d44e-0f14-4c98-9c10-07dad6fe6608",
-      "id": "ca30f03a-fc93-4d08-916d-072fb9699c5f",
-      "deltaUnits": 2,
-      "at": 1791409712034
-    },
-    {
-      "segmentId": "2436abaf6ec18f3ebe62151c",
-      "criterion": "reasoning",
-      "quality": 3,
-      "reason": "Syrup pockets distribute sweetness across each bite.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "92994149-53cf-410f-8b54-6844a2772d9e",
-      "id": "8bcb4273-3e71-408d-b10c-96794508585a",
-      "deltaUnits": 15,
-      "at": 1791409732127
-    },
-    {
-      "segmentId": "2436abaf6ec18f3ebe62151c",
-      "criterion": "impact",
-      "quality": 3,
-      "reason": "Consistent sweetness avoids a syrup-poor final bite.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "92994149-53cf-410f-8b54-6844a2772d9e",
-      "id": "b98ca8ed-2b94-4997-bc62-d537e085aafd",
-      "deltaUnits": 9,
-      "at": 1791409732443
-    },
-    {
-      "segmentId": "2436abaf6ec18f3ebe62151c",
-      "criterion": "clarity",
-      "quality": 4,
-      "reason": "The comparative benefit is immediately understandable.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "92994149-53cf-410f-8b54-6844a2772d9e",
-      "id": "72832536-77fa-4941-8e46-5fb884911dba",
-      "deltaUnits": 2,
-      "at": 1791409732750
-    },
-    {
-      "segmentId": "d5ef6a673fe2d43c264c0e6f",
-      "criterion": "reasoning",
-      "quality": 1,
-      "reason": "Personal preference is stated without supporting explanation.",
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "e99e0c8c-44ff-464f-8387-aac2c1344dd7",
-      "id": "800f7932-325c-43a3-8078-ab45de8284ab",
-      "deltaUnits": 5,
-      "at": 1791409740911
-    },
-    {
-      "segmentId": "d5ef6a673fe2d43c264c0e6f",
-      "criterion": "impact",
-      "quality": 1,
-      "reason": "The speaker expresses a preference without comparison.",
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "e99e0c8c-44ff-464f-8387-aac2c1344dd7",
-      "id": "89477068-ed0c-4dc8-8805-34f78b64d0de",
-      "deltaUnits": 3,
-      "at": 1791409741215
-    },
-    {
-      "segmentId": "d5ef6a673fe2d43c264c0e6f",
-      "criterion": "clarity",
-      "quality": 4,
-      "reason": "The preference is clearly understandable.",
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "e99e0c8c-44ff-464f-8387-aac2c1344dd7",
-      "id": "f62fff8f-22f5-4cff-898f-5ff8998e3cb6",
-      "deltaUnits": 2,
-      "at": 1791409741433
-    },
-    {
-      "segmentId": "3d1b7022fe857f7cfc3aebac",
-      "criterion": "reasoning",
-      "quality": 3,
-      "reason": "It explains how syrup compromises pancakes’ texture while waffles stay crisp.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "97c2da5c-2a33-40fd-bd80-0257057bd8c4",
-      "id": "eeac7fbc-40cd-4c4b-9f5d-d79d768923ff",
-      "deltaUnits": 11,
-      "at": 1791409756812
-    },
-    {
-      "segmentId": "3d1b7022fe857f7cfc3aebac",
-      "criterion": "rebuttal",
-      "quality": 3,
-      "reason": "It counters Alex’s preference with a concrete texture advantage.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "97c2da5c-2a33-40fd-bd80-0257057bd8c4",
-      "id": "9cf7c858-92a3-4e4b-a37a-5585024dbc7e",
-      "deltaUnits": 9,
-      "at": 1791409756895
-    },
-    {
-      "segmentId": "3d1b7022fe857f7cfc3aebac",
-      "criterion": "impact",
-      "quality": 2,
-      "reason": "It identifies texture retention as a comparative benefit.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "97c2da5c-2a33-40fd-bd80-0257057bd8c4",
-      "id": "973a2216-3736-4ce0-940d-92d629027f35",
-      "deltaUnits": 4,
-      "at": 1791409756930
-    },
-    {
-      "segmentId": "3d1b7022fe857f7cfc3aebac",
+      "segmentId": "b38a17f507c41c6ebb2fc24d",
       "criterion": "clarity",
       "quality": 4,
       "reason": "The texture comparison is clear and understandable.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "97c2da5c-2a33-40fd-bd80-0257057bd8c4",
-      "id": "cdd8ff18-cefe-48e2-8c0c-ce3aa6613137",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "34c58358-7f2f-498b-8e6f-23fa2e5f7882",
+      "id": "42a4c926-6e84-4b5f-b25f-12a9dffb43c2",
       "deltaUnits": 2,
-      "at": 1791409757099
+      "at": 1791411347328
     },
     {
-      "segmentId": "07fdea20fbcda20e5c64a83f",
-      "criterion": "rebuttal",
-      "quality": 1,
-      "reason": "It mentions an opponent point without answering it.",
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "7b24d54f-53b9-4fe0-8481-06e1622d46cc",
-      "id": "3fa1e3c4-13dc-42db-8d03-9afb83ce3df4",
-      "deltaUnits": 3,
-      "at": 1791409768362
-    },
-    {
-      "segmentId": "07fdea20fbcda20e5c64a83f",
-      "criterion": "clarity",
-      "quality": 2,
-      "reason": "The preference is clear, though unsupported.",
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "7b24d54f-53b9-4fe0-8481-06e1622d46cc",
-      "id": "93d421a7-3e22-44e3-b3c7-29f864421bd8",
-      "deltaUnits": 1,
-      "at": 1791409768785
-    },
-    {
-      "segmentId": "b6bee3d0c63a3cc1e354931a",
+      "segmentId": "39576c925ce2591e75109376",
       "criterion": "reasoning",
       "quality": 3,
-      "reason": "Balanced syrup distribution explains why waffles taste better throughout.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "41e45207-b8f5-4177-9ebd-4f3c13fd4014",
-      "id": "c1e9e150-a53b-4a69-ad35-7f30bbded58e",
+      "reason": "It explains balanced flavor through even syrup distribution.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "ee5f088e-72fe-4325-89a6-d6a4d88f86f3",
+      "id": "c40878d2-35ba-4e54-9e1d-210fdacbaa04",
       "deltaUnits": 11,
-      "at": 1791409792970
+      "at": 1791411371203
     },
     {
-      "segmentId": "b6bee3d0c63a3cc1e354931a",
+      "segmentId": "39576c925ce2591e75109376",
       "criterion": "impact",
       "quality": 3,
-      "reason": "Consistent flavor matters more than softness across breakfast.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "41e45207-b8f5-4177-9ebd-4f3c13fd4014",
-      "id": "5973a948-f680-4ec6-8c88-63e4af4185f3",
+      "reason": "It explains why consistent flavor improves breakfast.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "ee5f088e-72fe-4325-89a6-d6a4d88f86f3",
+      "id": "603560e1-3e48-45dc-985d-6131440a0015",
       "deltaUnits": 6,
-      "at": 1791409793406
+      "at": 1791411371475
     },
     {
-      "segmentId": "b6bee3d0c63a3cc1e354931a",
+      "segmentId": "39576c925ce2591e75109376",
       "criterion": "clarity",
       "quality": 4,
       "reason": "The substantive comparison is understandable.",
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "41e45207-b8f5-4177-9ebd-4f3c13fd4014",
-      "id": "994200de-b191-46c3-9eed-df232830dd87",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "ee5f088e-72fe-4325-89a6-d6a4d88f86f3",
+      "id": "d0320100-519d-4782-854d-7f7636890c8f",
       "deltaUnits": 2,
-      "at": 1791409793526
+      "at": 1791411371742
+    },
+    {
+      "segmentId": "5180748eda8208d44df1ed24",
+      "criterion": "reasoning",
+      "quality": 4,
+      "reason": "Syrup pockets provide a clear mechanism and a useful contrast.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "eb205b8f-b4df-4c3c-83ac-7e0449284b7e",
+      "id": "3a4ae96b-e7aa-4a4b-8dad-65e81065f5ed",
+      "deltaUnits": 20,
+      "at": 1791411390683
+    },
+    {
+      "segmentId": "5180748eda8208d44df1ed24",
+      "criterion": "impact",
+      "quality": 3,
+      "reason": "Consistent sweetness improves the experience of every bite.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "eb205b8f-b4df-4c3c-83ac-7e0449284b7e",
+      "id": "dd20c405-2d27-4828-8dec-61172fdb7b93",
+      "deltaUnits": 9,
+      "at": 1791411390995
+    },
+    {
+      "segmentId": "5180748eda8208d44df1ed24",
+      "criterion": "clarity",
+      "quality": 4,
+      "reason": "The sweetness-distribution advantage is immediately understandable.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "eb205b8f-b4df-4c3c-83ac-7e0449284b7e",
+      "id": "d751566e-25f7-446f-9cf8-83d4adc8f878",
+      "deltaUnits": 2,
+      "at": 1791411391295
+    },
+    {
+      "segmentId": "0b09b6529ad2eafed907240f",
+      "criterion": "reasoning",
+      "quality": 1,
+      "reason": "Personal liking supports the preference but explains no advantage.",
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "ccc1f137-9818-4fbf-8074-60e967ae7bef",
+      "id": "4b21430e-3761-4db6-b753-f33b582bf3aa",
+      "deltaUnits": 5,
+      "at": 1791411401586
+    },
+    {
+      "segmentId": "0b09b6529ad2eafed907240f",
+      "criterion": "impact",
+      "quality": 1,
+      "reason": "The claim states a preference without comparative benefit.",
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "ccc1f137-9818-4fbf-8074-60e967ae7bef",
+      "id": "80d87e10-61c7-4088-8b79-e3bed3078780",
+      "deltaUnits": 3,
+      "at": 1791411401906
+    },
+    {
+      "segmentId": "0b09b6529ad2eafed907240f",
+      "criterion": "clarity",
+      "quality": 4,
+      "reason": "The preference is plainly understandable.",
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "ccc1f137-9818-4fbf-8074-60e967ae7bef",
+      "id": "0d736a04-8bb4-4a00-b6f1-e4f59cedb89f",
+      "deltaUnits": 2,
+      "at": 1791411402225
+    },
+    {
+      "segmentId": "f248a0d2de2d3a26a2c94fbe",
+      "criterion": "reasoning",
+      "quality": 3,
+      "reason": "It explains how syrup affects texture and contrasts crispness.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "c973aa98-3461-439e-8c8c-cc899130aa8b",
+      "id": "66fa85a0-95bd-420f-81d2-a99933031b36",
+      "deltaUnits": 11,
+      "at": 1791411416186
+    },
+    {
+      "segmentId": "f248a0d2de2d3a26a2c94fbe",
+      "criterion": "rebuttal",
+      "quality": 3,
+      "reason": "It counters pancake softness with a specific texture tradeoff.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "c973aa98-3461-439e-8c8c-cc899130aa8b",
+      "id": "4315bd5d-859b-4c6b-89f7-47ee6decbb4d",
+      "deltaUnits": 9,
+      "at": 1791411416342
+    },
+    {
+      "segmentId": "f248a0d2de2d3a26a2c94fbe",
+      "criterion": "impact",
+      "quality": 2,
+      "reason": "It favors waffles by preserving a crisp edge.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "c973aa98-3461-439e-8c8c-cc899130aa8b",
+      "id": "12258e04-57b8-4b37-9e24-2b6ea937a538",
+      "deltaUnits": 4,
+      "at": 1791411416505
+    },
+    {
+      "segmentId": "f248a0d2de2d3a26a2c94fbe",
+      "criterion": "clarity",
+      "quality": 4,
+      "reason": "The texture comparison is easy to understand.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "c973aa98-3461-439e-8c8c-cc899130aa8b",
+      "id": "5048230a-0739-48f4-ab92-b7a2b22be03c",
+      "deltaUnits": 2,
+      "at": 1791411416802
+    },
+    {
+      "segmentId": "6852258a99dc438c704e1f76",
+      "criterion": "rebuttal",
+      "quality": 1,
+      "reason": "He acknowledges the texture objection but does not answer it.",
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "a6883059-ceec-458a-8ee5-2a79d31c4214",
+      "id": "27249a7d-f243-43be-ae26-a67f35897115",
+      "deltaUnits": 3,
+      "at": 1791411428444
+    },
+    {
+      "segmentId": "6852258a99dc438c704e1f76",
+      "criterion": "clarity",
+      "quality": 4,
+      "reason": "His preference is clearly stated.",
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "a6883059-ceec-458a-8ee5-2a79d31c4214",
+      "id": "021fad66-9e8d-4928-b251-68b778073d08",
+      "deltaUnits": 2,
+      "at": 1791411428818
+    },
+    {
+      "segmentId": "40f4f853453bc4e3612179fe",
+      "criterion": "reasoning",
+      "quality": 3,
+      "reason": "It explains how even syrup distribution supports balanced flavor.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "a5622948-5780-4639-a782-70af794db6a8",
+      "id": "3538d91d-6cf9-4d2a-8903-38b846f3dc9b",
+      "deltaUnits": 11,
+      "at": 1791411452690
+    },
+    {
+      "segmentId": "40f4f853453bc4e3612179fe",
+      "criterion": "impact",
+      "quality": 3,
+      "reason": "Balanced flavor matters throughout breakfast, not just one bite.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "a5622948-5780-4639-a782-70af794db6a8",
+      "id": "71644590-55f1-4e67-9e72-e0447e7d184b",
+      "deltaUnits": 6,
+      "at": 1791411453109
+    },
+    {
+      "segmentId": "40f4f853453bc4e3612179fe",
+      "criterion": "clarity",
+      "quality": 4,
+      "reason": "The comparative preference and its reason are clear.",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "a5622948-5780-4639-a782-70af794db6a8",
+      "id": "7cd2ac04-adda-4830-92ff-21efda786ae8",
+      "deltaUnits": 2,
+      "at": 1791411453447
     }
   ],
   "transcripts": [
     {
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "e3594f50-f29d-401b-a92a-3bc64b15b333",
-      "text": "pancakes are better because I like them."
-    },
-    {
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "2dfbdd7a-1093-4a31-908a-75288ca15474",
-      "text": "Waffles have syrup pockets, so sweetness reaches every bite, instead of pulling under the last bite."
-    },
-    {
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "42a2e1f6-b0ff-473a-8588-992d1181a591",
-      "text": "I heard the Sarah point, but I still prefer pancakes."
-    },
-    {
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "d946fccd-6f44-46af-af47-ba57e2ba487c",
-      "text": "Softness is not enough. Pancakes soak up syrup and lose their texture, while waffles keep a crisp edge."
-    },
-    {
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "e437dc28-834b-4542-a857-109a044ec719",
-      "text": "Pancakes are my favorite breakfast."
-    },
-    {
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "775d4d34-be9d-4929-a79f-2516f438c012",
-      "turnId": "3346d44e-0f14-4c98-9c10-07dad6fe6608",
-      "text": "Even syrup distribution matters more than softness because breakfast should taste balanced from first bite to last."
-    },
-    {
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "92994149-53cf-410f-8b54-6844a2772d9e",
-      "text": "Waffles have syrup pockets, so sweetness reaches every bite, instead of pulling under the last bite."
-    },
-    {
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "e99e0c8c-44ff-464f-8387-aac2c1344dd7",
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "78362168-272a-4d1a-9725-edaf462bd869",
       "text": "Pancakes are better because I like them."
     },
     {
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "97c2da5c-2a33-40fd-bd80-0257057bd8c4",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "62245c69-a471-49e1-b381-40526bb4f6bf",
+      "text": "Yeah, face have syrup pockets, so sweetness reaches every bite instead of pooling under the last bite."
+    },
+    {
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "c8867f73-da5c-4f99-8894-602f3b1dca7e",
+      "text": "I heard the Sierra point, but I still prefer pancakes."
+    },
+    {
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "34c58358-7f2f-498b-8e6f-23fa2e5f7882",
       "text": "Softness is not enough. Pancakes soak up syrup and lose their texture, while waffles keep a crisp edge."
     },
     {
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "7b24d54f-53b9-4fe0-8481-06e1622d46cc",
-      "text": "I heard the Sarah point, but I still prefer pancakes."
-    },
-    {
-      "playerId": "0e8b995e-a6d8-4efd-bdd6-64def8392788",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "79c13e75-00bf-41e3-b295-d78156df045d",
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "21e781e2-a8b3-4f16-b1e0-d1cbbfed6e9f",
       "text": "Pancakes are my favorite breakfast."
     },
     {
-      "playerId": "b80937f1-82bf-4b2a-bd54-747e690d6521",
-      "roundId": "f0f606f9-8024-4fae-84fc-83b088e48c91",
-      "turnId": "41e45207-b8f5-4177-9ebd-4f3c13fd4014",
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "97ec7097-bef4-41e8-abe5-442fac62ed25",
+      "turnId": "ee5f088e-72fe-4325-89a6-d6a4d88f86f3",
+      "text": "Even syrup distribution matters more than softness because breakfast should taste balanced from first bite to last."
+    },
+    {
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "eb205b8f-b4df-4c3c-83ac-7e0449284b7e",
+      "text": "Waffles have syrup pockets, so sweetness reaches every bite instead of pooling under the last bite."
+    },
+    {
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "ccc1f137-9818-4fbf-8074-60e967ae7bef",
+      "text": "Pancakes are better because I like them."
+    },
+    {
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "c973aa98-3461-439e-8c8c-cc899130aa8b",
+      "text": "Softness is not enough. Pancakes soak up syrup and lose their texture, while waffles keep a crisp edge."
+    },
+    {
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "a6883059-ceec-458a-8ee5-2a79d31c4214",
+      "text": "I heard the Sierra point, but I still prefer pancakes."
+    },
+    {
+      "playerId": "439750e9-e06f-4c65-a1a8-cabf5a1c83f8",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "e04c9f64-2fc6-483d-b570-799bc4f3db3b",
+      "text": "Pancakes are my favorite breakfast."
+    },
+    {
+      "playerId": "ebc799a4-925d-450d-a731-42aef9ebe1e2",
+      "roundId": "25350262-2f1f-4468-8084-e857c54ab0bd",
+      "turnId": "a5622948-5780-4639-a782-70af794db6a8",
       "text": "Even syrup distribution matters more than softness because breakfast should taste balanced from first bite to last."
     }
   ],
   "judgeLines": [
-    "Sam. Alex. Welcome to a deeply unnecessary argument. Heads opens. Tails chooses.",
-    "Alex, make your case.",
+    "Welcome to questionable opinions, confidently delivered.",
+    "Let fate take the blame!",
+    "Sam opens. Alex picks the battlefield.",
+    "Choose your hill. Defend it irresponsibly.",
     "Sam, make your case.",
-    "Objection, Alex: Sam explains even syrup, while your preference gives no comparative reason.",
-    "Sam, your rebuttal.",
-    "Objection, Alex: Sam explains why syrup leaves pancakes soggy while waffles stay crisp.",
-    "Sam, your closing argument.",
-    "Sam takes the round. Syrup pockets explain how waffles distribute sweetness evenly.",
-    "Sam, make your case.",
+    "Pancakes get a preference; the argument stays flat. Alex, your turn.",
+    "Sustained! Those syrup pockets spread the sweetness. Sam, your turn.",
+    "Alex’s syrup-pocket argument remains unanswered; Sam offers only a repeated preference.",
+    "Sam, Alex argues syrup-soaked pancakes lose texture while waffles keep their crisp edge.",
+    "Case presented. Alex, your closing argument.",
+    "That balanced-bite case has syrupy staying power. Alex takes it. Syrup pockets explain how waffles distribute sweetness across bites. New round. Same hill. Sharper shovels.",
     "Alex, make your case.",
-    "Sam, your rebuttal.",
-    "Objection, Alex: Sam explains how syrup leaves pancakes soggy while waffles stay crisp.",
-    "Alex, your closing argument.",
-    "Sam, your closing argument.",
-    "Sam takes the round. Syrup pockets distribute sweetness across each bite.",
-    "Sam wins the match. Syrup pockets distribute sweetness across each bite. Case closed."
+    "That syrup-pocket mechanism keeps every bite in line. Sam, your turn.",
+    "A preference, served plain as the case. Alex, your turn.",
+    "Sam, Alex counters your softness preference: syrup-soaked pancakes lose texture while waffles stay crisp.",
+    "Texture objection acknowledged, then left standing. Sam, your turn.",
+    "Case closed: favorite breakfast, argument still missing. Alex, your turn.",
+    "That balanced-bite case just earned its syrup. Alex takes it. Syrup pockets provide a clear mechanism and a useful contrast.",
+    "Alex wins the match. Syrup pockets provide a clear mechanism and a useful contrast. Case closed."
   ],
   "verification": {
     "sameResult": true,
     "sharedAudio": true,
-    "audioChunks": 1328
+    "audioChunks": 1574
   }
 }

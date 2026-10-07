@@ -174,7 +174,7 @@ export class Game {
     this.ledgerVersion = 0;
     this.topicRejections = 0;
     this.state.status = "Heads opens. Tails picks the topic and their side.";
-    this.setPhase("INTRO_COIN", 6000);
+    this.setPhase("INTRO_COIN", 8000);
     this.emit("coin_committed");
   }
   selectTopic() {
@@ -360,8 +360,9 @@ export class Game {
     t.deadline = null;
     t.pausedReason = "judging";
     t.sealing = true;
-    this.sealAt = this.now() + 3000;
-    this.turns.get(t.id)!.validUntil = this.sealAt + 12000;
+    t.settlement = "ready";
+    this.sealAt = this.now() + 500;
+    this.turns.get(t.id)!.validUntil = this.sealAt + 15000;
     this.emit("turn_sealed", { turnId: t.id, playerId: id, lastAudioSeq });
   }
   thought(id: string) {
@@ -401,7 +402,7 @@ export class Game {
       record.turn.playerId !== segment.playerId ||
       record.roundId !== segment.roundId ||
       this.now() > record.validUntil ||
-      (record.turn.sealing && this.now() > this.sealAt) ||
+      (record.turn.sealing && record.turn.settlement !== "draining" && this.now() > this.sealAt) ||
       this.state.roundId !== segment.roundId
     )
       return false;
@@ -417,6 +418,7 @@ export class Game {
     quality: number;
     reason: string;
   }) {
+    if (this.state.phase !== "ROUND") return false;
     const r = this.turns.get(input.turnId);
     if (
       !r ||
@@ -540,7 +542,7 @@ export class Game {
     });
     this.state.turn = null;
     this.state.status = `${winner.name} takes round ${this.state.round}. ${reason}`;
-    this.setPhase("ROUND_RESOLVE", 7000);
+    this.setPhase("ROUND_RESOLVE", 12000);
     this.emit("round_result", this.state.results.at(-1));
   }
   finishMatch() {
@@ -601,7 +603,7 @@ export class Game {
     this.setPhase(this.recoveryPrevious, this.recoveryPhaseRemaining);
     if (this.recoverySealRemaining && this.state.turn) {
       this.sealAt = this.now() + this.recoverySealRemaining;
-      this.turns.get(this.state.turn.id)!.validUntil = this.sealAt;
+      this.turns.get(this.state.turn.id)!.validUntil = this.sealAt + 15000;
     }
     this.resume("connection");
     this.state.status = "Back in court. Same score. Same argument.";
@@ -633,10 +635,15 @@ export class Game {
         return;
       }
       const t = s.turn;
+      if (t?.sealing && now >= this.sealAt + 15000 && (t.settlement === "draining" || s.judgePending)) {
+        this.abort("Argument processing timed out. No unjudged evidence was skipped; try a fresh match.");
+        return;
+      }
       if (
         t?.sealing &&
         now >= this.sealAt &&
-        (!s.judgePending || now >= this.sealAt + 12000)
+        t.settlement !== "draining" &&
+        !s.judgePending
       ) {
         this.turns.get(t.id)!.validUntil = now - 1;
         s.turnIndex++;
@@ -666,6 +673,7 @@ export class Game {
     } else if (s.phase === "TOPIC_CONFIRM")
       this.lobby("Topic confirmation timed out. Both players must agree.");
     else if (s.phase === "ROUND_RESOLVE") {
+      if (s.judge && s.judge.status !== "silent") return;
       if (s.players.some((p) => p.wins >= 2)) this.finishMatch();
       else this.startRound();
     }
