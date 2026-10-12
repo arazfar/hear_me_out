@@ -1,56 +1,70 @@
-import { type Player, type Snapshot } from "../../shared/domain";
+import type { Player, Snapshot } from "../../shared/domain";
 import { client } from "../game/client";
-export function ResultView({ state, me }: { state: Snapshot; me?: Player }) {
-  const phase = state.phase;
+import { Icon } from "./Icon";
+export function ResultView({
+  state,
+  me,
+  celebrate,
+}: {
+  state: Snapshot;
+  me?: Player;
+  celebrate: boolean;
+}) {
+  const final = state.phase === "MATCH_RESULT",
+    result = state.results.at(-1);
+  const winnerId = final ? state.winnerId : result?.winnerId;
+  const winner = state.players.find((p) => p.id === winnerId);
+  const ready = !!me && state.rematchReady.includes(me.id);
+  const otherReady = state.rematchReady.some((id) => id !== me?.id);
   return (
-    <section className="result-card">
-      <span className="card-kicker">
-        {phase === "MATCH_RESULT" ? "THE VERDICT" : "ROUND VERDICT"}
-      </span>
+    <section
+      className={"phase-panel result-panel " + (celebrate ? "celebrating" : "")}
+    >
+      <Icon name="trophy" className="verdict-icon" />
       <h2>
-        {
-          state.players.find(
-            (p) =>
-              p.id ===
-              (phase === "MATCH_RESULT"
-                ? state.winnerId
-                : state.results.at(-1)?.winnerId),
-          )?.name
-        }
-        <br />
-        <em>
-          {phase === "MATCH_RESULT" ? "wins the case." : "takes the round."}
-        </em>
+        {winner?.name || "The court"}
+        <span>{final ? "wins the case." : "takes the round."}</span>
       </h2>
-      <p>{state.results.at(-1)?.reason}</p>
-      {state.results.at(-1)?.tieBreak && (
-        <p className="tiny">{state.results.at(-1)?.tieBreak}</p>
+      <p>{result?.reason || state.status}</p>
+      {result?.tieBreak && <p className="tie-break">{result.tieBreak}</p>}
+      {final ? (
+        <>
+          <button
+            className="primary"
+            disabled={ready || !me}
+            onClick={() => client.command({ type: "rematch", value: true })}
+          >
+            {ready ? "Rematch ready" : "Again. Obviously."}
+            <Icon name={ready ? "check" : "refresh"} />
+          </button>
+          <p className="support-copy">
+            {ready
+              ? "Waiting for your friend."
+              : otherReady
+                ? "Your friend wants a rematch."
+                : "New coin. New argument."}
+          </p>
+        </>
+      ) : (
+        <p className="next-round">
+          <Icon name="arrow" />
+          Next round after Bonk’s verdict
+        </p>
       )}
-      {phase === "MATCH_RESULT" && (
+      {celebrate && final && (
         <div className="confetti" aria-hidden="true">
-          {Array.from({ length: 12 }, (_, i) => (
+          {Array.from({ length: 10 }, (_, i) => (
             <i
               key={i}
-              style={{
-                left: `${i * 9}%`,
-                background: ["#FF4F9A", "#39D8F2", "#20102E"][i % 3],
-                animationDelay: `${i * 0.06}s`,
-                rotate: `${i * 37}deg`,
-              }}
+              style={
+                {
+                  "--i": i,
+                  "--piece-color": i % 2 ? "var(--pink)" : "var(--cyan)",
+                } as React.CSSProperties
+              }
             />
           ))}
         </div>
-      )}
-      {phase === "MATCH_RESULT" && (
-        <button
-          className="primary"
-          disabled={state.rematchReady.includes(me!.id)}
-          onClick={() => client.command({ type: "rematch", value: true })}
-        >
-          {state.rematchReady.includes(me!.id)
-            ? "REMATCH READY ✓"
-            : "AGAIN. OBVIOUSLY. ↗"}
-        </button>
       )}
     </section>
   );

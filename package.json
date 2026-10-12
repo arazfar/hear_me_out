@@ -13,7 +13,8 @@
     "verify:providers": "tsx scripts/provider-smoke.ts",
     "verify:judge": "tsx scripts/judge-check.ts",
     "verify:match": "tsx scripts/socket-check.ts",
-    "verify:idle": "tsx scripts/idle-check.ts"
+    "verify:idle": "tsx scripts/idle-check.ts",
+    "test:ui": "playwright test"
   },
   "dependencies": {
     "@cartesia/cartesia-js": "4.2.0",
@@ -30,6 +31,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@types/express": "^5.0.3",
     "@types/node": "^22.19.0",
     "@types/react": "^19.2.0",

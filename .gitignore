@@ -7,3 +7,7 @@ dist-server/
 output/
 .playwright-cli/
 .DS_Store
+
+# Local design-tool state
+.impeccable/config.local.json
+.impeccable/hook.cache.json

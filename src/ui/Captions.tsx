@@ -1,32 +1,40 @@
-import { type Snapshot } from "../../shared/domain";
+import type { Snapshot } from "../../shared/domain";
+import { Icon } from "./Icon";
 export function Captions({ state }: { state: Snapshot }) {
-  const phase = state.phase;
+  const judge =
+    state.judge && state.judge.status !== "silent" ? state.judge : null;
+  const speaker = state.players.find((p) => p.id === state.turn?.playerId);
+  const caption = speaker && state.captions[speaker.id];
   return (
-    <div className="caption-zone" aria-live="polite">
-      {state.judge && state.judge.status !== "silent" ? (
+    <section
+      className={"caption-zone " + (judge ? "judge-speaking" : "")}
+      aria-label="Live captions"
+    >
+      {judge ? (
         <div className="judge-caption">
-          <span>BONK {state.judgePending ? "···" : "✦"}</span>
-          <p>“{state.judge.text}”</p>
+          <span className="caption-speaker">
+            <Icon name="gavel" />
+            Bonk
+          </span>
+          <p aria-live="polite">{judge.text}</p>
+          {state.degraded.tts && (
+            <span className="caption-status">Captions only</span>
+          )}
         </div>
-      ) : phase === "ROUND" ? (
-        <div className="player-captions">
-          {state.players.map((p) => (
-            <p key={p.id}>
-              <b>{p.name}</b>
-              {state.captions[p.id]?.text?.slice(-240) || "…"}
-            </p>
-          ))}
-        </div>
-      ) : (
-        <div className="judge-caption quiet">
-          <span>BONK ✦</span>
-          <p>
-            {phase === "LOBBY"
-              ? "“A strong opinion is not the same as a strong argument. Luckily, this is a game.”"
-              : state.status}
+      ) : state.phase === "ROUND" && caption?.text ? (
+        <div className="player-caption">
+          <span
+            className={
+              "caption-speaker player-color-" + state.players.indexOf(speaker!)
+            }
+          >
+            {speaker?.name}
+          </span>
+          <p aria-live={caption.final ? "polite" : "off"}>
+            {caption.text.slice(-400)}
           </p>
         </div>
-      )}
-    </div>
+      ) : null}
+    </section>
   );
 }

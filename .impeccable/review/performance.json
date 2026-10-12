@@ -1,0 +1,161 @@
+{
+  "conditions": {
+    "machine": "Apple M1 Pro, 16 GB, MacBook Pro",
+    "viewport": "1280 × 720, DPR 1",
+    "media": "two synthetic camera/microphone streams, native WebRTC, loopback fixture",
+    "sampling": "Foreground requestAnimationFrame intervals and main-thread long tasks, two 5-second samples per phase after 2 seconds warmup. Other page remains connected.",
+    "limitations": "Local synthetic inputs and headless Chrome; does not measure real networks, audio quality or universal frame rates."
+  },
+  "builds": [
+    {
+      "name": "baseline",
+      "mediaMode": "rtc",
+      "mediaReady": [
+        true,
+        true
+      ],
+      "renderer": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)"
+      },
+      "samples": [
+        {
+          "phase": "LOBBY",
+          "run": 1,
+          "frames": 151,
+          "medianMs": 33.3,
+          "p95Ms": 33.4,
+          "maxMs": 33.4,
+          "longTasks": 0,
+          "longTaskMs": 0,
+          "quality": "baseline"
+        },
+        {
+          "phase": "LOBBY",
+          "run": 2,
+          "frames": 151,
+          "medianMs": 33.3,
+          "p95Ms": 33.4,
+          "maxMs": 33.4,
+          "longTasks": 0,
+          "longTaskMs": 0,
+          "quality": "baseline"
+        },
+        {
+          "phase": "ROUND",
+          "run": 1,
+          "frames": 151,
+          "medianMs": 33.3,
+          "p95Ms": 33.4,
+          "maxMs": 33.4,
+          "longTasks": 0,
+          "longTaskMs": 0,
+          "quality": "baseline"
+        },
+        {
+          "phase": "ROUND",
+          "run": 2,
+          "frames": 151,
+          "medianMs": 33.3,
+          "p95Ms": 33.4,
+          "maxMs": 33.4,
+          "longTasks": 0,
+          "longTaskMs": 0,
+          "quality": "baseline"
+        }
+      ],
+      "bundles": [
+        {
+          "file": "CourtroomStage-ePgejSLV.js",
+          "bytes": 915727,
+          "gzipBytes": 240851
+        },
+        {
+          "file": "index-D3ZCy7V_.css",
+          "bytes": 26174,
+          "gzipBytes": 6170
+        },
+        {
+          "file": "index-DuxWkQLI.js",
+          "bytes": 368543,
+          "gzipBytes": 110557
+        }
+      ]
+    },
+    {
+      "name": "upgrade",
+      "mediaMode": "rtc",
+      "mediaReady": [
+        true,
+        true
+      ],
+      "renderer": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+        "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)"
+      },
+      "samples": [
+        {
+          "phase": "LOBBY",
+          "run": 1,
+          "frames": 151,
+          "medianMs": 33.3,
+          "p95Ms": 33.4,
+          "maxMs": 33.5,
+          "longTasks": 0,
+          "longTaskMs": 0,
+          "quality": "normal"
+        },
+        {
+          "phase": "LOBBY",
+          "run": 2,
+          "frames": 151,
+          "medianMs": 33.3,
+          "p95Ms": 33.4,
+          "maxMs": 33.5,
+          "longTasks": 0,
+          "longTaskMs": 0,
+          "quality": "normal"
+        },
+        {
+          "phase": "ROUND",
+          "run": 1,
+          "frames": 151,
+          "medianMs": 33.3,
+          "p95Ms": 33.4,
+          "maxMs": 33.5,
+          "longTasks": 0,
+          "longTaskMs": 0,
+          "quality": "normal"
+        },
+        {
+          "phase": "ROUND",
+          "run": 2,
+          "frames": 151,
+          "medianMs": 33.3,
+          "p95Ms": 33.4,
+          "maxMs": 33.5,
+          "longTasks": 0,
+          "longTaskMs": 0,
+          "quality": "normal"
+        }
+      ],
+      "bundles": [
+        {
+          "file": "CourtroomStage-DKmcaHUi.js",
+          "bytes": 921044,
+          "gzipBytes": 242705
+        },
+        {
+          "file": "index-BP34mFAW.js",
+          "bytes": 376606,
+          "gzipBytes": 112817
+        },
+        {
+          "file": "index-DnikU3Gc.css",
+          "bytes": 27488,
+          "gzipBytes": 6391
+        }
+      ]
+    }
+  ]
+}

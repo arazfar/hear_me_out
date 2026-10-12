@@ -27,7 +27,7 @@ export function AnimatedScore({
       began = performance.now();
     let frame = 0;
     const tally = (now: number) => {
-      const t = Math.max(0, Math.min(1, (now - began - 180) / 460));
+      const t = Math.max(0, Math.min(1, (now - began) / 480));
       const next = Math.min(
         units,
         Math.floor(from + (units - from) * (1 - (1 - t) ** 3)),

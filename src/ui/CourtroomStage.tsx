@@ -1,29 +1,49 @@
-import { Canvas, useFrame } from "@react-three/fiber";
-import { memo, useRef, useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { Snapshot } from "../../shared/domain";
 import { client } from "../game/client";
-function Box({
-  position,
-  scale,
+
+type Vec = [number, number, number];
+const palette = {
+  ink: "#20102e",
+  cream: "#fff0ce",
+  lavender: "#b6a0e8",
+  lime: "#d8ff3e",
+  pink: "#ff4f9a",
+  cyan: "#39d8f2",
+  wood: "#ad724d",
+};
+function Block({
+  at,
+  size,
   color,
-  rotation = [0, 0, 0],
+  radius = 0.08,
+  rotation,
 }: {
-  position: [number, number, number];
-  scale: [number, number, number];
+  at: Vec;
+  size: Vec;
   color: string;
-  rotation?: [number, number, number];
+  radius?: number;
+  rotation?: Vec;
 }) {
+  const [w, h, d] = size;
+  const geometry = useMemo(
+    () =>
+      new RoundedBoxGeometry(w, h, d, 3, Math.min(radius, w / 3, h / 3, d / 3)),
+    [w, h, d, radius],
+  );
+  useEffect(() => () => geometry.dispose(), [geometry]);
   return (
     <mesh
-      position={position}
-      scale={scale}
+      position={at}
       rotation={rotation}
+      geometry={geometry}
       castShadow
       receiveShadow
     >
-      <boxGeometry />
-      <meshStandardMaterial color={color} roughness={0.48} />
+      <meshStandardMaterial color={color} roughness={0.44} />
     </mesh>
   );
 }
@@ -35,254 +55,432 @@ function Bonk({
   reduced: boolean;
 }) {
   const body = useRef<THREE.Group>(null!),
+    pupils = useRef<THREE.Group>(null!),
+    brow = useRef<THREE.Group>(null!),
     mouth = useRef<THREE.Mesh>(null!),
-    brow = useRef<THREE.Group>(null!);
-  useFrame(({ clock }, delta) => {
-    const t = clock.elapsedTime;
-    const target =
-      state?.judge?.status === "speaking" ? state.judge.targetPlayerId : null;
-    const index = state?.players.findIndex(
-      (p) => p.id === (target || state.turn?.playerId),
-    );
+    smile = useRef<THREE.Mesh>(null!);
+  const time = useRef(0),
+    strike = useRef(-100);
+  useEffect(() => {
+    const seen = new Set<string>();
+    return client.on(({ event }) => {
+      if (!event || !["round_result", "match_result"].includes(event.type))
+        return;
+      const key = event.snapshot.matchId + ":" + event.seq;
+      if (seen.has(key)) return;
+      seen.add(key);
+      if (seen.size > 32) seen.delete(seen.values().next().value!);
+      strike.current = time.current;
+    });
+  }, []);
+  useFrame((_, delta) => {
+    time.current += Math.min(delta, 0.05);
+    const t = time.current;
+    const target = state?.judge?.targetPlayerId || state?.turn?.playerId;
+    const index = state?.players.findIndex((p) => p.id === target);
+    const look = index === 0 ? -0.2 : index === 1 ? 0.2 : 0;
+    const talking = state?.judge?.status === "speaking";
+    const amplitude = talking ? client.sound.judgeAmplitude() : 0;
+    const since = t - strike.current;
+    const bonk =
+      !reduced && since >= 0 && since < 1.2
+        ? Math.sin(Math.min(1, since / 0.45) * Math.PI)
+        : 0;
     body.current.rotation.y = THREE.MathUtils.damp(
       body.current.rotation.y,
-      index === 0 ? -0.22 : index === 1 ? 0.22 : 0,
+      look,
       5,
       delta,
     );
-    body.current.position.y = 1.42 + (reduced ? 0 : Math.sin(t * 1.7) * 0.045);
-    const since =
-      (Date.now() + client.offset - (state?.ledger.at(-1)?.at || 0)) / 1000;
     body.current.rotation.z = reduced
       ? 0
-      : Math.sin(t * 1.4) * 0.025 +
-        (since >= 0 && since < 0.5 ? Math.sin(since * Math.PI * 4) * 0.12 : 0);
-    const talking = state?.judge?.status === "speaking";
-    mouth.current.scale.y = THREE.MathUtils.damp(
-      mouth.current.scale.y,
-      talking ? 0.04 + client.sound.judgeAmplitude() * 0.65 : 0.025,
-      18,
+      : Math.sin(t * 1.4) * 0.02 + bonk * 0.4;
+    body.current.position.y =
+      1.88 + (reduced ? 0 : Math.sin(t * 1.6) * 0.025 - bonk * 0.13);
+    pupils.current.position.x = THREE.MathUtils.damp(
+      pupils.current.position.x,
+      look * 0.16,
+      6,
+      delta,
+    );
+    const blink = !reduced && t % 5.7 > 5.55;
+    pupils.current.scale.y = THREE.MathUtils.damp(
+      pupils.current.scale.y,
+      blink ? 0.06 : 1,
+      30,
       delta,
     );
     brow.current.rotation.z = THREE.MathUtils.damp(
       brow.current.rotation.z,
-      state?.judgePending ? 0.1 : talking ? -0.08 : 0,
+      state?.judgePending
+        ? -0.12
+        : state?.judge?.expression === "smug"
+          ? 0.1
+          : 0,
       5,
       delta,
     );
+    mouth.current.scale.y = THREE.MathUtils.damp(
+      mouth.current.scale.y,
+      talking ? 0.035 + amplitude * 0.8 : 0.01,
+      18,
+      delta,
+    );
+    mouth.current.visible = talking;
+    smile.current.visible = !talking;
   });
   return (
-    <group ref={body} position={[0, 1.42, 0]}>
-      <mesh position={[0, -0.68, 0]} rotation={[0, 0, 0.08]} castShadow>
-        <capsuleGeometry args={[0.16, 0.78, 8, 16]} />
-        <meshStandardMaterial color="#C98242" roughness={0.4} />
+    <group ref={body} position={[0, 1.88, 0.35]}>
+      <mesh position={[0, -0.65, 0]} rotation={[0, 0, -0.08]} castShadow>
+        <capsuleGeometry args={[0.15, 0.73, 8, 16]} />
+        <meshStandardMaterial color={palette.wood} roughness={0.38} />
+      </mesh>
+      <mesh position={[0, -0.41, 0]} castShadow>
+        <torusGeometry args={[0.17, 0.045, 8, 24]} />
+        <meshStandardMaterial color="#653849" roughness={0.65} />
       </mesh>
       <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
-        <capsuleGeometry args={[0.44, 0.65, 12, 24]} />
-        <meshStandardMaterial color="#B6A0E8" roughness={0.35} />
+        <capsuleGeometry args={[0.43, 0.7, 12, 32]} />
+        <meshStandardMaterial
+          color={palette.lavender}
+          roughness={0.3}
+          metalness={0.05}
+        />
       </mesh>
-      {[-0.64, 0.64].map((x) => (
-        <mesh
-          key={x}
-          position={[x, 0, 0]}
-          rotation={[0, 0, Math.PI / 2]}
-          castShadow
-        >
-          <cylinderGeometry args={[0.45, 0.45, 0.12, 24]} />
-          <meshStandardMaterial color="#D8FF3E" roughness={0.38} />
-        </mesh>
-      ))}
-      {[-0.25, 0.25].map((x, i) => (
-        <group key={x} position={[x, 0.05, 0.407]}>
-          <mesh scale={[0.1, 0.13, 0.055]}>
-            <sphereGeometry args={[1, 16, 12]} />
-            <meshStandardMaterial color="#20102E" />
+      {[-0.72, 0.72].map((x) => (
+        <group key={x} position={[x, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <mesh castShadow>
+            <cylinderGeometry args={[0.46, 0.46, 0.16, 32]} />
+            <meshStandardMaterial color={palette.lime} roughness={0.32} />
           </mesh>
-          <mesh position={[-0.022, 0.035, 0.046]} scale={[0.025, 0.035, 0.015]}>
-            <sphereGeometry args={[1, 12, 8]} />
-            <meshBasicMaterial color="#FFF0CE" />
+          <mesh position={[0, x < 0 ? 0.09 : -0.09, 0]}>
+            <cylinderGeometry args={[0.37, 0.37, 0.03, 32]} />
+            <meshStandardMaterial color="#ecff94" roughness={0.4} />
           </mesh>
         </group>
       ))}
+      <group ref={pupils}>
+        {[-0.23, 0.23].map((x) => (
+          <group key={x} position={[x, 0.05, 0.398]}>
+            <mesh scale={[0.14, 0.18, 0.065]}>
+              <sphereGeometry args={[1, 20, 16]} />
+              <meshStandardMaterial color={palette.cream} roughness={0.45} />
+            </mesh>
+            <mesh
+              position={[0.015, -0.012, 0.06]}
+              scale={[0.077, 0.113, 0.035]}
+            >
+              <sphereGeometry args={[1, 16, 12]} />
+              <meshStandardMaterial color={palette.ink} roughness={0.25} />
+            </mesh>
+            <mesh
+              position={[-0.005, 0.035, 0.088]}
+              scale={[0.026, 0.035, 0.012]}
+            >
+              <sphereGeometry args={[1, 12, 8]} />
+              <meshBasicMaterial color="white" />
+            </mesh>
+          </group>
+        ))}
+      </group>
       <group ref={brow}>
-        {[-0.25, 0.25].map((x, i) => (
-          <Box
+        {[-0.23, 0.23].map((x, i) => (
+          <Block
             key={x}
-            position={[x, 0.27, 0.4]}
-            scale={[0.25, 0.045, 0.065]}
-            color="#20102E"
-            rotation={[0, 0, i ? -0.2 : 0.2]}
+            at={[x, 0.31, 0.4]}
+            size={[0.27, 0.064, 0.075]}
+            color={palette.ink}
+            radius={0.022}
+            rotation={[0, 0, i ? 0.15 : -0.15]}
           />
         ))}
       </group>
       <mesh
         ref={mouth}
-        position={[0, -0.16, 0.438]}
-        scale={[0.16, 0.22, 0.045]}
+        position={[0, -0.17, 0.436]}
+        scale={[0.115, 0.01, 0.027]}
       >
-        <sphereGeometry args={[1, 20, 12]} />
-        <meshStandardMaterial color="#20102E" />
+        <sphereGeometry args={[1, 16, 12]} />
+        <meshStandardMaterial color={palette.ink} />
       </mesh>
-      <mesh position={[0, 0.48, -0.01]} castShadow>
-        <cylinderGeometry args={[0.27, 0.35, 0.12, 24]} />
-        <meshStandardMaterial color="#FFF0CE" />
+      <mesh ref={smile} position={[0, -0.13, 0.437]} rotation={[0, 0, Math.PI]}>
+        <torusGeometry args={[0.115, 0.023, 8, 20, Math.PI]} />
+        <meshStandardMaterial color={palette.ink} />
       </mesh>
+      {[-0.38, 0.38].map((x) => (
+        <mesh key={x} position={[x, -0.14, 0.355]} scale={[0.085, 0.037, 0.03]}>
+          <sphereGeometry args={[1, 12, 8]} />
+          <meshStandardMaterial color="#e49abd" roughness={0.8} />
+        </mesh>
+      ))}
+      {[-2, -1, 0, 1, 2].map((n) => (
+        <mesh
+          key={n}
+          position={[n * 0.16, 0.43 + (1 - Math.abs(n) / 3) * 0.09, -0.04]}
+          scale={[0.16, 0.13, 0.24]}
+          castShadow
+        >
+          <sphereGeometry args={[1, 16, 12]} />
+          <meshStandardMaterial color={palette.cream} roughness={0.78} />
+        </mesh>
+      ))}
+      {[-1, 1].flatMap((side) =>
+        [0, 1, 2].map((n) => (
+          <mesh
+            key={side + ":" + n}
+            position={[side * (0.45 + n * 0.03), 0.32 - n * 0.15, -0.045]}
+            rotation={[Math.PI / 2, 0, 0]}
+            castShadow
+          >
+            <torusGeometry args={[0.086, 0.051, 8, 16]} />
+            <meshStandardMaterial color={palette.cream} roughness={0.75} />
+          </mesh>
+        )),
+      )}
     </group>
   );
 }
-function Set({
+function Architecture({ hero }: { hero: boolean }) {
+  const arch = useMemo(() => {
+    const s = new THREE.Shape();
+    s.moveTo(-1.65, 0);
+    s.lineTo(1.65, 0);
+    s.lineTo(1.65, 1.8);
+    s.absarc(0, 1.8, 1.65, 0, Math.PI, false);
+    s.lineTo(-1.65, 0);
+    return new THREE.ExtrudeGeometry(s, {
+      depth: 0.12,
+      bevelEnabled: true,
+      bevelThickness: 0.06,
+      bevelSize: 0.06,
+      bevelSegments: 3,
+      steps: 1,
+      curveSegments: 32,
+    });
+  }, []);
+  useEffect(() => () => arch.dispose(), [arch]);
+  return (
+    <>
+      <mesh geometry={arch} position={[0, 0.12, -1.3]} receiveShadow>
+        <meshStandardMaterial color="#91627c" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 1.92, -1.14]} castShadow>
+        <torusGeometry args={[1.64, 0.105, 10, 48, Math.PI]} />
+        <meshStandardMaterial color="#ddbb9a" roughness={0.7} />
+      </mesh>
+      {[-1.64, 1.64].map((x) => (
+        <group key={x}>
+          <Block at={[x, 1, -1.14]} size={[0.21, 1.83, 0.24]} color="#ddbb9a" />
+          <Block
+            at={[x, 0.2, -1.08]}
+            size={[0.4, 0.25, 0.4]}
+            color={palette.cream}
+          />
+        </group>
+      ))}
+      <mesh position={[0, 0.02, 0]} receiveShadow>
+        <cylinderGeometry args={[hero ? 4 : 2.1, hero ? 4 : 2.1, 0.12, 64]} />
+        <meshStandardMaterial color="#764958" roughness={0.8} />
+      </mesh>
+      <Block
+        at={[0, 0.4, 0.05]}
+        size={[1.85, 0.64, 0.9]}
+        color="#965c42"
+        radius={0.1}
+      />
+      <Block at={[0, 0.78, 0.07]} size={[2.13, 0.2, 1.12]} color="#c99262" />
+      <Block
+        at={[0, 0.35, 0.53]}
+        size={[1.4, 0.32, 0.04]}
+        color="#5d3540"
+        radius={0.03}
+      />
+      <Block
+        at={[0, 0.39, 0.565]}
+        size={[0.66, 0.22, 0.04]}
+        color="#e2b878"
+        radius={0.03}
+      />
+      <mesh position={[0, 0.89, 0.16]} castShadow>
+        <cylinderGeometry args={[0.33, 0.38, 0.08, 32]} />
+        <meshStandardMaterial color="#704138" roughness={0.45} />
+      </mesh>
+      {[-1.3, 1.3].map((x) => (
+        <group key={x}>
+          <Block
+            at={[x, 0.45, -0.7]}
+            size={[0.19, 0.7, 0.19]}
+            color="#c99262"
+          />
+          <mesh position={[x, 0.87, -0.7]}>
+            <sphereGeometry args={[0.15, 16, 12]} />
+            <meshStandardMaterial
+              color={palette.cream}
+              emissive="#ffe29a"
+              emissiveIntensity={0.35}
+              roughness={0.4}
+            />
+          </mesh>
+        </group>
+      ))}
+      {hero &&
+        [-2.65, 2.65].map((x, i) => (
+          <group key={x} rotation={[0, x < 0 ? 0.12 : -0.12, 0]}>
+            <Block
+              at={[x, 0.6, 0.35]}
+              size={[1.45, 1.1, 1.05]}
+              color={i ? palette.cyan : palette.pink}
+              radius={0.15}
+            />
+            <Block
+              at={[x, 1.22, 0.36]}
+              size={[1.65, 0.2, 1.2]}
+              color={palette.cream}
+            />
+            <Block
+              at={[x, 0.62, 0.9]}
+              size={[0.87, 0.6, 0.035]}
+              color={palette.ink}
+              radius={0.012}
+            />
+            <mesh position={[x, 0.63, 0.94]} rotation={[0, 0, Math.PI]}>
+              <torusGeometry args={[0.2, 0.04, 8, 24, Math.PI]} />
+              <meshStandardMaterial color={i ? palette.cyan : palette.pink} />
+            </mesh>
+          </group>
+        ))}
+      {[-1, 1].map((side) => (
+        <group
+          key={side}
+          position={[side * 0.68, 0.95, 0.18]}
+          rotation={[0, 0, side * 0.05]}
+        >
+          <Block
+            at={[0, 0, 0]}
+            size={[0.34, 0.09, 0.34]}
+            color={side < 0 ? palette.lavender : palette.cream}
+            radius={0.025}
+          />
+          <Block
+            at={[0, 0.1, 0]}
+            size={[0.31, 0.08, 0.3]}
+            color={side < 0 ? palette.cream : palette.lavender}
+            radius={0.025}
+          />
+        </group>
+      ))}
+    </>
+  );
+}
+function Scene({
   state,
   reduced,
+  hero,
   onSlow,
+  onLost,
 }: {
   state: Snapshot | null;
   reduced: boolean;
+  hero: boolean;
   onSlow: () => void;
+  onLost: () => void;
 }) {
-  const coin = useRef<THREE.Mesh>(null!);
-  const slow = useRef(0);
+  const { camera, gl, invalidate } = useThree();
+  const elapsed = useRef(0),
+    slow = useRef(0);
+  useEffect(() => {
+    camera.position.set(0, hero ? 3.15 : 2.7, hero ? 8.4 : 5.8);
+    camera.lookAt(0, hero ? 1.15 : 1.75, 0);
+    const lost = (e: Event) => {
+      e.preventDefault();
+      onLost();
+    };
+    gl.domElement.addEventListener("webglcontextlost", lost);
+    return () => gl.domElement.removeEventListener("webglcontextlost", lost);
+  }, [camera, gl, hero, onLost]);
   useFrame((_, delta) => {
-    if (delta > 0.022) slow.current++;
-    else slow.current = Math.max(0, slow.current - 1);
-    if (slow.current > 100) {
-      onSlow();
-      slow.current = 0;
+    elapsed.current += delta;
+    if (elapsed.current > 3 && document.visibilityState === "visible") {
+      slow.current =
+        delta > 0.035
+          ? slow.current + Math.min(delta, 0.1)
+          : Math.max(0, slow.current - delta);
+      if (slow.current > 2) {
+        onSlow();
+        slow.current = 0;
+      }
     }
-    if (coin.current) {
-      coin.current.visible = state?.phase === "INTRO_COIN";
-      if (!reduced) coin.current.rotation.z += delta * 9;
-    }
+    if (reduced) invalidate();
   });
   return (
     <>
-      <ambientLight intensity={1.2} />
-      <hemisphereLight args={["#FFF0CE", "#20102E", 1.6]} />
+      <ambientLight intensity={0.8} />
+      <hemisphereLight args={["#fff0ce", "#51295b", 1.45]} />
       <directionalLight
-        position={[-3, 6, 5]}
-        intensity={3}
-        color="#FFF0CE"
+        position={[-3, 6, 6]}
+        intensity={3.2}
+        color="#ffe9cc"
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-5}
         shadow-camera-right={5}
         shadow-camera-top={5}
         shadow-camera-bottom={-5}
+        shadow-bias={-0.0005}
+      />
+      <directionalLight position={[3, 2, -2]} intensity={1.8} color="#bbacf1" />
+      <pointLight
+        position={[-3, 2, 2]}
+        intensity={state?.turn?.playerId === state?.players[0]?.id ? 9 : 4}
+        color={palette.pink}
+        distance={8}
       />
       <pointLight
-        position={[-4, 2, 2]}
-        intensity={state?.turn?.playerId === state?.players[0]?.id ? 25 : 12}
-        color="#FF4F9A"
+        position={[3, 2, 2]}
+        intensity={state?.turn?.playerId === state?.players[1]?.id ? 9 : 4}
+        color={palette.cyan}
+        distance={8}
       />
-      <pointLight
-        position={[4, 2, 2]}
-        intensity={state?.turn?.playerId === state?.players[1]?.id ? 25 : 12}
-        color="#39D8F2"
-      />
-      <mesh position={[0, -0.15, 0]} receiveShadow>
-        <cylinderGeometry args={[5.5, 5.5, 0.2, 64]} />
-        <meshStandardMaterial color="#513163" roughness={0.8} />
-      </mesh>
-      <mesh position={[0, -0.18, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[5.45, 0.08, 8, 64]} />
-        <meshStandardMaterial color="#FF4F9A" />
-      </mesh>
-      {[-1, 0, 1].flatMap((x) =>
-        [-1, 0, 1].map((z) => (
-          <Box
-            key={`${x}${z}`}
-            position={[x * 1.25, -0.015, z * 1.25]}
-            scale={[1.18, 0.015, 1.18]}
-            color={(x + z) % 2 ? "#6D4C7C" : "#8C6D95"}
-          />
-        )),
-      )}
-      {[-2.45, 2.45].map((x, i) => (
-        <group key={x} position={[x, 0, 0.7]}>
-          <Box
-            position={[0, 0.6, 0]}
-            scale={[1.5, 1.2, 0.95]}
-            color={i ? "#39D8F2" : "#FF4F9A"}
-          />
-          <Box
-            position={[0, 1.22, 0]}
-            scale={[1.72, 0.16, 1.12]}
-            color="#FFF0CE"
-          />
-          <Box
-            position={[0, 0.58, 0.49]}
-            scale={[0.92, 0.65, 0.025]}
-            color="#20102E"
-          />
-          <mesh position={[0, 0.55, 0.525]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.2, 0.035, 8, 24]} />
-            <meshStandardMaterial color="#D8FF3E" />
-          </mesh>
-        </group>
-      ))}
-      <Box position={[0, 0.22, -0.25]} scale={[1.5, 0.45, 1]} color="#C98242" />
-      <Box
-        position={[0, 0.46, -0.25]}
-        scale={[1.65, 0.12, 1.2]}
-        color="#FFF0CE"
-      />
+      <Architecture hero={hero} />
       <Bonk state={state} reduced={reduced} />
-      {[-4.5, 4.5].map((x) => (
-        <group key={x}>
-          <Box
-            position={[x, 1, -1.7]}
-            scale={[0.35, 2, 0.35]}
-            color="#C98242"
-          />
-          <mesh position={[x, 2.2, -1.7]}>
-            <sphereGeometry args={[0.3, 16, 12]} />
-            <meshStandardMaterial
-              color="#D8FF3E"
-              emissive="#D8FF3E"
-              emissiveIntensity={0.2}
-            />
-          </mesh>
-        </group>
-      ))}
-      <mesh
-        ref={coin}
-        position={[0, 3.4, 0.4]}
-        rotation={[Math.PI / 2, 0, 0]}
-        castShadow
-      >
-        <cylinderGeometry args={[0.46, 0.46, 0.09, 32]} />
-        <meshStandardMaterial
-          color="#D8FF3E"
-          metalness={0.6}
-          roughness={0.25}
-        />
-      </mesh>
     </>
   );
 }
 const CourtroomStage = memo(function CourtroomStage({
   state,
   reduced,
+  hero = false,
+  onLost,
 }: {
   state: Snapshot | null;
   reduced: boolean;
+  hero?: boolean;
+  onLost: () => void;
 }) {
   const [low, setLow] = useState(false);
   return (
-    <div className="stage" aria-hidden="true">
+    <div
+      className="stage"
+      aria-hidden="true"
+      data-quality={low ? "low" : "normal"}
+    >
       <Canvas
-        camera={{ position: [0, 4.1, 8.8], fov: 40 }}
+        resize={{ offsetSize: true }}
+        camera={{ position: [0, 2.5, 5.3], fov: 38 }}
         dpr={low ? 1 : [1, 1.5]}
-        shadows={!low}
-        gl={{ antialias: true, alpha: true }}
-        onCreated={({ camera, gl }) => {
-          camera.lookAt(0, 1, 0);
-          gl.setClearColor(0x20102e, 0);
-        }}
+        shadows={low ? false : "percentage"}
+        gl={{ antialias: true, alpha: true, powerPreference: "default" }}
+        onCreated={({ gl }) => gl.setClearColor(0x20102e, 0)}
       >
-        <Set state={state} reduced={reduced} onSlow={() => setLow(true)} />
+        <Scene
+          state={state}
+          reduced={reduced}
+          hero={hero}
+          onSlow={() => setLow(true)}
+          onLost={onLost}
+        />
       </Canvas>
     </div>
   );
 });
-
 export default CourtroomStage;

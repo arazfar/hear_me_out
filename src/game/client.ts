@@ -87,10 +87,12 @@ export class Client {
     this.attach(body.session, body.snapshot);
     try {
       await this.capture.devices();
-    } catch {
+    } catch (error) {
       this.notify({
         error:
-          "Microphone permission is needed. Allow it in Chrome’s site controls, then click Enable devices.",
+          error instanceof Error
+            ? error.message
+            : "Couldn’t connect your microphone. Choose Enable mic to retry.",
       });
     }
   }
@@ -214,10 +216,9 @@ export class Client {
         throw new Error(body.error);
       }
       this.attach(body.session, body.snapshot);
-      void this.capture.devices().catch(() =>
+      void this.capture.devices().catch((error: Error) =>
         this.notify({
-          error:
-            "Your seat is restored. Click Enable devices to resume camera and microphone.",
+          error: "Your seat is restored. " + error.message,
         }),
       );
     } catch (e) {

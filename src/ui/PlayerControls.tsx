@@ -1,41 +1,64 @@
 import { client } from "../game/client";
+import { Icon } from "./Icon";
+import { useMediaVersion } from "./hooks";
 export function PlayerControls({
   action,
+  busy,
+  onAudio,
 }: {
-  action: (f: () => Promise<void>) => Promise<void>;
+  action: (fn: () => Promise<void>) => Promise<void>;
+  busy: boolean;
+  onAudio: () => void;
 }) {
+  useMediaVersion();
+  const mic = client.capture.stream
+    ?.getAudioTracks()
+    .some((t) => t.readyState === "live");
+  const camera =
+    client.capture.stream
+      ?.getVideoTracks()
+      .some((t) => t.readyState === "live") && !client.capture.cameraOff;
+  const muted = client.capture.micMuted;
+  const allowed = client.capture.microphoneAllowed();
   return (
-    <footer className="controls">
-      <div>
+    <footer className="controls" aria-label="Player controls">
+      <div className="device-controls">
         <button
-          onClick={() => client.capture.muteMic()}
-          className={client.capture.micMuted ? "muted" : ""}
+          disabled={busy}
+          aria-pressed={!!mic && !muted}
+          className={muted ? "muted" : ""}
+          onClick={() =>
+            mic
+              ? client.capture.muteMic()
+              : void action(() => client.capture.devices(false))
+          }
         >
-          {client.capture.micMuted
-            ? "MIC OFF"
-            : client.capture.microphoneAllowed()
-              ? "MIC ON"
-              : "AUTO MUTED"}{" "}
-          <span>●</span>
+          <Icon name={!mic || muted || !allowed ? "mic-off" : "mic"} />
+          {!mic
+            ? "Enable mic"
+            : muted
+              ? "Mic off"
+              : allowed
+                ? "Mic on"
+                : "Mic paused"}
         </button>
-        <button onClick={() => client.capture.muteCamera()}>
-          {client.capture.cameraOff ? "CAM OFF" : "CAM ON"} <span>▣</span>
+        <button
+          disabled={busy}
+          aria-pressed={!!camera}
+          onClick={() => client.capture.muteCamera()}
+        >
+          <Icon name={camera ? "camera" : "camera-off"} />
+          {camera ? "Camera on" : "Camera off"}
         </button>
-        {!client.capture.stream && (
-          <button onClick={() => void action(() => client.capture.devices())}>
-            ENABLE DEVICES
-          </button>
-        )}
+        <button onClick={onAudio}>
+          <Icon name="volume" />
+          <span>Audio</span>
+        </button>
       </div>
-      <div>
-        <button onClick={() => client.sound.mutePeer()}>
-          {client.sound.peerMuted ? "FRIEND MUTED" : "FRIEND AUDIO"}
-        </button>
-        <button onClick={() => client.sound.muteJudge()}>
-          {client.sound.judgeMuted ? "BONK MUTED" : "BONK AUDIO"}
-        </button>
-        <button onClick={() => client.leave()}>LEAVE ↗</button>
-      </div>
+      <button className="leave-button" onClick={() => client.leave()}>
+        <Icon name="leave" />
+        Leave
+      </button>
     </footer>
   );
 }

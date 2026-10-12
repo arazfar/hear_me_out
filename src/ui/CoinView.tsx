@@ -1,20 +1,22 @@
-import { type Player, type Snapshot } from "../../shared/domain";
+import type { Player, Snapshot } from "../../shared/domain";
+import { Icon } from "./Icon";
 export function CoinView({ state, me }: { state: Snapshot; me?: Player }) {
+  const heads = state.headsId === me?.id;
   return (
-    <section className="center-card coin-card">
-      <span className="card-kicker">THE COIN HAS SPOKEN</span>
-      <div className="coin-token">✦</div>
-      <h3>{state.players.find((p) => p.id === state.headsId)?.name} opens.</h3>
+    <section className="phase-panel coin-panel">
+      <div
+        className="coin-token"
+        data-side={heads ? "heads" : "tails"}
+        aria-hidden="true"
+      >
+        <Icon name={heads ? "coin" : "coin-tails"} />
+      </div>
+      <h2>{heads ? "You open the case." : "You pick the topic."}</h2>
       <p>
-        {state.players.find((p) => p.id === state.tailsId)?.name} chooses the
-        topic and their side.
+        {heads
+          ? "Heads. First word is yours."
+          : "Tails. Choose the argument and your side."}
       </p>
-      <span className="pill">
-        YOUR ROLE:{" "}
-        {me?.id === state.headsId
-          ? "HEADS · OPEN THE CASE"
-          : "TAILS · PICK THE TOPIC"}
-      </span>
     </section>
   );
 }

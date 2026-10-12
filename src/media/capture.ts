@@ -1,6 +1,31 @@
 import { encodeMicrophone } from "../../shared/media";
 import { canSpeak } from "../../shared/domain";
 import type { Client } from "../game/client";
+
+function deviceError(error: unknown, cameraOnly: boolean): Error {
+  const name = error instanceof Error ? error.name : "";
+  if (name === "NotFoundError" || name === "DevicesNotFoundError")
+    return new Error(
+      cameraOnly
+        ? "No camera found. You can keep playing with your microphone."
+        : "No microphone found. Connect a microphone, then choose Enable mic.",
+    );
+  if (name === "NotAllowedError" || name === "PermissionDeniedError")
+    return new Error(
+      cameraOnly
+        ? "Camera access is blocked. Allow it in Chrome’s site controls, then try the camera button again."
+        : "Microphone access is needed. Allow it in Chrome’s site controls, then choose Enable mic.",
+    );
+  if (name === "NotReadableError" || name === "TrackStartError")
+    return new Error(
+      cameraOnly
+        ? "Your camera is busy. Close other apps using it, then try the camera button again."
+        : "Your microphone is busy. Close other apps using it, then choose Enable mic.",
+    );
+  return error instanceof Error
+    ? error
+    : new Error("Couldn’t connect your devices. Please try again.");
+}
 export class DeviceCapture {
   constructor(readonly client: Client) {}
   stream: MediaStream | null = null;
@@ -17,7 +42,11 @@ export class DeviceCapture {
       void this.client.sound.context?.resume().catch(() => {});
       return this.deviceRequest;
     }
-    const request = this.acquireDevices(camera);
+    const cameraOnly =
+      !!this.stream && camera && !this.stream.getVideoTracks().length;
+    const request = this.acquireDevices(camera).catch((error) => {
+      throw deviceError(error, cameraOnly);
+    });
     this.deviceRequest = request;
     const clear = () => {
       if (this.deviceRequest === request) this.deviceRequest = null;
@@ -174,10 +203,9 @@ export class DeviceCapture {
   }
   muteCamera() {
     if (!this.stream?.getVideoTracks().length) {
-      void this.devices(true).catch(() =>
+      void this.devices(true).catch((error: Error) =>
         this.client.notify({
-          error:
-            "Allow camera in Chrome’s site controls, then try Camera again.",
+          error: error.message,
         }),
       );
       return;

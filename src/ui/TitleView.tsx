@@ -1,9 +1,14 @@
 import { client } from "../game/client";
+import { Icon } from "./Icon";
+import { StageLoader } from "./StageLoader";
+
 export function TitleView({
   name,
   code,
   joining,
   busy,
+  error,
+  reduced,
   setName,
   setCode,
   setJoining,
@@ -13,106 +18,105 @@ export function TitleView({
   code: string;
   joining: boolean;
   busy: boolean;
-  setName: (s: string) => void;
-  setCode: (s: string) => void;
+  error: string;
+  reduced: boolean;
+  setName: (v: string) => void;
+  setCode: (v: string) => void;
   setJoining: (v: boolean) => void;
-  action: (f: () => Promise<void>) => Promise<void>;
+  action: (fn: () => Promise<void>) => Promise<void>;
 }) {
   return (
     <section className="title-layout">
-      <div className="title-copy">
-        <span className="eyebrow">
-          <i /> TWO FRIENDS. ONE TERRIBLE TAKE.
-        </span>
+      <div className="title-world">
         <h1>
-          HEAR
-          <br />
-          ME{" "}
-          <span>
-            OUT<span className="asterisk">✳</span>
-          </span>
-          <b className="period">.</b>
+          HEAR ME <span>OUT.</span>
         </h1>
-        <p>
-          Make your case.
-          <br />
-          Watch your friend get cooked.
+        <p className="title-tagline">Two friends. One terrible take.</p>
+        <StageLoader state={null} reduced={reduced} hero />
+        <p className="host-credit">
+          Presiding judge: <strong>the Honorable Bonk</strong>
         </p>
-        <div className="title-sticker">
-          JUDGED BY
-          <br />
-          <strong>
-            THE HONORABLE
-            <br />
-            BONK
-          </strong>
-          <span>✦ ABSURDLY FAIR ✦</span>
-        </div>
       </div>
-      <div className="entry-card">
-        <span className="card-kicker">THE COURT IS NOW IN SESSION</span>
+      <form
+        className="entry-card"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!busy && name.trim() && (!joining || code.length === 4))
+            void action(() =>
+              client.enter(joining ? "join" : "create", name, code),
+            );
+        }}
+      >
+        <div className="entry-mark" aria-hidden="true">
+          <Icon name="gavel" />
+        </div>
         <h2>
-          Bring a friend.
-          <br />
-          Bring a bad opinion.
+          {joining
+            ? "Your friend awaits."
+            : "Bring a friend.\nStart an argument."}
         </h2>
-        <label>
-          Your name
-          <input
-            autoComplete="nickname"
-            value={name}
-            maxLength={20}
-            placeholder="What should Bonk call you?"
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>
+        <p>
+          {joining
+            ? "Enter their four-digit room code."
+            : "Bonk will hear you both out."}
+        </p>
+        <label htmlFor="player-name">Your name</label>
+        <input
+          id="player-name"
+          autoComplete="nickname"
+          value={name}
+          maxLength={20}
+          placeholder="What should Bonk call you?"
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
         {joining && (
-          <label>
-            Room code
+          <>
+            <label htmlFor="room-code">Room code</label>
             <input
+              id="room-code"
               inputMode="numeric"
+              autoComplete="off"
+              pattern="[0-9]{4}"
               value={code}
               placeholder="0000"
               maxLength={4}
               className="code-input"
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              required
             />
-          </label>
+          </>
+        )}
+        {error && (
+          <p className="form-error" role="alert">
+            <Icon name="warning" />
+            {error}
+          </p>
         )}
         <button
           className="primary"
           disabled={busy || !name.trim() || (joining && code.length !== 4)}
-          onClick={() =>
-            void action(() =>
-              client.enter(joining ? "join" : "create", name, code),
-            )
-          }
         >
-          {busy
-            ? "Opening court…"
-            : joining
-              ? "JOIN THE ROOM ↗"
-              : "CREATE A ROOM ↗"}
+          {busy ? "Opening court…" : joining ? "Join room" : "Create room"}
+          <Icon name="arrow" />
         </button>
         <button
+          type="button"
           className="text-button"
+          disabled={busy}
           onClick={() => {
             setJoining(!joining);
             setCode(new URLSearchParams(location.search).get("room") || "");
           }}
         >
-          {joining
-            ? "Start your own argument instead"
-            : "Got a code? Join your friend"}
+          {joining ? "Create your own room" : "Have a code? Join a friend"}
         </button>
-        <p className="tiny">
-          2 players · camera + microphone · headphones recommended
+        <p className="entry-note">
+          <Icon name="headphones" />2 players · microphone required
+          <br />
+          Headphones recommended
         </p>
-      </div>
-      <div className="title-bottom">
-        <span>NO EXPERTISE REQUIRED.</span>
-        <span>JUST UNREASONABLE CONFIDENCE.</span>
-      </div>
+      </form>
     </section>
   );
 }
