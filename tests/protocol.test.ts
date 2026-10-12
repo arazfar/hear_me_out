@@ -1,3 +1,4 @@
+import { ServerClock } from "../src/media/server-clock";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
@@ -42,6 +43,7 @@ test("codecs reject malformed lengths, timestamps, rates, and sample budgets bef
     new Uint8Array(new Float32Array([0.1, 0.2]).buffer),
   );
   assert.equal(decodeJudgeAudio(speech)?.pcm.length, 2);
+  assert.equal(decodeJudgeAudio(Buffer.from(speech))?.pcm.length, 2);
   new DataView(speech.buffer).setUint32(13, 44100 * 8, true);
   assert.equal(decodeJudgeAudio(speech), null);
 });
@@ -100,4 +102,48 @@ test("diagnostic samples stay bounded", () => {
   assert.equal(room.metrics.scoringMs.length, 128);
   assert.equal(room.metrics.scoringMs.at(-1), 999);
   room.close();
+});
+
+test("synchronized capture timestamps keep relay audio alive with either clock offset", () => {
+  for (const skew of [-60000, 60000]) {
+    const now = 100000;
+    const { room } = roomFixture({ now: () => now });
+    room.game.lobby("Fixture media check");
+    room.game.setMediaMode("wss");
+    const player = room.game.state.players[0];
+    let forwarded = 0;
+    room.media.forward = () => {
+      forwarded++;
+    };
+    // Local wall time is deliberately skewed; the capture clock uses the server observation.
+    const localWall = now + skew;
+    let monotonic = 0;
+    const clock = new ServerClock(() => monotonic);
+    clock.observe(localWall - skew);
+    room.media.audio(
+      player.id,
+      Buffer.from(
+        encodeMicrophone(
+          room.game.state.mediaEpoch,
+          1,
+          clock.now(),
+          new Uint8Array(640),
+        ),
+      ),
+    );
+    monotonic += 20;
+    room.media.audio(
+      player.id,
+      Buffer.from(
+        encodeMicrophone(
+          room.game.state.mediaEpoch,
+          2,
+          clock.now(),
+          new Uint8Array(640),
+        ),
+      ),
+    );
+    assert.equal(forwarded, 2);
+    room.close();
+  }
 });

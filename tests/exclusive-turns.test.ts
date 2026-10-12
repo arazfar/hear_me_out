@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { RoomController, type Seat } from "../server/rooms/room";
-import { canSpeak, scoreShare, type Turn } from "../shared/types";
+import { canSpeak, scoreShare, type Turn } from "../shared/domain";
 import { Client } from "../src/game/client";
 function setup() {
   const c = new RoomController("1234");
@@ -37,6 +37,14 @@ test("exclusive floor policy protects both transports and preserves manual mute"
   client.capture.syncMicrophone();
   assert(!track.enabled);
   client.capture.micMuted = false;
+  client.reconnecting = true;
+  client.capture.syncMicrophone();
+  assert(
+    !track.enabled,
+    "connection recovery closes the WebRTC microphone immediately",
+  );
+  client.reconnecting = false;
+
   turn.playerId = b.id;
   client.capture.syncMicrophone();
   assert(!track.enabled);

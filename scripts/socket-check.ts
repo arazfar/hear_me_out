@@ -1,9 +1,11 @@
+import { PROTOCOL_VERSION, type Session } from "../shared/protocol";
 import "dotenv/config";
 import { WebSocket } from "ws";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { streamVoice } from "../server/providers/index";
-import { canSpeak, type Snapshot, type Command } from "../shared/types";
+import { canSpeak, type Snapshot } from "../shared/domain";
+import { type Command } from "../shared/protocol";
 const base = process.env.TEST_URL || "http://127.0.0.1:3001",
   wsbase = base.replace(/^http/, "ws");
 const sleep = (n: number) => new Promise((r) => setTimeout(r, n));
@@ -23,8 +25,8 @@ class Peer {
   state: Snapshot;
   sockets = new Map<string, WebSocket>();
   seq = 0;
-  pcm = Buffer.alloc(640);
-  interval: any;
+  pcm: Buffer = Buffer.alloc(640);
+  interval: ReturnType<typeof setInterval> | undefined;
   voiceHashes: string[] = [];
   interventions: string[] = [];
   cancelled = 0;
@@ -39,7 +41,7 @@ class Peer {
     text: string;
   }> = [];
   constructor(
-    public session: any,
+    public session: Session,
     state: Snapshot,
   ) {
     this.state = state;
@@ -62,13 +64,20 @@ class Peer {
       this.sockets.set(ch, s);
       await new Promise<void>((r) =>
         s.on("open", () => {
-          s.send(JSON.stringify({ type: "auth", ...this.session }));
+          s.send(
+            JSON.stringify({
+              type: "auth",
+              protocolVersion: PROTOCOL_VERSION,
+              ...this.session,
+              code: undefined,
+            }),
+          );
           r();
         }),
       );
       s.on("message", (raw, binary) => {
         if (binary) {
-          if (ch === "audio" && raw[0] === 2) {
+          if (ch === "audio" && Buffer.isBuffer(raw) && raw[0] === 2) {
             this.voiceHashes.push(
               createHash("sha256")
                 .update(raw as Buffer)
@@ -112,7 +121,11 @@ class Peer {
           });
         }
         if (event.type === "judge_cancelled") this.cancelled++;
-        if (event.type === "ack" && !event.ok) this.errors.push(event.error);
+        if (
+          event.type === "error" ||
+          (event.type === "ack" && event.ok === false)
+        )
+          this.errors.push(event.error);
       });
     }
     this.interval = setInterval(() => this.audio(), 20);
@@ -158,6 +171,10 @@ async function wait(check: () => boolean, timeout = 40000) {
   const at = Date.now();
   while (!check()) {
     if (pa.state.phase === "ABORTED") throw Error(pa.state.status);
+    if (pa.state.degraded.tts)
+      throw Error("Unexpected caption-only voice recovery");
+    if (pa.errors.length || pb.errors.length)
+      throw Error("Command error: " + [...pa.errors, ...pb.errors].join("; "));
     if (pa.state.degraded.stt)
       throw Error(
         "Voice integration entered typed STT recovery: " + pa.state.status,
@@ -221,7 +238,7 @@ async function voice(text: string) {
 }
 let turns = 0;
 
-while (pa.state.phase !== "MATCH_RESULT") {
+while (true) {
   await wait(
     () =>
       pa.state.phase === "MATCH_RESULT" ||
@@ -313,8 +330,10 @@ await wait(
 await sleep(150);
 const sameResult =
   JSON.stringify(pa.state.results) === JSON.stringify(pb.state.results) &&
-  pa.state.winnerId === pb.state.winnerId;
+  pa.state.winnerId === pb.state.winnerId &&
+  JSON.stringify(pa.state.ledger) === JSON.stringify(pb.state.ledger);
 const sharedAudio =
+  pa.voiceHashes.length > 0 &&
   pa.voiceHashes.length === pb.voiceHashes.length &&
   pa.voiceHashes.every((h, i) => h === pb.voiceHashes[i]);
 console.log(
@@ -335,7 +354,7 @@ await wait(
   () =>
     pb.state.phase === "MATCH_RESULT" && pa.state.judge?.status === "silent",
 );
-if (sameResult && sharedAudio)
+if (process.env.EXPORT_REHEARSAL === "true" && sameResult && sharedAudio)
   writeFileSync(
     "public/rehearsal.json",
     JSON.stringify(
@@ -369,6 +388,21 @@ pb.command({ type: "rematch", value: true });
 await wait(() => pa.state.matchId !== old);
 console.log(JSON.stringify({ rematch: true }));
 clearInterval(status);
+pa.command({ type: "leave" });
+pb.command({ type: "leave" });
+await sleep(100);
 pa.close();
 pb.close();
-process.exit(sameResult && sharedAudio && pa.state.ledger.length === 0 ? 0 : 1);
+const contextual = pa.interventions.some((line) =>
+  /syrup|pocket|soft|crisp|texture|sweet/i.test(line),
+);
+process.exit(
+  sameResult &&
+    sharedAudio &&
+    contextual &&
+    !pa.errors.length &&
+    !pb.errors.length &&
+    pa.state.ledger.length === 0
+    ? 0
+    : 1,
+);

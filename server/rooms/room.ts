@@ -1,5 +1,5 @@
 import { WebSocket } from "ws";
-import { type GameEvent } from "../../shared/types.js";
+import { type GameEvent } from "../../shared/protocol.js";
 import { Game } from "../game/game.js";
 import { Judging } from "../judge/judging.js";
 import { JudgePlayback } from "../judge/playback.js";

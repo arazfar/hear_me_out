@@ -1,6 +1,6 @@
 import { WebSocket } from "ws";
 import { decodeMicrophone } from "../../shared/media.js";
-import { canSpeak } from "../../shared/types.js";
+import { canSpeak } from "../../shared/domain.js";
 import type { RoomController } from "../rooms/room.js";
 export class RoomMedia {
   constructor(readonly room: RoomController) {}

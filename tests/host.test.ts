@@ -1,3 +1,5 @@
+import { inkFixture } from "./ink-fixture";
+import { deferred, roomFixture, evidence, fakeVoice } from "./fixtures";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Game } from "../server/game/game";
@@ -9,7 +11,7 @@ import {
 import { PreparedVoice, fixedVoice } from "../server/judge/voice-cache";
 import { InkSession } from "../server/providers/index";
 import { RoomController } from "../server/rooms/room";
-import type { Segment } from "../shared/types";
+import type { Segment } from "../shared/domain";
 import { Client } from "../src/game/client";
 test("host phrases rotate within a match and reset on rematch; reactions stay short", () => {
   const host = new HostPhrases();
@@ -178,59 +180,22 @@ test("settlement timeout aborts rather than skipping pending evidence", () => {
 });
 test("STT draining reads final transcript before resolving completion", async () => {
   const segments: Segment[] = [];
-  const stream = Object.create(InkSession.prototype) as InkSession;
-  Object.assign(stream, {
-    epoch: "original",
-    playerId: "a",
-    roundId: "r",
-    turnId: "t",
-    speechCounter: 1,
-    consumed: 0,
-    transcript: "",
-    closing: true,
-    failed: false,
-    drainCompleted: null,
-    drainTimer: null,
-    resolveDrain: null,
-    handlers: {
-      caption: () => {},
-      segment: (s: Segment) => segments.push(s),
-      end: () => {},
-      start: () => {},
-      error: () => {},
-    },
-    ws: {
-      stream: async function* () {
-        yield {
-          type: "message",
-          message: {
-            type: "turn.end",
-            transcript: "Those syrup pockets distribute sweetness.",
-          },
-        };
-      },
+  const { stream, socket } = inkFixture({ segment: (s) => segments.push(s) });
+  socket.push({
+    type: "message",
+    message: {
+      type: "turn.end",
+      transcript: "Those syrup pockets distribute sweetness.",
     },
   });
-  stream.drainPromise = new Promise((resolve) => {
-    stream.resolveDrain = resolve;
-  });
-  await stream.listen();
-  stream.finishDrain(true);
+  await stream.close();
   assert(await stream.drainPromise);
   assert.equal(segments.length, 1);
-  assert.equal(segments[0].turnId, "t");
+  assert.equal(segments[0].turnId, "turn");
 });
 test("silence cannot overflow the STT startup buffer; meaningful audio stays bounded", () => {
-  const stream = Object.create(InkSession.prototype) as InkSession;
   let failures = 0;
-  Object.assign(stream, {
-    closing: false,
-    failed: false,
-    connected: false,
-    buffer: [],
-    bufferedBytes: 0,
-    handlers: { error: () => failures++ },
-  });
+  const { stream, socket } = inkFixture({ error: () => failures++ });
   for (let i = 0; i < 1000; i++) stream.send(Buffer.alloc(640));
   assert.equal(stream.bufferedBytes, 0);
   assert.equal(failures, 0);
@@ -239,24 +204,22 @@ test("silence cannot overflow the STT startup buffer; meaningful audio stays bou
   for (let i = 0; i < 25; i++) stream.send(Buffer.alloc(640, 1));
   assert.equal(failures, 1);
   assert.equal(stream.bufferedBytes, 0);
+  socket.close();
 });
 test("prepared voice streams cached and arriving chunks, and cancelled preparations cannot play", async () => {
-  const voice = Object.create(PreparedVoice.prototype) as PreparedVoice;
-  Object.assign(voice, {
-    chunks: [new Uint8Array([1, 2])],
-    done: false,
-    cancelled: false,
-    error: null,
-    listeners: new Set(),
+  const pending = deferred<void>();
+  const voice = new PreparedVoice("Fixture", 4.5, async (_text, onChunk) => {
+    onChunk(new Uint8Array([1, 2]));
+    await pending.promise;
+    onChunk(new Uint8Array([3, 4]));
+    return 0.1;
   });
   const result: number[] = [];
   const playback = voice.stream(
     (p) => result.push(...p),
     () => false,
   );
-  voice.chunks.push(new Uint8Array([3, 4]));
-  voice.done = true;
-  voice.wake();
+  pending.resolve();
   await playback;
   assert.deepEqual(result, [1, 2, 3, 4]);
   voice.cancel();
@@ -268,6 +231,7 @@ test("prepared voice streams cached and arriving chunks, and cancelled preparati
     /stale/,
   );
 });
+
 test("fixed voice cache reuses synthesis with unchanged Fish settings", async () => {
   const original = globalThis.fetch,
     key = process.env.FISH_AUDIO_API_KEY;
@@ -293,30 +257,13 @@ test("fixed voice cache reuses synthesis with unchanged Fish settings", async ()
   }
 });
 test("reactions require current eligible stable evidence and preserve intervention budgets", () => {
-  const c = new RoomController("1234");
-  c.game.state.phase = "ROUND";
-  c.game.state.roundId = "r";
-  const segment: Segment = {
-    id: "s",
-    playerId: "a",
-    roundId: "r",
-    turnId: "t",
-    sessionEpoch: "e",
-    text: "Waffles have syrup pockets for balanced bites.",
-    stableAt: Date.now(),
-    eligible: true,
-    source: "voice",
-  };
-  c.game.turns.set("t", {
-    turn: { id: "t", playerId: "a" } as any,
-    roundId: "r",
-    validUntil: Infinity,
-    segments: new Map([["s", segment]]),
-  });
-  c.judging.argumentRevision.set("t", 1);
+  const { room: c, turn } = roomFixture();
+  const segment = evidence(c.game, "s");
+  c.game.registerSegment(segment);
+  c.judging.argumentRevision.set(turn.id, 1);
   assert(
     c.judging.acceptReaction(
-      "t",
+      turn.id,
       [segment],
       { segmentId: "s", text: "Those syrup pockets came prepared." },
       1,
@@ -325,7 +272,7 @@ test("reactions require current eligible stable evidence and preserve interventi
   assert.equal(c.game.interventions, 0);
   assert(
     !c.judging.acceptReaction(
-      "t",
+      turn.id,
       [segment],
       { segmentId: "missing", text: "That cooks." },
       1,
@@ -333,35 +280,26 @@ test("reactions require current eligible stable evidence and preserve interventi
   );
   assert(
     !c.judging.acceptReaction(
-      "t",
+      turn.id,
       [{ ...segment, eligible: false }],
       { segmentId: "s", text: "That cooks." },
       1,
     ),
   );
-  c.judging.argumentRevision.set("t", 2);
+  c.judging.argumentRevision.set(turn.id, 2);
   assert(
     !c.judging.acceptReaction(
-      "t",
+      turn.id,
       [segment],
       { segmentId: "s", text: "That cooks." },
       1,
     ),
   );
-  assert.equal(c.judging.latestReaction("t"), null);
+  assert.equal(c.judging.latestReaction(turn.id), null);
   c.close();
 });
 test("a prefetched handoff from another match is cancelled rather than played", () => {
-  const c = new RoomController("1234");
-  c.game.state.phase = "ROUND";
-  c.game.state.matchId = "new";
-  c.game.state.roundId = "r";
-  c.game.state.turn = {
-    id: "next",
-    playerId: "a",
-    kind: "rebuttal",
-    sealing: false,
-  } as any;
+  const { room: c, turn } = roomFixture();
   c.playback.lastSealedTurnId = "old";
   let cancelled = false,
     prepared: unknown = "unset";
@@ -370,21 +308,21 @@ test("a prefetched handoff from another match is cancelled rather than played", 
     text: "Alex, your turn.",
     turnId: "old",
     matchId: "previous",
-    roundId: "r",
+    roundId: c.game.state.roundId,
     revision: 1,
-    playerId: "a",
-    kind: "rebuttal",
-    voice: {
+    playerId: turn.playerId,
+    kind: turn.kind,
+    voice: Object.assign(new PreparedVoice("old", 4.5, fakeVoice), {
       cancel: () => {
         cancelled = true;
       },
-    } as any,
+    }),
   };
   c.playback.pendingHandoff = {
-    matchId: "new",
-    roundId: "r",
-    turnId: "next",
-    playerId: "a",
+    matchId: c.game.state.matchId,
+    roundId: c.game.state.roundId,
+    turnId: turn.id,
+    playerId: turn.playerId,
     text: "Alex, your turn.",
     intervention: false,
   };

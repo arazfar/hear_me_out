@@ -1,8 +1,5 @@
-import {
-  canSpeak,
-  SUGGESTIONS,
-  type CommandEnvelope,
-} from "../../shared/types.js";
+import { canSpeak, SUGGESTIONS } from "../../shared/domain.js";
+import { type CommandEnvelope } from "../../shared/protocol.js";
 import { RuleError } from "../game/game.js";
 import { RoomController } from "./room.js";
 

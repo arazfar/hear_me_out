@@ -7,7 +7,7 @@ import {
   type Opportunity,
   type Segment,
   type Snapshot,
-} from "../../shared/types.js";
+} from "../../shared/domain.js";
 
 export const scoreSchema = z
   .object({

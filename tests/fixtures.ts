@@ -5,7 +5,7 @@ import type {
   RoomServices,
   TranscriptionStream,
 } from "../server/rooms/services";
-import type { Segment } from "../shared/types";
+import type { Segment } from "../shared/domain";
 
 export function deferred<T>() {
   let resolve!: (value: T) => void, reject!: (error: Error) => void;

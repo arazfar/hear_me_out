@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { judge } from "../server/providers/index";
 import { Game } from "../server/game/game";
-import { CAPS, type Segment } from "../shared/types";
+import { CAPS, type Segment } from "../shared/domain";
 process.env.JUDGE_MODEL =
   process.env.CHECK_MODEL || process.env.JUDGE_MODEL || "gpt-6-luna";
 process.env.JUDGE_REASONING =

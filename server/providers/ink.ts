@@ -1,14 +1,35 @@
 import Cartesia from "@cartesia/cartesia-js";
 import { createHash, randomUUID } from "node:crypto";
-import { type Segment } from "../../shared/types.js";
+import { type Segment } from "../../shared/domain.js";
 
 export const cartesia = () =>
   new Cartesia({ apiKey: process.env.CARTESIA_API_KEY });
+export type InkEvent = {
+  type: string;
+  message?: { type: string; transcript?: string };
+  error?: unknown;
+};
+export interface InkTransport {
+  on(event: "error" | "close", callback: (event: unknown) => void): unknown;
+  sendRaw(audio: Buffer): unknown;
+  send(message: { type: "close" }): unknown;
+  close(): unknown;
+  stream(): AsyncIterable<InkEvent>;
+}
+function connectInk(): InkTransport {
+  return cartesia().stt.autoFinalize.websocket({
+    model: "ink-2",
+    encoding: "pcm_s16le",
+    sample_rate: 16000,
+    turn_start_threshold: 0.8,
+    turn_eager_end_threshold: 0.5,
+    turn_end_threshold: 0.3,
+    turn_end_timeout_ms: 1600,
+  });
+}
 export class InkSession {
   epoch = randomUUID();
-  ws: ReturnType<
-    ReturnType<typeof cartesia>["stt"]["autoFinalize"]["websocket"]
-  >;
+  ws: InkTransport;
   drainPromise: Promise<boolean> | null = null;
   resolveDrain: ((ok: boolean) => void) | null = null;
   drainTimer: ReturnType<typeof setTimeout> | null = null;
@@ -49,16 +70,9 @@ export class InkSession {
       end: () => void;
       error: (error: unknown) => void;
     },
+    transport: InkTransport = connectInk(),
   ) {
-    this.ws = cartesia().stt.autoFinalize.websocket({
-      model: "ink-2",
-      encoding: "pcm_s16le",
-      sample_rate: 16000,
-      turn_start_threshold: 0.8,
-      turn_eager_end_threshold: 0.5,
-      turn_end_threshold: 0.3,
-      turn_end_timeout_ms: 1600,
-    });
+    this.ws = transport;
     this.ws.on("error", (e) => this.fail(e));
     this.ws.on("close", () => {
       if (!this.closing) this.fail(new Error("Transcription socket closed"));
@@ -124,6 +138,7 @@ export class InkSession {
       }
       if (event.type !== "message") continue;
       const m = event.message;
+      if (!m) continue;
       if (m.type === "connected") {
         this.connected = true;
         for (const b of this.buffer) this.ws.sendRaw(b);
@@ -134,11 +149,13 @@ export class InkSession {
         this.transcript = "";
         this.consumed = 0;
         this.handlers.start();
-      } else if (m.type === "turn.update") this.update(m.transcript, false);
-      else if (m.type === "turn.eager_end") this.update(m.transcript, false);
+      } else if (m.type === "turn.update")
+        this.update(m.transcript || "", false);
+      else if (m.type === "turn.eager_end")
+        this.update(m.transcript || "", false);
       else if (m.type === "turn.resume") this.handlers.start();
       else if (m.type === "turn.end") {
-        this.update(m.transcript, true);
+        this.update(m.transcript || "", true);
         this.handlers.end();
       } else if (m.type === "error")
         this.fail(new Error("Transcription provider error"));

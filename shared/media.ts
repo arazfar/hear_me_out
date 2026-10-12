@@ -103,7 +103,7 @@ export function decodeJudgeAudio(bytes: Uint8Array) {
     samples = (bytes.length - 17) / 4;
   if (v.getUint32(9, true) !== 44100 || offset + samples > 44100 * 8)
     return null;
-  const pcm = new Float32Array(bytes.slice(17).buffer);
+  const pcm = new Float32Array(Uint8Array.from(bytes.subarray(17)).buffer);
   if (pcm.some((sample) => !Number.isFinite(sample))) return null;
   return {
     epoch: v.getUint32(1, true),

@@ -64,7 +64,7 @@ export class PreparedVoice {
 }
 const fixed = new Map<string, PreparedVoice>();
 export function fixedVoice(text: string): PreparedVoice | undefined {
-  if (!FIXED_LINES.includes(text as any)) return;
+  if (!FIXED_LINES.some((line) => line === text)) return;
   const key = `${voiceSettingsKey()}:${text}`;
   const old = fixed.get(key);
   if (old && !old.error) {

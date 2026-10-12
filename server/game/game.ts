@@ -6,7 +6,6 @@ import {
   SUGGESTIONS,
   type Claim,
   type Criterion,
-  type GameEvent,
   type JudgeState,
   type Opportunity,
   type Phase,
@@ -14,7 +13,8 @@ import {
   type Segment,
   type Snapshot,
   type Turn,
-} from "../../shared/types.js";
+} from "../../shared/domain.js";
+import { type GameEvent } from "../../shared/protocol.js";
 
 export class RuleError extends Error {}
 type StoredTurn = {

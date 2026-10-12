@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { canSpeak, type Segment } from "../../shared/types.js";
+import { canSpeak, type Segment } from "../../shared/domain.js";
 import { type Proposal } from "../providers/index.js";
 import type { RoomController } from "../rooms/room.js";
 import { safeReaction, voiceSettingsKey } from "./personality.js";
