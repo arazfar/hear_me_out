@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Game } from "../server/game";
+import { Game } from "../server/game/game";
 import { CAPS, CRITERIA, type Segment } from "../shared/types";
 function setup() {
   let time = 100000;
@@ -224,7 +224,7 @@ test("reconnect during judge pause restores clock and timed intro resumes", () =
   assert.equal(g.state.phase, "TOPIC_SELECT");
 });
 test("complete score JSON objects stream atomically despite braces and escaped quotes in reasons", async () => {
-  const { completeScoreObjects } = await import("../server/providers");
+  const { completeScoreObjects } = await import("../server/providers/index");
   const text =
     '{"jobId":"job","scores":[{"reason":"a {real} reason with \\"quotes\\"","quality":3},{"reason":"pending';
   assert.equal(completeScoreObjects(text).length, 1);

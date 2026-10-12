@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { Proposal } from "../server/providers";
+import type { Proposal } from "../server/providers/index";
 import { ServerClock } from "../src/media/server-clock";
 import { deferred, evidence, flush, roomFixture } from "./fixtures";
 

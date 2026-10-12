@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { streamVoice } from "../server/providers";
+import { streamVoice } from "../server/providers/index";
 
 test("Fish voice streams odd PCM chunks with the requested identity, prosody, and excitement", async () => {
   const fetchBefore = globalThis.fetch,

@@ -1,5 +1,5 @@
 import { randomInt, randomUUID } from "node:crypto";
-import { gameEventSchema, type eventPayloads } from "../shared/protocol.js";
+import { gameEventSchema, type eventPayloads } from "../../shared/protocol.js";
 import {
   CAPS,
   CRITERIA,
@@ -14,7 +14,7 @@ import {
   type Segment,
   type Snapshot,
   type Turn,
-} from "../shared/types.js";
+} from "../../shared/types.js";
 
 export class RuleError extends Error {}
 type StoredTurn = {

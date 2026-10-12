@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { writeFileSync } from "node:fs";
-import { streamVoice } from "../server/providers";
+import { streamVoice } from "../server/providers/index";
 const chunks: Buffer[] = [];
 await streamVoice(
   "Pancakes spread syrup across their soft surface, so every bite tastes balanced instead of hiding puddles in pockets.",

@@ -2,14 +2,14 @@ import {
   canSpeak,
   SUGGESTIONS,
   type CommandEnvelope,
-} from "../shared/types.js";
-import { Controller } from "./controller.js";
-import { RuleError } from "./game.js";
+} from "../../shared/types.js";
+import { RuleError } from "../game/game.js";
+import { RoomController } from "./room.js";
 
 import type { RoomRegistry } from "./registry.js";
 export async function command(
   registry: RoomRegistry,
-  room: Controller,
+  room: RoomController,
   id: string,
   data: CommandEnvelope,
 ) {

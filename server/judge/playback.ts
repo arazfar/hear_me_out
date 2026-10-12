@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { WebSocket } from "ws";
-import { encodeJudgeAudio } from "../shared/media.js";
-import type { Controller } from "./controller.js";
-import { HostPhrases, voiceSettingsKey } from "./host.js";
+import { encodeJudgeAudio } from "../../shared/media.js";
+import type { RoomController } from "../rooms/room.js";
+import { HostPhrases, voiceSettingsKey } from "./personality.js";
 import { PreparedVoice } from "./voice-cache.js";
 export class JudgePlayback {
-  constructor(readonly room: Controller) {}
+  constructor(readonly room: RoomController) {}
   speechEpoch = 0;
   speech: {
     id: string;

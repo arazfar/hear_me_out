@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Controller, type Seat } from "../server/controller";
+import { RoomController, type Seat } from "../server/rooms/room";
 import { canSpeak, scoreShare, type Turn } from "../shared/types";
-import { Client } from "../src/client";
+import { Client } from "../src/game/client";
 function setup() {
-  const c = new Controller("1234");
+  const c = new RoomController("1234");
   const a = c.game.addPlayer("Sam"),
     b = c.game.addPlayer("Alex");
   c.game.state.phase = "ROUND";
@@ -30,18 +30,18 @@ test("exclusive floor policy protects both transports and preserves manual mute"
   client.state = c.game.state;
   client.session = { playerId: a.id } as any;
   const track = { enabled: true };
-  client.stream = { getAudioTracks: () => [track] } as any;
+  client.capture.stream = { getAudioTracks: () => [track] } as any;
   assert(canSpeak(c.game.state, a.id));
   assert(!canSpeak(c.game.state, b.id));
-  client.micMuted = true;
-  client.syncMicrophone();
+  client.capture.micMuted = true;
+  client.capture.syncMicrophone();
   assert(!track.enabled);
-  client.micMuted = false;
+  client.capture.micMuted = false;
   turn.playerId = b.id;
-  client.syncMicrophone();
+  client.capture.syncMicrophone();
   assert(!track.enabled);
   turn.playerId = a.id;
-  client.syncMicrophone();
+  client.capture.syncMicrophone();
   assert(track.enabled);
   for (const mode of ["rtc", "wss"] as const) {
     c.game.state.mediaMode = mode;
@@ -177,22 +177,22 @@ test("relay decode retains delayed frames, coalesces pending work and rejects ol
     return { seq, close: () => closed++ };
   };
   try {
-    client.pendingVideo = frame(1);
-    const decoding = client.decodeVideo();
+    client.video.pendingVideo = frame(1);
+    const decoding = client.video.decodeVideo();
     while (!release) await new Promise((r) => setImmediate(r));
-    client.pendingVideo = frame(2);
-    client.pendingVideo = frame(3);
+    client.video.pendingVideo = frame(2);
+    client.video.pendingVideo = frame(3);
     release();
     await decoding;
     assert.deepEqual(drawn, [1, 3]);
-    assert.equal(client.remoteFrameSeq, 3);
-    assert(client.remoteFrame);
-    client.pendingVideo = frame(4);
-    const old = client.decodeVideo();
-    client.resetVideo();
+    assert.equal(client.video.remoteFrameSeq, 3);
+    assert(client.video.remoteFrame);
+    client.video.pendingVideo = frame(4);
+    const old = client.video.decodeVideo();
+    client.video.resetVideo();
     await old;
     assert.deepEqual(drawn, [1, 3]);
-    assert.equal(client.remoteFrameSeq, 0);
+    assert.equal(client.video.remoteFrameSeq, 0);
     assert.equal(closed, 3);
   } finally {
     globalThis.createImageBitmap = savedBitmap;
@@ -212,24 +212,24 @@ test("automatic device restore and a simultaneous enable click share one capture
   let calls = 0,
     resumed = 0,
     release!: () => void;
-  (client as any).acquireDevices = () => {
+  (client.capture as any).acquireDevices = () => {
     calls++;
     return new Promise<void>((r) => {
       release = r;
     });
   };
-  client.context = {
+  client.sound.context = {
     resume: () => {
       resumed++;
       return Promise.resolve();
     },
   } as any;
-  const automatic = client.devices(),
-    gesture = client.devices();
+  const automatic = client.capture.devices(),
+    gesture = client.capture.devices();
   assert.equal(automatic, gesture);
   assert.equal(calls, 1);
   assert.equal(resumed, 1);
   release();
   await automatic;
-  assert.equal(client.deviceRequest, null);
+  assert.equal(client.capture.deviceRequest, null);
 });

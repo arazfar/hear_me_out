@@ -1,10 +1,10 @@
 import { WebSocket } from "ws";
-import { type GameEvent } from "../shared/types.js";
-import { Game } from "./game.js";
-import { Judging } from "./judging.js";
-import { RoomMedia } from "./media.js";
-import { JudgePlayback } from "./playback.js";
-import { defaultServices, type RoomServices } from "./runtime.js";
+import { type GameEvent } from "../../shared/types.js";
+import { Game } from "../game/game.js";
+import { Judging } from "../judge/judging.js";
+import { JudgePlayback } from "../judge/playback.js";
+import { RoomMedia } from "../transport/media.js";
+import { defaultServices, type RoomServices } from "./services.js";
 import { Transcription } from "./transcription.js";
 export type Seat = {
   tokenHash: string;
@@ -17,7 +17,7 @@ export type Seat = {
   rtcReady: boolean;
   acks: Map<string, unknown>;
 };
-export class Controller {
+export class RoomController {
   judging = new Judging(this);
   transcription = new Transcription(this);
   playback = new JudgePlayback(this);
@@ -32,7 +32,7 @@ export class Controller {
     speechGenerationMs: number[];
     playbackMs: number[];
   } = { scoringMs: [], speechGenerationMs: [], playbackMs: [] };
-  recordMetric(kind: keyof Controller["metrics"], value: number) {
+  recordMetric(kind: keyof RoomController["metrics"], value: number) {
     if (!Number.isFinite(value)) return;
     const samples = this.metrics[kind];
     samples.push(value);

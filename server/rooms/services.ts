@@ -1,5 +1,14 @@
-import { InkSession, judge, normalizeTopic, streamVoice } from "./providers.js";
-import { PreparedVoice, fixedVoice, warmHostVoice } from "./voice-cache.js";
+import {
+  PreparedVoice,
+  fixedVoice,
+  warmHostVoice,
+} from "../judge/voice-cache.js";
+import {
+  InkSession,
+  judge,
+  normalizeTopic,
+  streamVoice,
+} from "../providers/index.js";
 export type TranscriptionStream = Pick<
   InkSession,
   "turnId" | "roundId" | "connected" | "closing" | "failed" | "send" | "close"

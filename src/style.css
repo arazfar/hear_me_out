@@ -1419,17 +1419,62 @@ input::placeholder {
 }
 
 /* Player controls stay on each player's outside edge. */
-.face { position: relative; overflow: visible; }
-.face-picture { border-radius: 8px; overflow: hidden; }
-.face-picture canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
-.player-yield { position: absolute; top: 45%; padding: 0; width: 112px; }
-.face-0 .player-yield { right: calc(100% + 10px); }
-.face-1 .player-yield { left: calc(100% + 10px); }
-.player-yield .primary { font-size: 13px; padding: 14px 10px; width: 100%; }
-.in-room .faces { padding-inline: 142px; }
-.speaking-status { padding: 6px 12px; font-size: 11px; color: var(--cream); background: #ffffff0a; }
-.camera-status { position: absolute; bottom: 8px; left: 8px; background: #20102edb; padding: 5px 8px; font-size: 11px; border-radius: 4px; }
+.face {
+  position: relative;
+  overflow: visible;
+}
+.face-picture {
+  border-radius: 8px;
+  overflow: hidden;
+}
+.face-picture canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.player-yield {
+  position: absolute;
+  top: 45%;
+  padding: 0;
+  width: 112px;
+}
+.face-0 .player-yield {
+  right: calc(100% + 10px);
+}
+.face-1 .player-yield {
+  left: calc(100% + 10px);
+}
+.player-yield .primary {
+  font-size: 13px;
+  padding: 14px 10px;
+  width: 100%;
+}
+.in-room .faces {
+  padding-inline: 142px;
+}
+.speaking-status {
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--cream);
+  background: #ffffff0a;
+}
+.camera-status {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: #20102edb;
+  padding: 5px 8px;
+  font-size: 11px;
+  border-radius: 4px;
+}
 @media (max-width: 1000px) {
-  .in-room .faces { padding-inline: 20px; }
-  .player-yield { position: static; width: auto; padding: 8px 12px; }
+  .in-room .faces {
+    padding-inline: 20px;
+  }
+  .player-yield {
+    position: static;
+    width: auto;
+    padding: 8px 12px;
+  }
 }

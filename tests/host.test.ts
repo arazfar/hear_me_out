@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Controller } from "../server/controller";
-import { Game } from "../server/game";
-import { HostPhrases, PHRASES, safeReaction } from "../server/host";
-import { InkSession } from "../server/providers";
-import { PreparedVoice, fixedVoice } from "../server/voice-cache";
+import { Game } from "../server/game/game";
+import {
+  HostPhrases,
+  PHRASES,
+  safeReaction,
+} from "../server/judge/personality";
+import { PreparedVoice, fixedVoice } from "../server/judge/voice-cache";
+import { InkSession } from "../server/providers/index";
+import { RoomController } from "../server/rooms/room";
 import type { Segment } from "../shared/types";
-import { Client } from "../src/client";
+import { Client } from "../src/game/client";
 test("host phrases rotate within a match and reset on rematch; reactions stay short", () => {
   const host = new HostPhrases();
   const lines = PHRASES.round.map(() => host.pick("round"));
@@ -26,27 +30,29 @@ test("host phrases rotate within a match and reset on rematch; reactions stay sh
 test("leaving a room resets judge playback IDs so another room can reuse its epochs", () => {
   const client = new Client();
   let stopped = 0;
-  client.nodes.add({
+  client.playback.nodes.add({
     stop: () => {
       stopped++;
     },
   } as unknown as AudioBufferSourceNode);
-  client.judgeChunks.set(1, [{ offset: 0, pcm: new Float32Array([1]) }]);
-  client.cancelled.add(2);
-  client.readySent.add(1);
-  client.played.add("1:0");
-  client.judgeStartContext.set(1, 10);
-  client.resetJudgePlayback();
+  client.playback.judgeChunks.set(1, [
+    { offset: 0, pcm: new Float32Array([1]) },
+  ]);
+  client.playback.cancelled.add(2);
+  client.playback.readySent.add(1);
+  client.playback.played.add("1:0");
+  client.playback.judgeStartContext.set(1, 10);
+  client.playback.resetJudgePlayback();
   assert.equal(stopped, 1);
-  assert.equal(client.nodes.size, 0);
-  assert.equal(client.judgeChunks.size, 0);
-  assert.equal(client.cancelled.size, 0);
-  assert.equal(client.readySent.size, 0);
-  assert.equal(client.played.size, 0);
-  assert.equal(client.judgeStartContext.size, 0);
+  assert.equal(client.playback.nodes.size, 0);
+  assert.equal(client.playback.judgeChunks.size, 0);
+  assert.equal(client.playback.cancelled.size, 0);
+  assert.equal(client.playback.readySent.size, 0);
+  assert.equal(client.playback.played.size, 0);
+  assert.equal(client.playback.judgeStartContext.size, 0);
 });
 test("topic nudge is once per phase and pending phase speech is cancelled on advance", () => {
-  const c = new Controller("1234");
+  const c = new RoomController("1234");
   c.game.addPlayer("Sam");
   c.game.addPlayer("Alex");
   const lines: string[] = [];
@@ -287,7 +293,7 @@ test("fixed voice cache reuses synthesis with unchanged Fish settings", async ()
   }
 });
 test("reactions require current eligible stable evidence and preserve intervention budgets", () => {
-  const c = new Controller("1234");
+  const c = new RoomController("1234");
   c.game.state.phase = "ROUND";
   c.game.state.roundId = "r";
   const segment: Segment = {
@@ -346,7 +352,7 @@ test("reactions require current eligible stable evidence and preserve interventi
   c.close();
 });
 test("a prefetched handoff from another match is cancelled rather than played", () => {
-  const c = new Controller("1234");
+  const c = new RoomController("1234");
   c.game.state.phase = "ROUND";
   c.game.state.matchId = "new";
   c.game.state.roundId = "r";

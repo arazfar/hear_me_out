@@ -1,7 +1,10 @@
-import { Controller, type Seat } from "../server/controller";
-import { Game } from "../server/game";
-import type { RoomServices, TranscriptionStream } from "../server/runtime";
-import { PreparedVoice } from "../server/voice-cache";
+import { Game } from "../server/game/game";
+import { PreparedVoice } from "../server/judge/voice-cache";
+import { RoomController, type Seat } from "../server/rooms/room";
+import type {
+  RoomServices,
+  TranscriptionStream,
+} from "../server/rooms/services";
 import type { Segment } from "../shared/types";
 
 export function deferred<T>() {
@@ -67,7 +70,7 @@ export function startRound(game: Game) {
   return game.state.turn!;
 }
 export function roomFixture(overrides: Partial<RoomServices> = {}) {
-  const room = new Controller("1234", services(overrides));
+  const room = new RoomController("1234", services(overrides));
   const turn = startRound(room.game);
   room.playback.cancelSpeech();
   room.game.state.players.forEach((p) => room.seats.set(p.id, seat()));

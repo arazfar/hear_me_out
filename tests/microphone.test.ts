@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Controller, type Seat } from "../server/controller";
+import { RoomController, type Seat } from "../server/rooms/room";
 
 test("timestamped microphone packets retain attribution and reject replay or old media epochs", () => {
-  const c = new Controller("0246");
+  const c = new RoomController("0246");
   const a = c.game.addPlayer("Sam"),
     b = c.game.addPlayer("Alex");
   c.game.state.mediaMode = "wss";

@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { streamVoice, InkSession, judge } from "../server/providers";
-import { Game } from "../server/game";
+import { streamVoice, InkSession, judge } from "../server/providers/index";
+import { Game } from "../server/game/game";
 import type { Segment } from "../shared/types";
 const g = new Game("1234");
 const a = g.addPlayer("Sam"),

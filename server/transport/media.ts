@@ -1,9 +1,9 @@
 import { WebSocket } from "ws";
-import { decodeMicrophone } from "../shared/media.js";
-import { canSpeak } from "../shared/types.js";
-import type { Controller } from "./controller.js";
+import { decodeMicrophone } from "../../shared/media.js";
+import { canSpeak } from "../../shared/types.js";
+import type { RoomController } from "../rooms/room.js";
 export class RoomMedia {
-  constructor(readonly room: Controller) {}
+  constructor(readonly room: RoomController) {}
   rtcTimer: ReturnType<typeof setTimeout> | null = null;
   audio(id: string, raw: Buffer) {
     const packet = decodeMicrophone(raw),

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { InkSession } from "../server/providers";
+import { InkSession } from "../server/providers/index";
 let failures = 0;
 const ink = new InkSession("idle", "round", null, {
   caption: () => {},

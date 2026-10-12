@@ -2,7 +2,7 @@ import "dotenv/config";
 import { WebSocket } from "ws";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
-import { streamVoice } from "../server/providers";
+import { streamVoice } from "../server/providers/index";
 import { canSpeak, type Snapshot, type Command } from "../shared/types";
 const base = process.env.TEST_URL || "http://127.0.0.1:3001",
   wsbase = base.replace(/^http/, "ws");
@@ -28,7 +28,8 @@ class Peer {
   voiceHashes: string[] = [];
   interventions: string[] = [];
   cancelled = 0;
-  timing: Array<{text:string;cueMs:number;turnDoneMs:number|null}> = [];
+  timing: Array<{ text: string; cueMs: number; turnDoneMs: number | null }> =
+    [];
   readyEpochs = new Set<number>();
   errors: string[] = [];
   transcripts: Array<{
@@ -101,8 +102,14 @@ class Peer {
         if (event.type === "judge_buffer")
           this.interventions.push(this.state.judge!.text);
         if (event.type === "judge_started") {
-          const judge=this.state.judge!;
-          this.timing.push({text:judge.text,cueMs:judge.startAt!-(judge.cueAt || event.serverNowMs),turnDoneMs:judge.turnDoneAt ? judge.startAt!-judge.turnDoneAt : null});
+          const judge = this.state.judge!;
+          this.timing.push({
+            text: judge.text,
+            cueMs: judge.startAt! - (judge.cueAt || event.serverNowMs),
+            turnDoneMs: judge.turnDoneAt
+              ? judge.startAt! - judge.turnDoneAt
+              : null,
+          });
         }
         if (event.type === "judge_cancelled") this.cancelled++;
         if (event.type === "ack" && !event.ok) this.errors.push(event.error);
@@ -118,7 +125,16 @@ class Peer {
     h.writeUInt32LE(16000, 9);
     h.writeUInt32LE(320, 13);
     h.writeDoubleLE(Date.now(), 17);
-    this.sockets.get("audio")!.send(Buffer.concat([h, canSpeak(this.state, this.session.playerId) ? this.pcm : Buffer.alloc(640)]));
+    this.sockets
+      .get("audio")!
+      .send(
+        Buffer.concat([
+          h,
+          canSpeak(this.state, this.session.playerId)
+            ? this.pcm
+            : Buffer.alloc(640),
+        ]),
+      );
   }
   close() {
     clearInterval(this.interval);
@@ -142,7 +158,10 @@ async function wait(check: () => boolean, timeout = 40000) {
   const at = Date.now();
   while (!check()) {
     if (pa.state.phase === "ABORTED") throw Error(pa.state.status);
-    if (pa.state.degraded.stt) throw Error("Voice integration entered typed STT recovery: " + pa.state.status);
+    if (pa.state.degraded.stt)
+      throw Error(
+        "Voice integration entered typed STT recovery: " + pa.state.status,
+      );
     if (Date.now() - at > timeout)
       throw Error(`Wait expired in ${pa.state.phase}: ${pa.state.status}`);
     await sleep(100);
@@ -159,7 +178,12 @@ console.log(
 pa.command({ type: "ready", value: true });
 pb.command({ type: "ready", value: true });
 await wait(() => pa.state.judge?.status === "speaking", 10000);
-console.log(JSON.stringify({exclusiveIntro: true, offFloorScoreUnits: pa.state.ledger.reduce((n, e) => n + e.deltaUnits, 0)}));
+console.log(
+  JSON.stringify({
+    exclusiveIntro: true,
+    offFloorScoreUnits: pa.state.ledger.reduce((n, e) => n + e.deltaUnits, 0),
+  }),
+);
 await wait(() => pa.state.phase === "TOPIC_SELECT");
 const tails = pa.state.tailsId === pa.session.playerId ? pa : pb;
 tails.command({
@@ -279,7 +303,10 @@ while (pa.state.phase !== "MATCH_RESULT") {
   );
 }
 await wait(
-  () => pb.state.phase === "MATCH_RESULT" && pa.state.judge?.status === "silent" && pb.state.judge?.status === "silent",
+  () =>
+    pb.state.phase === "MATCH_RESULT" &&
+    pa.state.judge?.status === "silent" &&
+    pb.state.judge?.status === "silent",
 );
 // Compare complete utterances after playback settles, not while the final
 // provider stream is still delivering chunks to the two independent sockets.

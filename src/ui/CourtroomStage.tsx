@@ -1,8 +1,8 @@
-import { Canvas,useFrame } from "@react-three/fiber";
-import { memo,useRef,useState } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { memo, useRef, useState } from "react";
 import * as THREE from "three";
-import type { Snapshot } from "../shared/types";
-import { client } from "./client";
+import type { Snapshot } from "../../shared/types";
+import { client } from "../game/client";
 function Box({
   position,
   scale,
@@ -60,7 +60,7 @@ function Bonk({
     const talking = state?.judge?.status === "speaking";
     mouth.current.scale.y = THREE.MathUtils.damp(
       mouth.current.scale.y,
-      talking ? 0.04 + client.judgeAmplitude() * 0.65 : 0.025,
+      talking ? 0.04 + client.sound.judgeAmplitude() * 0.65 : 0.025,
       18,
       delta,
     );

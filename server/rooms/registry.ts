@@ -1,9 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
-import { Controller } from "./controller.js";
-import { RuleError } from "./game.js";
+import { RuleError } from "../game/game.js";
+import { RoomController } from "./room.js";
 
-import type { RoomServices } from "./runtime.js";
+import type { RoomServices } from "./services.js";
 export function createRegistry(
   services: Partial<RoomServices> = {},
   providersReady = () =>
@@ -13,8 +13,8 @@ export function createRegistry(
       process.env.FISH_AUDIO_API_KEY
     ),
 ) {
-  const rooms = new Map<string, Controller>(),
-    byId = new Map<string, Controller>();
+  const rooms = new Map<string, RoomController>(),
+    byId = new Map<string, RoomController>();
   const buckets = new Map<string, { count: number; expires: number }>();
   const hash = (text: string) =>
     createHash("sha256").update(text).digest("hex");
@@ -43,7 +43,7 @@ export function createRegistry(
       throw new RuleError("Choose a friendly display name.");
     return s;
   }
-  function session(room: Controller, playerName: string) {
+  function session(room: RoomController, playerName: string) {
     const p = room.game.addPlayer(playerName),
       token = randomBytes(32).toString("base64url");
     room.seats.set(p.id, {
@@ -82,7 +82,7 @@ export function createRegistry(
     session,
     authenticate,
     providersReady,
-    createRoom: (code: string) => new Controller(code, services),
+    createRoom: (code: string) => new RoomController(code, services),
   };
 }
 export type RoomRegistry = ReturnType<typeof createRegistry>;

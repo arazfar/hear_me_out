@@ -1,10 +1,10 @@
 import express from "express";
 import { randomInt } from "node:crypto";
 import { z } from "zod";
-import { PROTOCOL_VERSION } from "../shared/protocol.js";
-import { RuleError } from "./game.js";
+import { PROTOCOL_VERSION } from "../../shared/protocol.js";
+import { RuleError } from "../game/game.js";
 
-import type { RoomRegistry } from "./registry.js";
+import type { RoomRegistry } from "../rooms/registry.js";
 export function registerHttp(app: express.Express, registry: RoomRegistry) {
   const { rooms, byId, rate, name, session, authenticate } = registry;
   app.get("/healthz", (_req, res) =>

@@ -1,5 +1,5 @@
-import { FIXED_LINES, voiceSettingsKey } from "./host.js";
-import { streamVoice } from "./providers.js";
+import { streamVoice } from "../providers/index.js";
+import { FIXED_LINES, voiceSettingsKey } from "./personality.js";
 /** A bounded preparation can be replayed while synthesis is still arriving. */
 export class PreparedVoice {
   chunks: Uint8Array[] = [];

@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
-import { canSpeak, type Segment } from "../shared/types.js";
-import type { Controller } from "./controller.js";
-import { safeReaction, voiceSettingsKey } from "./host.js";
-import { type Proposal } from "./providers.js";
+import { canSpeak, type Segment } from "../../shared/types.js";
+import { type Proposal } from "../providers/index.js";
+import type { RoomController } from "../rooms/room.js";
+import { safeReaction, voiceSettingsKey } from "./personality.js";
 import { PreparedVoice } from "./voice-cache.js";
 export class Judging {
-  constructor(readonly room: Controller) {}
+  constructor(readonly room: RoomController) {}
   recent: Segment[] = [];
   queue: Segment[] = [];
   busy = false;

@@ -1,14 +1,14 @@
-import { useCallback,useEffect,useRef,useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-canSpeak,
-points,
-scoreShare,
-SUGGESTIONS,
-type Player,
-type Snapshot,
+  canSpeak,
+  points,
+  scoreShare,
+  SUGGESTIONS,
+  type Player,
+  type Snapshot,
 } from "../shared/types";
-import { client } from "./client";
-import { Stage } from "./Stage";
+import { client } from "./game/client";
+import { Stage } from "./ui/CourtroomStage";
 function AnimatedScore({
   units,
   reduced,
@@ -92,46 +92,58 @@ function Face({
     )[0];
   useEffect(() => {
     if (video.current) {
-      const desired = local ? client.stream : client.remote;
+      const desired = local ? client.capture.stream : client.peer.remote;
       if (video.current.srcObject !== desired)
         video.current.srcObject = desired;
-      video.current.muted = local || client.peerMuted || !canSpeak(state, player?.id || null);
+      video.current.muted =
+        local || client.sound.peerMuted || !canSpeak(state, player?.id || null);
       video.current.volume = 1;
       void video.current.play().catch(() => {});
     }
   }, [
     local,
-    client.stream,
-    client.remote,
+    client.capture.stream,
+    client.peer.remote,
     state.mediaMode,
     player?.cameraOn,
-    client.cameraOff,
+    client.capture.cameraOff,
     state.turn?.playerId,
     state.turn?.pausedReason,
     state.turn?.sealing,
     state.phase,
     state.judge?.status,
-    client.peerMuted,
+    client.sound.peerMuted,
   ]);
   useEffect(() => {
-    if (relayCanvas.current && client.remoteCanvas && client.remoteFrame)
-      relayCanvas.current.getContext("2d")?.drawImage(client.remoteCanvas, 0, 0, 256, 144);
-  }, [client.remoteFrameSeq, client.remoteFrame, state.mediaMode, player?.cameraOn]);
+    if (
+      relayCanvas.current &&
+      client.video.remoteCanvas &&
+      client.video.remoteFrame
+    )
+      relayCanvas.current
+        .getContext("2d")
+        ?.drawImage(client.video.remoteCanvas, 0, 0, 256, 144);
+  }, [
+    client.video.remoteFrameSeq,
+    client.video.remoteFrame,
+    state.mediaMode,
+    player?.cameraOn,
+  ]);
   const attachVideo = useCallback(
     (node: HTMLVideoElement | null) => {
       video.current = node;
       if (!node) return;
-      const desired = local ? client.stream : client.remote;
+      const desired = local ? client.capture.stream : client.peer.remote;
       if (node.srcObject !== desired) node.srcObject = desired;
       if (node.paused) void node.play().catch(() => {});
     },
-    [local, client.stream, client.remote],
+    [local, client.capture.stream, client.peer.remote],
   );
-  const camera = player?.cameraOn && (local ? !client.cameraOff : true);
+  const camera = player?.cameraOn && (local ? !client.capture.cameraOff : true);
   const media = local
-    ? client.stream
+    ? client.capture.stream
     : state.mediaMode === "rtc"
-      ? client.remote
+      ? client.peer.remote
       : null;
   return (
     <article
@@ -145,16 +157,26 @@ function Face({
         </span>
       </div>
       <div className="face-picture">
-        {camera && (media || (!local && client.remoteFrame)) ? (
+        {camera && (media || (!local && client.video.remoteFrame)) ? (
           <>
             {!local && state.mediaMode !== "rtc" ? (
-              <canvas ref={relayCanvas} width={256} height={144} role="img" aria-label={`${player?.name}'s live camera`} />
+              <canvas
+                ref={relayCanvas}
+                width={256}
+                height={144}
+                role="img"
+                aria-label={`${player?.name}'s live camera`}
+              />
             ) : (
               <video
                 ref={attachVideo}
                 autoPlay
                 playsInline
-                muted={local || client.peerMuted || !canSpeak(state, player?.id || null)}
+                muted={
+                  local ||
+                  client.sound.peerMuted ||
+                  !canSpeak(state, player?.id || null)
+                }
                 style={{ transform: local ? "scaleX(-1)" : undefined }}
               />
             )}
@@ -165,7 +187,13 @@ function Face({
             <small>{player ? "Camera off" : "Send them the room code"}</small>
           </div>
         )}
-        {!local && camera && state.mediaMode !== "rtc" && (!client.remoteFrameAt || Date.now() - client.remoteFrameAt > 2000) && <span className="camera-status">Connecting camera…</span>}
+        {!local &&
+          camera &&
+          state.mediaMode !== "rtc" &&
+          (!client.video.remoteFrameAt ||
+            Date.now() - client.video.remoteFrameAt > 2000) && (
+            <span className="camera-status">Connecting camera…</span>
+          )}
         {active && (
           <span className="floor-tag">
             {state.turn?.sealing ? "✦ CASE PRESENTED" : "✦ HAS THE FLOOR"}
@@ -177,7 +205,19 @@ function Face({
           </span>
         )}
       </div>
-      {state.phase === "ROUND" && <div className="speaking-status">{canSpeak(state, player?.id || null) ? (local && client.micMuted ? "MIC OFF · your turn" : "Your turn") : state.judge?.status !== "silent" && state.judge ? "Muted · Bonk is talking" : state.turn?.sealing ? "Muted · judging argument" : "Muted · opponent’s turn"}</div>}
+      {state.phase === "ROUND" && (
+        <div className="speaking-status">
+          {canSpeak(state, player?.id || null)
+            ? local && client.capture.micMuted
+              ? "MIC OFF · your turn"
+              : "Your turn"
+            : state.judge?.status !== "silent" && state.judge
+              ? "Muted · Bonk is talking"
+              : state.turn?.sealing
+                ? "Muted · judging argument"
+                : "Muted · opponent’s turn"}
+        </div>
+      )}
       <div className="face-bottom">
         <span className="position">
           {state.topic?.positions[player?.id || ""] ||
@@ -249,7 +289,7 @@ function Face({
               client.command({
                 type: "done",
                 turnId: state.turn!.id,
-                lastAudioSeq: client.audioSeq,
+                lastAudioSeq: client.capture.audioSeq,
               })
             }
           >
@@ -314,7 +354,7 @@ export function App() {
           score.deltaUnits;
         setBurst((v) => ({ ...v, [score.playerId]: `+${points(units)}` }));
         if (Date.now() - lastScoreSound.current > 450) {
-          client.effect("score");
+          client.sound.effect("score");
           lastScoreSound.current = Date.now();
         }
         bursts.current[score.playerId] = {
@@ -326,9 +366,9 @@ export function App() {
           ),
         };
       }
-      if (e?.type === "coin_committed") client.effect("coin");
+      if (e?.type === "coin_committed") client.sound.effect("coin");
       if (e?.type === "match_result" || e?.type === "round_result")
-        client.effect("verdict");
+        client.sound.effect("verdict");
     });
     void client.restore();
     const timer = setInterval(() => setNow(Date.now()), 100);
@@ -381,7 +421,7 @@ export function App() {
           href="#"
           onClick={(e) => {
             e.preventDefault();
-            if (!state) void client.unlock();
+            if (!state) void client.sound.unlock();
           }}
         >
           HEAR ME OUT<span>THE COURT OF BAD TAKES</span>
@@ -571,11 +611,11 @@ export function App() {
                   ? "Say something. Can you hear each other? Then both hit Ready."
                   : "Send your friend the room code. No sign-up, no dignity required."}
               </p>
-              {!client.stream ? (
+              {!client.capture.stream ? (
                 <>
                   <button
                     className="primary"
-                    onClick={() => void action(() => client.devices())}
+                    onClick={() => void action(() => client.capture.devices())}
                   >
                     ENABLE CAMERA + MIC
                   </button>
@@ -585,7 +625,9 @@ export function App() {
                   </p>
                   <button
                     className="text-button"
-                    onClick={() => void action(() => client.devices(false))}
+                    onClick={() =>
+                      void action(() => client.capture.devices(false))
+                    }
                   >
                     Join with microphone only
                   </button>
@@ -597,11 +639,13 @@ export function App() {
                     <div>
                       <i
                         style={{
-                          width: `${Math.max(3, Math.min(100, client.micLevel * 700))}%`,
+                          width: `${Math.max(3, Math.min(100, client.capture.micLevel * 700))}%`,
                         }}
                       />
                     </div>
-                    <span>{client.micMuted ? "MUTED" : "SAY HELLO"}</span>
+                    <span>
+                      {client.capture.micMuted ? "MUTED" : "SAY HELLO"}
+                    </span>
                   </div>
                   <button
                     className="primary"
@@ -981,26 +1025,33 @@ export function App() {
           <footer className="controls">
             <div>
               <button
-                onClick={() => client.muteMic()}
-                className={client.micMuted ? "muted" : ""}
+                onClick={() => client.capture.muteMic()}
+                className={client.capture.micMuted ? "muted" : ""}
               >
-                {client.micMuted ? "MIC OFF" : client.microphoneAllowed() ? "MIC ON" : "AUTO MUTED"} <span>●</span>
+                {client.capture.micMuted
+                  ? "MIC OFF"
+                  : client.capture.microphoneAllowed()
+                    ? "MIC ON"
+                    : "AUTO MUTED"}{" "}
+                <span>●</span>
               </button>
-              <button onClick={() => client.muteCamera()}>
-                {client.cameraOff ? "CAM OFF" : "CAM ON"} <span>▣</span>
+              <button onClick={() => client.capture.muteCamera()}>
+                {client.capture.cameraOff ? "CAM OFF" : "CAM ON"} <span>▣</span>
               </button>
-              {!client.stream && (
-                <button onClick={() => void action(() => client.devices())}>
+              {!client.capture.stream && (
+                <button
+                  onClick={() => void action(() => client.capture.devices())}
+                >
                   ENABLE DEVICES
                 </button>
               )}
             </div>
             <div>
-              <button onClick={() => client.mutePeer()}>
-                {client.peerMuted ? "FRIEND MUTED" : "FRIEND AUDIO"}
+              <button onClick={() => client.sound.mutePeer()}>
+                {client.sound.peerMuted ? "FRIEND MUTED" : "FRIEND AUDIO"}
               </button>
-              <button onClick={() => client.muteJudge()}>
-                {client.judgeMuted ? "BONK MUTED" : "BONK AUDIO"}
+              <button onClick={() => client.sound.muteJudge()}>
+                {client.sound.judgeMuted ? "BONK MUTED" : "BONK AUDIO"}
               </button>
               <button onClick={() => client.leave()}>LEAVE ↗</button>
             </div>

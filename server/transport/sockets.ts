@@ -1,18 +1,18 @@
 import { WebSocket, WebSocketServer } from "ws";
-import { decodeVideo } from "../shared/media.js";
+import { decodeVideo } from "../../shared/media.js";
 import {
   authSchema,
   auxiliarySchema,
   commandEnvelopeSchema,
   PROTOCOL_VERSION,
-} from "../shared/protocol.js";
-import { Controller } from "./controller.js";
-import { RuleError } from "./game.js";
-import { acceptUpgrade } from "./transport/upgrade.js";
+} from "../../shared/protocol.js";
+import { RuleError } from "../game/game.js";
+import { RoomController } from "../rooms/room.js";
+import { acceptUpgrade } from "./upgrade.js";
 
 import type { Server } from "node:http";
-import { command } from "./commands.js";
-import type { RoomRegistry } from "./registry.js";
+import { command } from "../rooms/commands.js";
+import type { RoomRegistry } from "../rooms/registry.js";
 export function registerSockets(server: Server, registry: RoomRegistry) {
   const { authenticate, rate } = registry;
   const wss = new WebSocketServer({
@@ -37,7 +37,7 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
     const channel = new URL(req.url || "", "http://localhost").pathname
       .split("/")
       .at(-1)!;
-    let room: Controller | null = null,
+    let room: RoomController | null = null,
       id = "",
       epoch = 0,
       alive = true,

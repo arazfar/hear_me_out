@@ -1,7 +1,7 @@
-import type { Controller } from "./controller.js";
-import { type TranscriptionStream } from "./runtime.js";
+import type { RoomController } from "./room.js";
+import { type TranscriptionStream } from "./services.js";
 export class Transcription {
-  constructor(readonly room: Controller) {}
+  constructor(readonly room: RoomController) {}
   ink = new Map<string, TranscriptionStream>();
   sealedAudio = new Map<
     string,

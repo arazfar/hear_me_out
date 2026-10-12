@@ -3,10 +3,10 @@ import { existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { resolve } from "node:path";
 
-import { registerHttp } from "./http.js";
-import { createRegistry } from "./registry.js";
-import type { RoomServices } from "./runtime.js";
-import { registerSockets } from "./sockets.js";
+import { createRegistry } from "./rooms/registry.js";
+import type { RoomServices } from "./rooms/services.js";
+import { registerHttp } from "./transport/http.js";
+import { registerSockets } from "./transport/sockets.js";
 export function createApp(
   options: {
     services?: Partial<RoomServices>;

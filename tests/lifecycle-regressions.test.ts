@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Controller } from "../server/controller";
+import { RoomController } from "../server/rooms/room";
 import { acceptUpgrade } from "../server/transport/upgrade";
-import { Client } from "../src/client";
+import { Client } from "../src/game/client";
 
 test("an old failed judgment cannot abort a replacement match", async () => {
   const savedFetch = globalThis.fetch,
@@ -25,7 +25,7 @@ test("an old failed judgment cannot abort a replacement match", async () => {
     );
   };
   process.env.OPENAI_API_KEY = "fixture";
-  const c = new Controller("1234");
+  const c = new RoomController("1234");
   c.game.onEvent = () => {};
   try {
     const a = c.game.addPlayer("Sam"),
