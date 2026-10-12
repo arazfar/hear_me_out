@@ -106,7 +106,6 @@ function Face({
     state.mediaMode,
     player?.cameraOn,
     client.cameraOff,
-    state.turn?.suppressOpponent,
     state.turn?.playerId,
     state.turn?.pausedReason,
     state.turn?.sealing,

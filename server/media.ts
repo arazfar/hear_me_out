@@ -1,24 +1,23 @@
 import { WebSocket } from "ws";
+import { decodeMicrophone } from "../shared/media.js";
 import { canSpeak } from "../shared/types.js";
 import type { Controller } from "./controller.js";
 export class RoomMedia {
   constructor(readonly room: Controller) {}
   rtcTimer: ReturnType<typeof setTimeout> | null = null;
   audio(id: string, raw: Buffer) {
+    const packet = decodeMicrophone(raw),
+      seat = this.room.seats.get(id);
     if (
-      raw.length < 17 ||
-      raw[0] !== 1 ||
-      raw.length > 4096 ||
-      raw.readUInt32LE(9) !== 16000 ||
-      raw.readUInt32LE(1) !== this.room.game.state.mediaEpoch ||
-      (raw.length - 17) % 2 !== 0
+      !packet ||
+      !seat ||
+      packet.epoch !== this.room.game.state.mediaEpoch ||
+      packet.seq <= seat.audioSeq ||
+      packet.seq > seat.audioSeq + 4096 ||
+      packet.capturedAt > this.room.services.now() + 1000
     )
       return;
-    const headerBytes = raw.length - raw.readUInt32LE(13) * 2;
-    if (headerBytes !== 17 && headerBytes !== 25) return;
-    const seat = this.room.seats.get(id)!;
-    const seq = raw.readUInt32LE(5);
-    if (seq <= seat.audioSeq) return;
+    const { seq, capturedAt } = packet;
     seat.audioSeq = seq;
     seat.lastAudioAt = this.room.services.now();
     const allowed = canSpeak(this.room.game.state, id);
@@ -30,12 +29,11 @@ export class RoomMedia {
       this.room.game.state.turn.sealing &&
       this.room.services.now() <= boundary.expiresAt &&
       seq <= boundary.maxSeq &&
-      headerBytes === 25 &&
-      raw.readDoubleLE(17) <= boundary.capturedBefore;
+      capturedAt <= boundary.capturedBefore;
     const pcm =
       allowed || draining
-        ? raw.subarray(headerBytes)
-        : Buffer.alloc(raw.length - headerBytes);
+        ? Buffer.from(packet.pcm)
+        : Buffer.alloc(packet.pcm.length);
     this.room.transcription.ink.get(id)?.send(pcm);
     if (!allowed) {
       seat.voiceAt = 0;
@@ -48,8 +46,7 @@ export class RoomMedia {
     if (rms > 0.018) seat.voiceAt = this.room.services.now();
     if (
       this.room.game.state.mediaMode !== "rtc" &&
-      (headerBytes === 17 ||
-        this.room.services.now() - raw.readDoubleLE(17) < 250)
+      this.room.services.now() - capturedAt < 250
     )
       this.forward(id, "audio", raw);
     if (this.room.services.now() - seat.lastActivity > 250) {

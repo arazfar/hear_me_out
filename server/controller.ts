@@ -32,6 +32,16 @@ export class Controller {
     speechGenerationMs: number[];
     playbackMs: number[];
   } = { scoringMs: [], speechGenerationMs: [], playbackMs: [] };
+  recordMetric(kind: keyof Controller["metrics"], value: number) {
+    if (!Number.isFinite(value)) return;
+    const samples = this.metrics[kind];
+    samples.push(value);
+    if (samples.length > 128) samples.shift();
+  }
+  failures = new Map<string, number>();
+  recordFailure(category: "judgment" | "transcription" | "voice_delivery") {
+    this.failures.set(category, (this.failures.get(category) || 0) + 1);
+  }
   services: RoomServices;
   timers = new Set<ReturnType<typeof setTimeout>>();
   topicRequest: AbortController | null = null;
@@ -274,12 +284,6 @@ export class Controller {
     this.game.emit("player_disconnected");
   }
   tick() {
-    const voices = [...this.seats.values()];
-    if (
-      voices.length === 2 &&
-      voices.every((s) => this.services.now() - s.voiceAt < 120)
-    )
-      this.game.overlap(100);
     this.game.tick();
   }
   close() {

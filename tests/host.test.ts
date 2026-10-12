@@ -36,7 +36,6 @@ test("leaving a room resets judge playback IDs so another room can reuse its epo
   client.readySent.add(1);
   client.played.add("1:0");
   client.judgeStartContext.set(1, 10);
-  client.bargeEpoch = 1;
   client.resetJudgePlayback();
   assert.equal(stopped, 1);
   assert.equal(client.nodes.size, 0);
@@ -45,7 +44,6 @@ test("leaving a room resets judge playback IDs so another room can reuse its epo
   assert.equal(client.readySent.size, 0);
   assert.equal(client.played.size, 0);
   assert.equal(client.judgeStartContext.size, 0);
-  assert.equal(client.bargeEpoch, -1);
 });
 test("topic nudge is once per phase and pending phase speech is cancelled on advance", () => {
   const c = new Controller("1234");

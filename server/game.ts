@@ -1,4 +1,5 @@
 import { randomInt, randomUUID } from "node:crypto";
+import { gameEventSchema, type eventPayloads } from "../shared/protocol.js";
 import {
   CAPS,
   CRITERIA,
@@ -157,19 +158,21 @@ export class Game {
     this.state.serverNow = this.now();
     return structuredClone(this.state);
   }
-  emit(type: string, payload: unknown = null) {
+  emit(type: keyof typeof eventPayloads, payload: unknown = null) {
     this.state.seq++;
     this.state.serverNow = this.now();
-    this.onEvent({
-      roomId: this.state.roomId,
-      matchId: this.state.matchId,
-      seq: this.state.seq,
-      serverNowMs: this.now(),
-      phaseVersion: this.state.phaseVersion,
-      type,
-      payload,
-      snapshot: this.snapshot(),
-    });
+    this.onEvent(
+      gameEventSchema.parse({
+        roomId: this.state.roomId,
+        matchId: this.state.matchId,
+        seq: this.state.seq,
+        serverNowMs: this.now(),
+        phaseVersion: this.state.phaseVersion,
+        type,
+        payload,
+        snapshot: this.snapshot(),
+      }),
+    );
   }
   setPhase(phase: Phase, timeout?: number) {
     this.state.phase = phase;
@@ -372,8 +375,6 @@ export class Game {
       pausedReason: null,
       sealing: false,
       targets: { reasoning: 0, rebuttal: 0, impact: 0, wit: 0, clarity: 0 },
-      overlapRefundMs: 0,
-      suppressOpponent: false,
     };
     if (this.state.judge?.status === "speaking") {
       t.pausedReason = "judge";
@@ -456,20 +457,6 @@ export class Game {
   }
   speechStarted(id: string) {
     if (this.state.turn?.playerId === id) this.endOfThoughtAt = 0;
-  }
-  overlap(ms: number) {
-    const t = this.state.turn;
-    if (!t || t.sealing || t.pausedReason || this.state.phase !== "ROUND")
-      return;
-    const credit = Math.min(ms, 6000 - t.overlapRefundMs);
-    if (credit <= 0) return;
-    t.overlapRefundMs += credit;
-    t.remainingMs += credit;
-    if (t.deadline) t.deadline += credit;
-    if (t.overlapRefundMs >= 6000) {
-      t.suppressOpponent = true;
-      this.emit("overlap_protected");
-    }
   }
   registerSegment(segment: Segment) {
     if (!segment.turnId || !segment.eligible) return false;
@@ -734,7 +721,7 @@ export class Game {
         s.turnIndex++;
         this.openTurn();
       } else if (t && !t.pausedReason) {
-        const active = t.durationMs + t.overlapRefundMs - this.remaining(t);
+        const active = t.durationMs - this.remaining(t);
         if (
           this.remaining(t) <= 0 ||
           (this.endOfThoughtAt &&

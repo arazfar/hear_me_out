@@ -20,8 +20,6 @@ function setup() {
     pausedReason: null,
     sealing: false,
     targets: { reasoning: 0, rebuttal: 0, impact: 0, wit: 0, clarity: 0 },
-    overlapRefundMs: 0,
-    suppressOpponent: false,
   };
   c.game.state.turn = turn;
   return { c, a, b, turn };

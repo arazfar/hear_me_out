@@ -1,17 +1,23 @@
 import {
+  decodeJudgeAudio,
+  decodeMicrophone,
+  decodeVideo,
+  encodeMicrophone,
+  encodeVideo,
+} from "../shared/media";
+import {
+  PROTOCOL_VERSION,
+  serverMessageSchema,
+  type Session,
+  type Signal,
+} from "../shared/protocol";
+import {
   canSpeak,
   type Command,
   type GameEvent,
   type Snapshot,
 } from "../shared/types";
 import { ServerClock } from "./media/server-clock";
-export interface Session {
-  roomId: string;
-  playerId: string;
-  token: string;
-  connectionEpoch: number;
-  code: string;
-}
 export type Update = {
   state?: Snapshot;
   event?: GameEvent;
@@ -59,7 +65,7 @@ export class Client {
   makingOffer = false;
   ignoreOffer = false;
   pendingCandidates: RTCIceCandidateInit[] = [];
-  pendingSignals: any[] = [];
+  pendingSignals: Signal[] = [];
   audioSeq = 0;
   videoSeq = 0;
   videoInFlight = new Map<number, number>();
@@ -87,7 +93,6 @@ export class Client {
   played = new Set<string>();
   nodes = new Set<AudioBufferSourceNode>();
   judgeStartContext = new Map<number, number>();
-  bargeEpoch = -1;
   frameTimer: ReturnType<typeof setInterval> | null = null;
   pingTimer: ReturnType<typeof setInterval> | null = null;
   statusTimer: ReturnType<typeof setInterval> | null = null;
@@ -224,15 +229,15 @@ export class Client {
         audio.bufferedAmount > 8000
       )
         return;
-      const packet = new ArrayBuffer(25 + data.pcm.byteLength),
-        header = new DataView(packet);
-      header.setUint8(0, 1);
-      header.setUint32(1, this.state?.mediaEpoch || 0, true);
-      header.setUint32(5, ++this.audioSeq, true);
-      header.setUint32(9, 16000, true);
-      header.setUint32(13, 320, true);
-      header.setFloat64(17, this.serverNow(), true);
-      if (allowed) new Uint8Array(packet, 25).set(new Uint8Array(data.pcm));
+      const pcm = allowed
+        ? new Uint8Array(data.pcm)
+        : new Uint8Array(data.pcm.byteLength);
+      const packet = encodeMicrophone(
+        this.state?.mediaEpoch || 0,
+        ++this.audioSeq,
+        this.serverNow(),
+        pcm,
+      );
       audio.send(packet);
     };
     this.syncMicrophone();
@@ -364,13 +369,12 @@ export class Client {
           try {
             if (!blob || this.state?.mediaEpoch !== mediaEpoch) return;
             const data = await blob.arrayBuffer();
-            const packet = new ArrayBuffer(17 + data.byteLength),
-              view = new DataView(packet);
-            view.setUint8(0, 3);
-            view.setUint32(1, mediaEpoch, true);
-            view.setUint32(5, ++this.videoSeq, true);
-            view.setFloat64(9, capturedAt, true);
-            new Uint8Array(packet, 17).set(new Uint8Array(data));
+            const packet = encodeVideo(
+              mediaEpoch,
+              ++this.videoSeq,
+              capturedAt,
+              new Uint8Array(data),
+            );
             if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 12000) {
               this.videoInFlight.set(this.videoSeq, Date.now());
               ws.send(packet);
@@ -438,7 +442,14 @@ export class Client {
           ws.close();
           return;
         }
-        ws.send(JSON.stringify({ type: "auth", ...session, code: undefined }));
+        ws.send(
+          JSON.stringify({
+            type: "auth",
+            protocolVersion: PROTOCOL_VERSION,
+            ...session,
+            code: undefined,
+          }),
+        );
         if (channel === "control") {
           this.notify({ connection: "connected" });
           this.send({ type: "ping", clientTime: performance.now() });
@@ -451,14 +462,15 @@ export class Client {
         else if (channel === "audio") this.audio(event.data);
         else if (channel === "video") {
           const frame = event.data as ArrayBuffer;
+          const decoded = decodeVideo(new Uint8Array(frame));
           if (
             !this.state ||
             this.state.mediaMode === "rtc" ||
-            frame.byteLength < 17 ||
-            new DataView(frame).getUint32(1, true) !== this.state.mediaEpoch
+            !decoded ||
+            decoded.epoch !== this.state.mediaEpoch
           )
             return;
-          const seq = new DataView(frame).getUint32(5, true);
+          const seq = decoded.seq;
           const ack = () =>
             this.send({
               type: "video_ack",
@@ -470,7 +482,14 @@ export class Client {
           void this.decodeVideo();
         }
       };
-      ws.onclose = () => {
+      ws.onclose = (event) => {
+        if (current() && event.code === 4406) {
+          this.leave();
+          this.notify({
+            error: "The game was updated. Refresh this page to continue.",
+          });
+          return;
+        }
         if (!this.disconnecting && current()) this.scheduleReconnect();
       };
       ws.onerror = () => {};
@@ -590,7 +609,15 @@ export class Client {
       command,
     });
   }
-  message(data: any) {
+  message(raw: unknown) {
+    const parsed = serverMessageSchema.safeParse(raw);
+    if (!parsed.success) {
+      this.notify({
+        error: "The connection protocol changed. Refresh this page.",
+      });
+      return;
+    }
+    const data = parsed.data;
     if (data.type === "video_ack") {
       if (data.mediaEpoch === this.state?.mediaEpoch)
         this.videoInFlight.delete(data.seq);
@@ -609,21 +636,27 @@ export class Client {
       return;
     }
     if (data.type === "ack") {
-      if (data.ok === false) this.notify({ error: data.error });
+      if (data.ok === false)
+        this.notify({ error: data.error || "Request could not complete." });
       return;
     }
     if (data.type === "error") {
-      this.notify({ error: data.error });
+      this.notify({ error: data.error || "Request could not complete." });
       return;
     }
-    if (data.snapshot) {
+    if ("snapshot" in data) {
       if (
         this.state &&
         data.snapshot.seq < this.state.seq &&
         data.snapshot.roomId === this.state.roomId
       )
         return;
-      if (this.state && data.seq && data.seq > this.state.seq + 1)
+      if (
+        this.state &&
+        "seq" in data &&
+        data.seq &&
+        data.seq > this.state.seq + 1
+      )
         this.send({ type: "snapshot_request" });
       if (this.state && this.state.mediaEpoch !== data.snapshot.mediaEpoch) {
         this.resetVideo();
@@ -667,7 +700,10 @@ export class Client {
         )
       )
         this.peerPlayback?.port.postMessage({ type: "flush" });
-      this.notify({ state: data.snapshot, event: data.seq ? data : undefined });
+      this.notify({
+        state: data.snapshot,
+        event: "seq" in data ? data : undefined,
+      });
       if (data.type === "judge_cancelled") {
         const epoch = data.payload?.epoch;
         this.cancelled.add(epoch);
@@ -745,7 +781,7 @@ export class Client {
       }
     };
   }
-  async signal(data: any) {
+  async signal(data: Signal) {
     this.makePeer();
     const pc = this.pc;
     if (!pc) {
@@ -783,48 +819,72 @@ export class Client {
   }
   audio(raw: ArrayBuffer) {
     if (!this.context || raw.byteLength < 17) return;
-    const view = new DataView(raw),
-      kind = view.getUint8(0),
-      rate = view.getUint32(9, true);
-    if (kind === 1 && this.state?.mediaMode !== "rtc") {
+    const bytes = new Uint8Array(raw);
+    if (bytes[0] === 1 && this.state?.mediaMode !== "rtc") {
+      const packet = decodeMicrophone(bytes);
       if (
+        !packet ||
+        packet.epoch !== this.state?.mediaEpoch ||
         !canSpeak(
           this.state,
           this.state?.players.find((p) => p.id !== this.session?.playerId)
             ?.id || null,
-        )
+        ) ||
+        this.serverNow() - packet.capturedAt > 250
       )
         return;
-      const headerBytes = raw.byteLength - view.getUint32(13, true) * 2;
-      if (headerBytes !== 17 && headerBytes !== 25) return;
-      if (
-        headerBytes === 25 &&
-        this.serverNow() - view.getFloat64(17, true) > 250
-      )
-        return;
-      const shorts = new Int16Array(raw.slice(headerBytes)),
+      const shorts = new Int16Array(packet.pcm.slice().buffer),
         floats = new Float32Array(shorts.length);
       for (let i = 0; i < shorts.length; i++) floats[i] = shorts[i] / 32768;
-      if (rate === 16000)
-        this.peerPlayback?.port.postMessage({ pcm: floats.buffer }, [
-          floats.buffer,
-        ]);
-    } else if (kind === 2) {
-      const epoch = view.getUint32(1, true);
-      if (this.cancelled.has(epoch)) return;
-      const chunks = this.judgeChunks.get(epoch) || [];
-      chunks.push({
-        offset: view.getUint32(13, true),
-        pcm: new Float32Array(raw.slice(17)),
-      });
-      if (chunks.reduce((n, c) => n + c.pcm.length, 0) > 44100 * 8) return;
-      this.judgeChunks.set(epoch, chunks);
+      this.peerPlayback?.port.postMessage({ pcm: floats.buffer }, [
+        floats.buffer,
+      ]);
+    } else if (bytes[0] === 2) {
+      const packet = decodeJudgeAudio(bytes),
+        judge = this.state?.judge;
+      if (
+        !packet ||
+        (judge &&
+          (packet.epoch < judge.epoch ||
+            packet.epoch > judge.epoch + 4 ||
+            (packet.epoch === judge.epoch && judge.status === "silent"))) ||
+        this.cancelled.has(packet.epoch)
+      )
+        return;
+      if (!this.judgeChunks.has(packet.epoch) && this.judgeChunks.size >= 2)
+        return;
+      const chunks = this.judgeChunks.get(packet.epoch) || [];
+      if (
+        chunks.some((c) => c.offset === packet.offset) ||
+        chunks.reduce((n, c) => n + c.pcm.length, 0) + packet.pcm.length >
+          44100 * 8
+      )
+        return;
+      chunks.push({ offset: packet.offset, pcm: packet.pcm });
+      this.judgeChunks.set(packet.epoch, chunks);
       this.updateSpeech();
     }
   }
+
   updateSpeech() {
     const s = this.state?.judge;
-    if (!s || !this.context || this.cancelled.has(s.epoch)) return;
+    if (!s) return;
+    for (const epoch of this.judgeChunks.keys())
+      if (epoch < s.epoch || (epoch === s.epoch && s.status === "silent"))
+        this.judgeChunks.delete(epoch);
+    if (s.status === "silent") {
+      this.stopJudge();
+      return;
+    }
+    for (const epoch of this.cancelled)
+      if (epoch !== s.epoch) this.cancelled.delete(epoch);
+    for (const epoch of this.readySent)
+      if (epoch !== s.epoch) this.readySent.delete(epoch);
+    for (const epoch of this.judgeStartContext.keys())
+      if (epoch !== s.epoch) this.judgeStartContext.delete(epoch);
+    for (const key of this.played)
+      if (!key.startsWith(`${s.epoch}:`)) this.played.delete(key);
+    if (!this.context || this.cancelled.has(s.epoch)) return;
     const chunks = this.judgeChunks.get(s.epoch);
     if (!chunks?.length) return;
     if (!this.readySent.has(s.epoch)) {
@@ -849,7 +909,10 @@ export class Client {
         this.context.currentTime + 0.015,
         this.judgeStartContext.get(s.epoch)! + c.offset / 44100,
       );
-      this.play(c.pcm, 44100, at, this.judgeGain!, true);
+      const expected = this.judgeStartContext.get(s.epoch)! + c.offset / 44100;
+      const skipped = Math.max(0, Math.floor((at - expected) * 44100));
+      if (skipped < c.pcm.length)
+        this.play(c.pcm.subarray(skipped), 44100, at, this.judgeGain!, true);
       if (c.offset === 0) {
         setTimeout(
           () => {
@@ -908,7 +971,6 @@ export class Client {
     this.readySent.clear();
     this.played.clear();
     this.judgeStartContext.clear();
-    this.bargeEpoch = -1;
   }
   muteMic() {
     this.micMuted = !this.micMuted;

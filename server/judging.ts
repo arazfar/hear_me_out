@@ -118,7 +118,8 @@ export class Judging {
                 batch.some((s) => s.id === score.segmentId)
               ) {
                 if (this.room.game.score(score))
-                  this.room.metrics.scoringMs.push(
+                  this.room.recordMetric(
+                    "scoringMs",
                     this.room.services.now() - first.stableAt,
                   );
                 version = this.room.game.ledgerVersion;
@@ -186,6 +187,7 @@ export class Judging {
       }
     } catch {
       if (!current()) return;
+      this.room.recordFailure("judgment");
       this.room.game.abort(
         "The judge could not score reliably. No winner was invented. Try a new match.",
       );

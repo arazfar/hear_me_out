@@ -22,6 +22,7 @@ for (const transition of ["rematch", "dispose", "recovery"] as const) {
     }
     if (transition === "dispose") room.close();
     if (transition === "recovery") room.game.recover("Connection interrupted");
+    await flush();
     const before = room.game.snapshot();
     job.reject(new Error("Delayed failure"));
     await flush();

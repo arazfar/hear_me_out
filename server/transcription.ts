@@ -83,6 +83,7 @@ export class Transcription {
   }
   sttFailure(id: string, turnId: string | null) {
     if (this.room.closed || this.room.game.state.phase === "RECOVERING") return;
+    this.room.recordFailure("transcription");
     const key = `${id}:${turnId || "off"}`,
       count = this.retries.get(key) ?? 0;
     this.retries.set(key, count + 1);

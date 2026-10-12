@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { WebSocket } from "ws";
+import { encodeJudgeAudio } from "../shared/media.js";
 import type { Controller } from "./controller.js";
 import { HostPhrases, voiceSettingsKey } from "./host.js";
 import { PreparedVoice } from "./voice-cache.js";
@@ -40,7 +41,6 @@ export class JudgePlayback {
   speechCues = new Map<number, { at: number; prepared: boolean }>();
   turnDoneAt = new Map<string, number>();
   metricsCue: {
-    text: string;
     cueAt: number;
     startedAt: number;
     latencyMs: number;
@@ -196,25 +196,32 @@ export class JudgePlayback {
           Math.max(0, Math.floor(maxSeconds * 44100) - offset) * 4;
         if (!remainingBytes) return;
         pcm = pcm.subarray(0, remainingBytes);
-        const header = Buffer.alloc(17);
-        header[0] = 2;
-        header.writeUInt32LE(epoch, 1);
-        header.writeUInt32LE(chunkSeq++, 5);
-        header.writeUInt32LE(44100, 9);
-        header.writeUInt32LE(offset, 13);
+        const data = encodeJudgeAudio(epoch, chunkSeq++, offset, pcm);
         offset += pcm.byteLength / 4;
-        const data = Buffer.concat([header, Buffer.from(pcm)]);
-        for (const seat of this.room.seats.values()) {
-          const ws = seat.sockets.get("audio");
-          if (ws?.readyState === WebSocket.OPEN && ws.bufferedAmount < 1000000)
-            ws.send(data);
-        }
+        const sockets = [...this.room.seats.values()].map((seat) =>
+          seat.sockets.get("audio"),
+        );
+        if (
+          sockets.length !== 2 ||
+          sockets.some(
+            (ws) =>
+              ws?.readyState !== WebSocket.OPEN || ws.bufferedAmount > 1000000,
+          )
+        )
+          throw new Error("Shared audio delivery unavailable");
+        for (const ws of sockets)
+          ws!.send(data, (error) => {
+            if (error && !cancelled()) this.voiceFailure();
+          });
         speech.duration = offset / 44100;
         if (chunkSeq === 1) {
-          this.room.metrics.speechGenerationMs.push(
+          this.room.recordMetric(
+            "speechGenerationMs",
             this.room.services.now() - began,
           );
-          speech.timer = this.room.later(() => this.beginSpeech(speech), 400);
+          speech.timer = this.room.later(() => {
+            if (this.speech === speech) this.voiceFailure();
+          }, 2000);
         }
       };
       if (source) await source.stream(emitChunk, cancelled);
@@ -231,16 +238,21 @@ export class JudgePlayback {
       if (speech.startedAt) this.scheduleSpeechEnd(speech);
     } catch {
       if (cancelled()) return;
-      this.room.game.degrade(
-        "tts",
-        "Judge voice unavailable. The same verdict and captions are shared.",
-      );
-      this.cancelSpeech();
-      this.room.game.emit("voice_recovery");
-      this.startHostCue();
-      if (this.room.game.state.phase === "ROUND_RESOLVE") {
-        this.room.game.finishRoundPresentation();
-      }
+      this.voiceFailure();
+    }
+  }
+  voiceFailure() {
+    if (!this.speech || this.room.closed) return;
+    this.room.recordFailure("voice_delivery");
+    this.room.game.degrade(
+      "tts",
+      "Judge voice unavailable. The same verdict and captions are shared.",
+    );
+    this.cancelSpeech();
+    this.room.game.emit("voice_recovery");
+    this.startHostCue();
+    if (this.room.game.state.phase === "ROUND_RESOLVE") {
+      this.room.game.finishRoundPresentation();
     }
   }
   audioReady(id: string, utteranceId: string, epoch: number) {
@@ -251,12 +263,17 @@ export class JudgePlayback {
       this.beginSpeech(s);
   }
   beginSpeech(s: NonNullable<JudgePlayback["speech"]>) {
-    if (this.speech !== s || s.startedAt || !s.duration) return;
+    if (
+      this.speech !== s ||
+      s.startedAt ||
+      !s.duration ||
+      s.ready.size !== this.room.game.state.players.length
+    )
+      return;
     if (s.timer) this.room.services.clearTimeout(s.timer);
     s.startedAt = this.room.services.now() + 150;
     const cue = this.speechCues.get(s.epoch);
     this.metricsCue.push({
-      text: this.room.game.state.judge?.text || "",
       cueAt: cue?.at || this.room.services.now(),
       startedAt: s.startedAt,
       latencyMs: s.startedAt - (cue?.at || this.room.services.now()),

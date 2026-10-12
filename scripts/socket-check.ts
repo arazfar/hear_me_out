@@ -196,7 +196,7 @@ async function voice(text: string) {
   return pcm;
 }
 let turns = 0;
-let bargeTested = false;
+
 while (pa.state.phase !== "MATCH_RESULT") {
   await wait(
     () =>
@@ -226,14 +226,7 @@ while (pa.state.phase !== "MATCH_RESULT") {
     p.pcm = pcm.subarray(at, at + 640);
     if (p.pcm.length < 640)
       p.pcm = Buffer.concat([p.pcm, Buffer.alloc(640 - p.pcm.length)]);
-    if (!bargeTested && pa.state.judge?.status === "speaking") {
-      p.command({
-        type: "barge_in",
-        utteranceId: pa.state.judge.id,
-        speechEpoch: pa.state.judge.epoch,
-      });
-      bargeTested = true;
-    }
+
     await sleep(20);
   }
   p.pcm = Buffer.alloc(640);

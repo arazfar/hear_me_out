@@ -146,7 +146,7 @@ test("six equal opportunities, alternating opener, reset score, first to two and
   assert.notEqual(g.state.matchId, old);
   assert.equal(g.state.ledger.length, 0);
 });
-test("judge pauses and overlap restore bounded time; resumed speech cancels protected handoff", () => {
+test("judge pauses preserve time; resumed speech cancels protected handoff", () => {
   const { g, advance } = setup();
   const t = g.state.turn!;
   advance(4000);
@@ -155,9 +155,6 @@ test("judge pauses and overlap restore bounded time; resumed speech cancels prot
   advance(3000);
   assert.equal(g.remaining(), left);
   g.resume("judge");
-  for (let i = 0; i < 100; i++) g.overlap(100);
-  assert.equal(t.overlapRefundMs, 6000);
-  assert(t.suppressOpponent);
   g.registerSegment(segment(g));
   g.thought(t.playerId);
   g.speechStarted(t.playerId);

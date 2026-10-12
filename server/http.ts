@@ -1,0 +1,132 @@
+import express from "express";
+import { randomInt } from "node:crypto";
+import { z } from "zod";
+import { PROTOCOL_VERSION } from "../shared/protocol.js";
+import { RuleError } from "./game.js";
+
+import type { RoomRegistry } from "./registry.js";
+export function registerHttp(app: express.Express, registry: RoomRegistry) {
+  const { rooms, byId, rate, name, session, authenticate } = registry;
+  app.get("/healthz", (_req, res) =>
+    res.json({
+      ok: true,
+      providers: {
+        openai: !!process.env.OPENAI_API_KEY,
+        cartesia: !!process.env.CARTESIA_API_KEY,
+        fish: !!process.env.FISH_AUDIO_API_KEY,
+      },
+      model: process.env.JUDGE_MODEL || "gpt-6-luna",
+      forceWss: process.env.FORCE_WSS === "true",
+      recordings: false,
+      rooms: [...rooms.values()].map((r) => ({
+        phase: r.game.state.phase,
+        players: r.game.state.players.length,
+        media: r.game.state.mediaMode,
+        sttConnections: [...r.transcription.ink.values()].filter(
+          (s) => s.connected,
+        ).length,
+      })),
+    }),
+  );
+  app.post("/api/rooms", (req, res) => {
+    try {
+      if (!rate(`create:${req.ip}`, 3, 60000)) {
+        res
+          .status(429)
+          .json({ error: "Too many courts opened. Try again in a minute." });
+        return;
+      }
+      if (rooms.size >= 20)
+        throw new RuleError("The courts are full. Try again shortly.");
+      const playerName = name(req.body.name);
+      let code = "";
+      for (let i = 0; i < 20; i++) {
+        const candidate = randomInt(10000).toString().padStart(4, "0");
+        if (!rooms.has(candidate)) {
+          code = candidate;
+          break;
+        }
+      }
+      if (!code) throw new RuleError("No room codes available. Try again.");
+      const room = registry.createRoom(code);
+      rooms.set(code, room);
+      byId.set(room.game.state.roomId, room);
+      const s = session(room, playerName);
+      res.json({
+        protocolVersion: PROTOCOL_VERSION,
+        session: s,
+        snapshot: room.game.snapshot(),
+      });
+    } catch (e) {
+      res.status(400).json({
+        error:
+          e instanceof RuleError ? e.message : "Enter a display name first.",
+      });
+    }
+  });
+  app.post("/api/join", (req, res) => {
+    try {
+      if (!rate(`join:${req.ip}`, 5, 60000)) {
+        res
+          .status(429)
+          .json({ error: "Too many join attempts. Try again in a minute." });
+        return;
+      }
+      const code = z
+          .string()
+          .regex(/^\d{4}$/)
+          .parse(req.body.code),
+        room = rooms.get(code);
+      if (!room)
+        throw new RuleError("That court is closed or the code is incorrect.");
+      const s = session(room, name(req.body.name));
+      res.json({
+        protocolVersion: PROTOCOL_VERSION,
+        session: s,
+        snapshot: room.game.snapshot(),
+      });
+    } catch (e) {
+      res.status(400).json({
+        error:
+          e instanceof RuleError
+            ? e.message
+            : "Use a four-digit code and a display name.",
+      });
+    }
+  });
+  app.post("/api/resume", (req, res) => {
+    try {
+      if (!rate(`resume:${req.ip}`, 30, 60000)) {
+        res
+          .status(429)
+          .json({ error: "Reconnect limit reached. Try again shortly." });
+        return;
+      }
+      const { roomId, playerId, token } = z
+        .object({ roomId: z.string(), playerId: z.string(), token: z.string() })
+        .parse(req.body);
+      const { room, seat } = authenticate(roomId, playerId, token);
+      seat.epoch++;
+      for (const ws of seat.sockets.values()) ws.close(4001, "Seat resumed");
+      seat.sockets.clear();
+      seat.audioSeq = -1;
+      room.game.resumePlayer(playerId);
+      room.lastActiveAt = Date.now();
+      for (const s of room.seats.values()) s.rtcReady = false;
+      room.game.emit("player_resumed");
+      res.json({
+        protocolVersion: PROTOCOL_VERSION,
+        session: {
+          roomId,
+          playerId,
+          token,
+          connectionEpoch: seat.epoch,
+          code: room.game.state.code,
+        },
+        snapshot: room.game.snapshot(),
+      });
+    } catch {
+      res.status(401).json({ error: "Your seat expired. Join a new court." });
+    }
+  });
+}
