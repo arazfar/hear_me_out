@@ -116,6 +116,7 @@ export async function judge(
   newClaimIds: string[],
   onScore?: (score: z.infer<typeof scoreSchema>) => void,
   recentReactions: string[] = [],
+  signal?: AbortSignal,
 ) {
   const current = segments[0];
   // Compact per-job aliases reduce generated tokens. They map only to server supplied evidence.
@@ -179,7 +180,7 @@ export async function judge(
       { role: "user", content: JSON.stringify(data) },
     ],
     text: { format: zodTextFormat(wireSchema, "judge_proposal") },
-  });
+  }, { signal });
   let output = "",
     emitted = 0;
   let completed = false;

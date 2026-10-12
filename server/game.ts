@@ -150,6 +150,10 @@ export class Game {
       this.startMatch();
   }
   startMatch() {
+    this.state.captions = {};
+    this.state.judgePending = false;
+    this.recoverySpent = 0;
+    this.state.recoveryDeadline = null;
     this.state.degraded = { tts: false, stt: false };
     this.state.matchId = randomUUID();
     this.state.headsId = this.state.players[randomInt(2)].id;

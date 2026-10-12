@@ -1,3 +1,4 @@
+import { ServerClock } from "./media/server-clock";
 import { canSpeak, type Command, type GameEvent, type Snapshot } from "../shared/types";
 export interface Session {
   roomId: string;
@@ -58,7 +59,19 @@ export class Client {
   videoSeq = 0;
   videoInFlight = new Map<number, number>();
   peerTime = 0;
-  offset = 0;
+  clock = new ServerClock();
+  get offset() { return this.clock.synced ? this.serverNow() - Date.now() : 0; }
+  serverNow() { return this.clock.synced ? this.clock.now() : Date.now(); }
+  connectionGeneration = 0;
+  connectionRequest: AbortController | null = null;
+  invalidateConnection() {
+    this.connectionGeneration++;
+    this.connectionRequest?.abort();
+    this.connectionRequest = null;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
+    this.reconnecting = false;
+  }
   judgeChunks = new Map<number, { offset: number; pcm: Float32Array }[]>();
   cancelled = new Set<number>();
   readySent = new Set<number>();
@@ -176,6 +189,7 @@ export class Client {
       }
       const audio = this.sockets.get("audio");
       if (
+        !this.clock.synced ||
         !audio ||
         audio.readyState !== WebSocket.OPEN ||
         audio.bufferedAmount > 8000
@@ -188,7 +202,7 @@ export class Client {
       header.setUint32(5, ++this.audioSeq, true);
       header.setUint32(9, 16000, true);
       header.setUint32(13, 320, true);
-      header.setFloat64(17, Date.now() + this.offset, true);
+      header.setFloat64(17, this.serverNow(), true);
       if (allowed)
         new Uint8Array(packet, 25).set(new Uint8Array(data.pcm));
       audio.send(packet);
@@ -299,7 +313,7 @@ export class Client {
         if (Date.now() - at > 750) this.videoInFlight.delete(seq);
       if (this.videoInFlight.size >= 2) return;
       encoding = true;
-      const capturedAt = Date.now() + this.offset;
+      const capturedAt = this.serverNow();
       const mediaEpoch = this.state.mediaEpoch;
       ctx.drawImage(this.cameraVideo, 0, 0, 256, 144);
       canvas.toBlob(
@@ -328,16 +342,22 @@ export class Client {
     }, 1000 / 15);
   }
   async enter(kind: "create" | "join", name: string, code?: string) {
+    this.invalidateConnection();
+    const generation = this.connectionGeneration;
+    const request = this.connectionRequest = new AbortController();
     await this.unlock();
+    if (generation !== this.connectionGeneration) return;
     const response = await fetch(
       kind === "create" ? "/api/rooms" : "/api/join",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, code }),
+        signal: request.signal,
       },
     );
     const body = await response.json();
+    if (generation !== this.connectionGeneration) return;
     if (!response.ok) throw new Error(body.error);
     this.attach(body.session, body.snapshot);
     try {
@@ -350,6 +370,8 @@ export class Client {
     }
   }
   attach(session: Session, snapshot: Snapshot) {
+    this.clock.reset();
+    const generation = this.connectionGeneration;
     this.disconnecting = false;
     this.session = session;
     this.state = snapshot;
@@ -364,14 +386,17 @@ export class Client {
       );
       ws.binaryType = "arraybuffer";
       this.sockets.set(channel, ws);
+      const current = () => generation === this.connectionGeneration && this.sockets.get(channel) === ws;
       ws.onopen = () => {
+        if (!current()) { ws.close(); return; }
         ws.send(JSON.stringify({ type: "auth", ...session, code: undefined }));
         if (channel === "control") {
           this.notify({ connection: "connected" });
-          this.send({ type: "ping", clientTime: Date.now() });
+          this.send({ type: "ping", clientTime: performance.now() });
         }
       };
       ws.onmessage = (event) => {
+        if (!current()) return;
         if (typeof event.data === "string")
           this.message(JSON.parse(event.data));
         else if (channel === "audio") this.audio(event.data);
@@ -397,14 +422,14 @@ export class Client {
         }
       };
       ws.onclose = () => {
-        if (!this.disconnecting && this.sockets.get(channel) === ws)
+        if (!this.disconnecting && current())
           this.scheduleReconnect();
       };
       ws.onerror = () => {};
     }
     if (this.pingTimer) clearInterval(this.pingTimer);
     this.pingTimer = setInterval(
-      () => this.send({ type: "ping", clientTime: Date.now() }),
+      () => this.send({ type: "ping", clientTime: performance.now() }),
       10000,
     );
     if (this.statusTimer) clearInterval(this.statusTimer);
@@ -412,7 +437,7 @@ export class Client {
       () =>
         this.command({
           type: "media_status",
-          ready: !!this.stream && this.context?.state === "running",
+          ready: this.clock.synced && !!this.stream && this.context?.state === "running",
           cameraOn: !this.cameraOff && !!this.stream?.getVideoTracks().length,
           rtc: this.pc?.connectionState === "connected",
         }),
@@ -420,6 +445,9 @@ export class Client {
     );
   }
   async restore() {
+    this.invalidateConnection();
+    const generation = this.connectionGeneration;
+    const request = this.connectionRequest = new AbortController();
     const saved = sessionStorage.getItem("hmo-seat");
     if (!saved) return;
     try {
@@ -427,8 +455,10 @@ export class Client {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: saved,
+        signal: request.signal,
       });
       const body = await response.json();
+      if (generation !== this.connectionGeneration) return;
       if (!response.ok) {
         sessionStorage.removeItem("hmo-seat");
         throw new Error(body.error);
@@ -436,6 +466,7 @@ export class Client {
       this.attach(body.session, body.snapshot);
       void this.devices().catch(() => this.notify({error: "Your seat is restored. Click Enable devices to resume camera and microphone."}));
     } catch (e) {
+      if (generation !== this.connectionGeneration) return;
       this.notify({
         error: e instanceof Error ? e.message : "Could not reconnect.",
       });
@@ -443,18 +474,24 @@ export class Client {
   }
   scheduleReconnect() {
     if (this.reconnectTimer || this.reconnecting || !this.session) return;
+    const generation = this.connectionGeneration;
+    const session = this.session;
+    const request = this.connectionRequest = new AbortController();
     this.notify({ connection: "reconnecting" });
     this.stopJudge();
     this.reconnectTimer = setTimeout(async () => {
       this.reconnectTimer = null;
+      if (generation !== this.connectionGeneration) return;
       this.reconnecting = true;
       try {
         const response = await fetch("/api/resume", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(this.session),
+          body: JSON.stringify(session),
+          signal: request.signal,
         });
         const body = await response.json();
+        if (generation !== this.connectionGeneration) return;
         if (!response.ok) {
           if (response.status === 401) {
             this.leave();
@@ -475,10 +512,11 @@ export class Client {
         this.resetVideo();
         this.attach(body.session, body.snapshot);
       } catch {
+        if (generation !== this.connectionGeneration) return;
         this.reconnecting = false;
         this.scheduleReconnect();
       } finally {
-        this.reconnecting = false;
+        if (generation === this.connectionGeneration) this.reconnecting = false;
       }
     }, 1000);
   }
@@ -503,7 +541,7 @@ export class Client {
       return;
     }
     if (data.type === "pong") {
-      this.offset = data.serverNow - (data.clientTime + Date.now()) / 2;
+      this.clock.observe(data.serverNow, performance.now() - data.clientTime);
       return;
     }
     if (data.type === "activity") {
@@ -544,7 +582,7 @@ export class Client {
         this.state?.mediaMode === "rtc"
       )
         this.peerPlayback?.port.postMessage({ type: "flush" });
-      this.offset = this.offset || data.snapshot.serverNow - Date.now();
+
       this.makePeer();
       this.syncMicrophone();
       this.updateSpeech();
@@ -679,7 +717,7 @@ export class Client {
       if (headerBytes !== 17 && headerBytes !== 25) return;
       if (
         headerBytes === 25 &&
-        Date.now() + this.offset - view.getFloat64(17, true) > 250
+        this.serverNow() - view.getFloat64(17, true) > 250
       )
         return;
       const shorts = new Int16Array(raw.slice(headerBytes)),
@@ -720,7 +758,7 @@ export class Client {
       this.judgeStartContext.set(
         s.epoch,
         this.context.currentTime +
-          (s.startAt - Date.now() - this.offset) / 1000,
+          (s.startAt - this.serverNow()) / 1000,
       );
     for (const c of chunks) {
       const key = `${s.epoch}:${c.offset}`;
@@ -734,7 +772,7 @@ export class Client {
       if (c.offset === 0) {
         setTimeout(() => {
           if (this.cancelled.has(s.epoch) || this.state?.judge?.epoch !== s.epoch) return;
-          const now = Date.now() + this.offset;
+          const now = this.serverNow();
           this.send({type:"playback_metric",latencyMs:Math.max(0,now-s.startAt!),cueToPlaybackMs:s.cueAt ? Math.max(0,now-s.cueAt) : undefined,turnDoneToPlaybackMs:s.turnDoneAt ? Math.max(0,now-s.turnDoneAt) : undefined});
         }, Math.max(0,(at-this.context.currentTime)*1000));
       }
@@ -852,6 +890,8 @@ export class Client {
   }
   leave() {
     this.command({ type: "leave" });
+    this.invalidateConnection();
+    this.clock.reset();
     this.disconnecting = true;
     for (const ws of this.sockets.values()) ws.close();
     this.sockets.clear();

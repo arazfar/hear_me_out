@@ -1,3 +1,4 @@
+import { acceptUpgrade } from "./transport/upgrade.js";
 import { canSpeak } from "../shared/types.js";
 import "dotenv/config";
 import express from "express";
@@ -359,16 +360,8 @@ const wss = new WebSocketServer({
   perMessageDeflate: false,
 });
 server.on("upgrade", (req, socket, head) => {
-  const path = new URL(req.url || "", "http://localhost").pathname;
-  if (!["/socket/control", "/socket/audio", "/socket/video"].includes(path)) {
-    socket.destroy();
-    return;
-  }
-  const host = req.headers.host,
-    origin = req.headers.origin;
-  if (origin && new URL(origin).host !== host) {
-    socket.destroy();
-    return;
+  if (!acceptUpgrade(req.url, req.headers.host, req.headers.origin)) {
+    socket.destroy(); return;
   }
   wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
 });

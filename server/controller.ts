@@ -29,6 +29,7 @@ export class Controller {
   recent: Segment[] = [];
   queue: Segment[] = [];
   busy = false;
+  judgeRequest: AbortController | null = null;
   closed = false;
   createdAt = Date.now();
   lastActiveAt = Date.now();
@@ -108,6 +109,10 @@ export class Controller {
     }
     if (event.type === "coin_committed") {
       this.cancelSpeech();
+      this.judgeRequest?.abort();
+      this.judgeRequest = null;
+      this.busy = false;
+      this.recent = [];
       this.queue = [];
       this.sealedAudio.clear();
       this.planned.clear();
@@ -273,6 +278,9 @@ export class Controller {
       this.game.state.phase === "RECOVERING"
     )
       return;
+    const request = this.judgeRequest = new AbortController();
+    const matchId = this.game.state.matchId;
+    const current = () => !this.closed && !request.signal.aborted && this.judgeRequest === request && this.game.state.matchId === matchId;
     this.busy = true;
     this.game.state.judgePending = true;
     this.game.emit("judge_thinking");
@@ -300,7 +308,7 @@ export class Controller {
             claimIds,
             (score) => {
               if (
-                this.game.ledgerVersion !== version ||
+                !current() || this.game.ledgerVersion !== version ||
                 first.roundId !== this.game.state.roundId ||
                 this.game.snapshot().phase === "RECOVERING"
               )
@@ -316,12 +324,15 @@ export class Controller {
               }
             },
             [...this.reactions.values()].map(reaction => reaction.text).slice(-6),
+            request.signal,
           );
           break;
         } catch (e) {
+          if (!current()) return;
           if (attempt) throw e;
         }
       }
+      if (!current()) return;
       if (this.game.snapshot().phase === "RECOVERING") {
         this.queue.unshift(...batch);
         return;
@@ -367,10 +378,13 @@ export class Controller {
 
       }
     } catch {
+      if (!current()) return;
       this.game.abort(
         "The judge could not score reliably. No winner was invented. Try a new match.",
       );
     } finally {
+      if (!current()) return;
+      this.judgeRequest = null;
       this.busy = false;
       this.game.state.judgePending = false;
       if (this.game.state.turn?.sealing && this.game.state.turn.settlement === "scoring" && !this.queue.length) this.game.state.turn.settlement = "ready";
@@ -757,6 +771,8 @@ export class Controller {
   }
   close() {
     this.closed = true;
+    this.judgeRequest?.abort();
+    this.judgeRequest = null;
     if (this.topicNudge) clearTimeout(this.topicNudge);
     for (const cue of this.hostCues) cue.source?.cancel();
     this.hostCues = [];
