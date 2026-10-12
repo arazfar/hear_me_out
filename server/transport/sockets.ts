@@ -108,7 +108,12 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
           return;
         }
         const seat = room.seats.get(id);
-        if (!seat || seat.epoch !== epoch || seat.sockets.get(channel) !== ws) {
+        if (
+          room.closed ||
+          !seat ||
+          seat.epoch !== epoch ||
+          seat.sockets.get(channel) !== ws
+        ) {
           ws.close(4001);
           return;
         }
@@ -259,7 +264,7 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
     ws.on("close", () => {
       clearTimeout(timeout);
       clearInterval(heartbeat);
-      if (!room || !room.seats.has(id)) return;
+      if (!room || room.closed || !room.seats.has(id)) return;
       const seat = room.seats.get(id)!;
       if (seat.epoch !== epoch || seat.sockets.get(channel) !== ws) return;
       seat.sockets.delete(channel);

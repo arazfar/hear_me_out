@@ -89,7 +89,7 @@ Requests capture their match, round, turn or connection ownership. Rematch/dispo
 
 Private-beta refactor verified October 11, 2026 (Pacific):
 
-- Type check, 45 deterministic tests and production build pass. CI runs frozen-lockfile installation plus those checks.
+- Type check, 46 deterministic tests and production build pass. CI runs frozen-lockfile installation plus those checks.
 - The four regressions fail before their fixes and pass afterward: stale judge failure, reconnect after Leave, clock discontinuity and malformed WebSocket origin. Further checks cover disposal/recovery, delayed final transcripts, duplicate commands, packet validation, manual mute, and bounded playback/metrics. The clock diagnosis is specifically synchronization startup and wall-clock discontinuities: the original browser already applied a server offset.
 - A deterministic two-client WebSocket match completes 12 opportunities, recovery during judge speech, identical ledger/results and nonempty identical completed speech, then rematch. Non-floor audio cannot produce evidence.
 - A real OpenAI/Cartesia/Fish synthetic-voice match completed 12 opportunities, 31 committed score events, identical results and **1,629 identical audio chunks per client**, contextual argument commentary, reconnect and rematch; zero command errors and no typed/caption-only degradation. Normal verification did not alter the saved rehearsal.

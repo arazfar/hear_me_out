@@ -66,15 +66,17 @@ export class Transcription {
             this.room.judging.onSegment(segment);
         },
         start: () => {
-          if (this.ink.get(id) === stream) {
+          if (!this.room.closed && this.ink.get(id) === stream) {
             this.room.game.speechStarted(id);
           }
         },
         end: () => {
-          if (this.ink.get(id) === stream && turnId) this.room.game.thought(id);
+          if (!this.room.closed && this.ink.get(id) === stream && turnId)
+            this.room.game.thought(id);
         },
         error: () => {
-          if (this.ink.get(id) === stream) this.sttFailure(id, turnId);
+          if (!this.room.closed && this.ink.get(id) === stream)
+            this.sttFailure(id, turnId);
         },
       },
     );

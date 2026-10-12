@@ -103,3 +103,29 @@ test("server time handles either direction of clock skew and elapsed monotonic t
     assert.equal(clock.synced, false);
   }
 });
+
+test("a delayed transcription drain cannot mutate a disposed room", async () => {
+  const drained = deferred<boolean>(),
+    started = deferred<void>();
+  const { room, turn } = roomFixture();
+  await flush();
+  room.transcription.ink.set(turn.playerId, {
+    turnId: turn.id,
+    roundId: room.game.state.roundId!,
+    connected: true,
+    failed: false,
+    closing: false,
+    send: () => {},
+    close: () => {
+      started.resolve();
+      return drained.promise;
+    },
+  });
+  room.game.endTurn(turn.playerId, turn.id);
+  await started.promise;
+  room.close();
+  const before = structuredClone(room.game.state);
+  drained.resolve(false);
+  await flush();
+  assert.deepEqual(room.game.state, before);
+});

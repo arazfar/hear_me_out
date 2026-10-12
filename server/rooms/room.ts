@@ -200,6 +200,7 @@ export class RoomController {
         playerId: string;
         lastAudioSeq: number;
       };
+      const matchId = this.game.state.matchId;
       const turnId = this.game.state.turn!.id;
       this.playback.lastSealedTurnId = turnId;
       this.playback.turnDoneAt.set(turnId, this.services.now());
@@ -219,7 +220,12 @@ export class RoomController {
         const stream = this.transcription.ink.get(playerId);
         this.transcription.ink.delete(playerId);
         const drained = !stream || (await stream.close());
-        if (this.game.state.turn?.id !== turnId) return;
+        if (
+          this.closed ||
+          this.game.state.matchId !== matchId ||
+          this.game.state.turn?.id !== turnId
+        )
+          return;
         if (!drained && !this.game.state.degraded.stt) {
           this.game.abort(
             "Transcription could not finish safely. No unjudged evidence was skipped. Try a fresh match.",
@@ -299,6 +305,7 @@ export class RoomController {
     this.playback.cancelSpeech();
     if (this.media.rtcTimer) this.services.clearTimeout(this.media.rtcTimer);
     for (const s of this.transcription.ink.values()) s.close();
+    this.transcription.ink.clear();
     for (const seat of this.seats.values())
       for (const ws of seat.sockets.values()) ws.close();
   }
