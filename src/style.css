@@ -1478,3 +1478,24 @@ input::placeholder {
     padding: 8px 12px;
   }
 }
+
+/* Room controls and DOM camera panels remain independent of the optional 3D stage. */
+.stage-fallback {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    ellipse at 50% 62%,
+    #653c72 0%,
+    #321945 45%,
+    #20102e 85%
+  );
+  display: grid;
+  place-items: center;
+}
+.stage-fallback span {
+  color: #d8ff3e;
+  font-size: 7rem;
+  opacity: 0.22;
+}

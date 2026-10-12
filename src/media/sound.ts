@@ -1,4 +1,4 @@
-import { canSpeak } from "../../shared/types";
+import { canSpeak } from "../../shared/domain";
 import type { Client } from "../game/client";
 export class AudioOutput {
   constructor(readonly client: Client) {}
@@ -17,7 +17,21 @@ export class AudioOutput {
     for (const x of this.analysisData) total += ((x - 128) / 128) ** 2;
     return Math.sqrt(total / 128);
   }
-  async unlock() {
+  private unlocking: Promise<void> | null = null;
+  unlock() {
+    if (this.unlocking) {
+      void this.context?.resume();
+      return this.unlocking;
+    }
+    const request = this.initialize();
+    this.unlocking = request;
+    const clear = () => {
+      if (this.unlocking === request) this.unlocking = null;
+    };
+    void request.then(clear, clear);
+    return request;
+  }
+  private async initialize() {
     if (!this.context) {
       this.context = new AudioContext();
       this.peerGain = this.context.createGain();

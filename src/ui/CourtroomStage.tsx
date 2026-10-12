@@ -1,7 +1,7 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { memo, useRef, useState } from "react";
 import * as THREE from "three";
-import type { Snapshot } from "../../shared/types";
+import type { Snapshot } from "../../shared/domain";
 import { client } from "../game/client";
 function Box({
   position,
@@ -259,7 +259,7 @@ function Set({
     </>
   );
 }
-export const Stage = memo(function Stage({
+const CourtroomStage = memo(function CourtroomStage({
   state,
   reduced,
 }: {
@@ -284,3 +284,5 @@ export const Stage = memo(function Stage({
     </div>
   );
 });
+
+export default CourtroomStage;

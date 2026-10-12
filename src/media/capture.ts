@@ -1,5 +1,5 @@
 import { encodeMicrophone } from "../../shared/media";
-import { canSpeak } from "../../shared/types";
+import { canSpeak } from "../../shared/domain";
 import type { Client } from "../game/client";
 export class DeviceCapture {
   constructor(readonly client: Client) {}
@@ -154,6 +154,10 @@ export class DeviceCapture {
   }
   microphoneAllowed() {
     return (
+      (!this.client.session ||
+        (!this.client.disconnecting &&
+          !this.client.reconnecting &&
+          !this.client.reconnectTimer)) &&
       !this.micMuted &&
       canSpeak(this.client.state, this.client.session?.playerId || null)
     );

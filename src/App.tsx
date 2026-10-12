@@ -1,305 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  canSpeak,
-  points,
-  scoreShare,
-  SUGGESTIONS,
-  type Player,
-  type Snapshot,
-} from "../shared/types";
+import { useEffect, useRef, useState } from "react";
+import { points, scoreShare, type Snapshot } from "../shared/domain";
 import { client } from "./game/client";
-import { Stage } from "./ui/CourtroomStage";
-function AnimatedScore({
-  units,
-  reduced,
-  roundId,
-}: {
-  units: number;
-  reduced: boolean;
-  roundId: string | null;
-}) {
-  const [display, setDisplay] = useState(units);
-  const displayRef = useRef(units);
-  const previousRound = useRef(roundId);
-  useEffect(() => {
-    if (
-      reduced ||
-      units <= displayRef.current ||
-      previousRound.current !== roundId
-    ) {
-      previousRound.current = roundId;
-      displayRef.current = units;
-      setDisplay(units);
-      return;
-    }
-    const from = displayRef.current,
-      began = performance.now();
-    let frame = 0;
-    const tally = (now: number) => {
-      const t = Math.max(0, Math.min(1, (now - began - 180) / 460));
-      const next = Math.min(
-        units,
-        Math.floor(from + (units - from) * (1 - (1 - t) ** 3)),
-      );
-      displayRef.current = next;
-      setDisplay(next);
-      if (t < 1) frame = requestAnimationFrame(tally);
-    };
-    frame = requestAnimationFrame(tally);
-    return () => cancelAnimationFrame(frame);
-  }, [units, reduced, roundId]);
-  return (
-    <span
-      className={`score ${display !== units ? "tallying" : ""}`}
-      aria-label={`${points(units)} points`}
-    >
-      <span className="score-numbers">{points(display)}</span>
-      <small>PTS</small>
-    </span>
-  );
-}
-function Face({
-  player,
-  index,
-  state,
-  local,
-  burst,
-  level,
-  reduced,
-}: {
-  player?: Player;
-  index: number;
-  state: Snapshot;
-  local: boolean;
-  burst?: string;
-  level: number;
-  reduced: boolean;
-}) {
-  const video = useRef<HTMLVideoElement>(null);
-  const relayCanvas = useRef<HTMLCanvasElement>(null);
-  const winner =
-    state.phase === "MATCH_RESULT" && state.winnerId === player?.id;
-  const active = state.turn?.playerId === player?.id && state.phase === "ROUND";
-  const ownScores = state.ledger.filter(
-    (e) => e.playerId === player?.id && e.roundId === state.roundId,
-  );
-  const recentTurn = ownScores.at(-1)?.turnId;
-  const priority = { rebuttal: 5, reasoning: 4, impact: 3, wit: 2, clarity: 1 };
-  const lastScore = ownScores
-    .filter((e) => e.turnId === recentTurn)
-    .sort(
-      (a, b) => priority[b.criterion] - priority[a.criterion] || b.at - a.at,
-    )[0];
-  useEffect(() => {
-    if (video.current) {
-      const desired = local ? client.capture.stream : client.peer.remote;
-      if (video.current.srcObject !== desired)
-        video.current.srcObject = desired;
-      video.current.muted =
-        local || client.sound.peerMuted || !canSpeak(state, player?.id || null);
-      video.current.volume = 1;
-      void video.current.play().catch(() => {});
-    }
-  }, [
-    local,
-    client.capture.stream,
-    client.peer.remote,
-    state.mediaMode,
-    player?.cameraOn,
-    client.capture.cameraOff,
-    state.turn?.playerId,
-    state.turn?.pausedReason,
-    state.turn?.sealing,
-    state.phase,
-    state.judge?.status,
-    client.sound.peerMuted,
-  ]);
-  useEffect(() => {
-    if (
-      relayCanvas.current &&
-      client.video.remoteCanvas &&
-      client.video.remoteFrame
-    )
-      relayCanvas.current
-        .getContext("2d")
-        ?.drawImage(client.video.remoteCanvas, 0, 0, 256, 144);
-  }, [
-    client.video.remoteFrameSeq,
-    client.video.remoteFrame,
-    state.mediaMode,
-    player?.cameraOn,
-  ]);
-  const attachVideo = useCallback(
-    (node: HTMLVideoElement | null) => {
-      video.current = node;
-      if (!node) return;
-      const desired = local ? client.capture.stream : client.peer.remote;
-      if (node.srcObject !== desired) node.srcObject = desired;
-      if (node.paused) void node.play().catch(() => {});
-    },
-    [local, client.capture.stream, client.peer.remote],
-  );
-  const camera = player?.cameraOn && (local ? !client.capture.cameraOff : true);
-  const media = local
-    ? client.capture.stream
-    : state.mediaMode === "rtc"
-      ? client.peer.remote
-      : null;
-  return (
-    <article
-      className={`face face-${index} ${active ? "has-floor" : ""} ${burst ? "scored" : ""} ${winner ? "winner" : ""}`}
-    >
-      <div className="face-top">
-        <span className="name">{player?.name || "Your worthy opponent"}</span>
-        <span className="live">
-          <i className={level > 0.08 ? "lit" : ""} />
-          {player?.connected ? "LIVE" : "WAITING"}
-        </span>
-      </div>
-      <div className="face-picture">
-        {camera && (media || (!local && client.video.remoteFrame)) ? (
-          <>
-            {!local && state.mediaMode !== "rtc" ? (
-              <canvas
-                ref={relayCanvas}
-                width={256}
-                height={144}
-                role="img"
-                aria-label={`${player?.name}'s live camera`}
-              />
-            ) : (
-              <video
-                ref={attachVideo}
-                autoPlay
-                playsInline
-                muted={
-                  local ||
-                  client.sound.peerMuted ||
-                  !canSpeak(state, player?.id || null)
-                }
-                style={{ transform: local ? "scaleX(-1)" : undefined }}
-              />
-            )}
-          </>
-        ) : (
-          <div className="avatar">
-            <span>{player?.name?.slice(0, 1).toUpperCase() || "?"}</span>
-            <small>{player ? "Camera off" : "Send them the room code"}</small>
-          </div>
-        )}
-        {!local &&
-          camera &&
-          state.mediaMode !== "rtc" &&
-          (!client.video.remoteFrameAt ||
-            Date.now() - client.video.remoteFrameAt > 2000) && (
-            <span className="camera-status">Connecting camera…</span>
-          )}
-        {active && (
-          <span className="floor-tag">
-            {state.turn?.sealing ? "✦ CASE PRESENTED" : "✦ HAS THE FLOOR"}
-          </span>
-        )}
-        {state.phase === "MATCH_RESULT" && (
-          <span className="floor-tag">
-            {winner ? "✦ WINNER" : "APPEAL PENDING"}
-          </span>
-        )}
-      </div>
-      {state.phase === "ROUND" && (
-        <div className="speaking-status">
-          {canSpeak(state, player?.id || null)
-            ? local && client.capture.micMuted
-              ? "MIC OFF · your turn"
-              : "Your turn"
-            : state.judge?.status !== "silent" && state.judge
-              ? "Muted · Bonk is talking"
-              : state.turn?.sealing
-                ? "Muted · judging argument"
-                : "Muted · opponent’s turn"}
-        </div>
-      )}
-      <div className="face-bottom">
-        <span className="position">
-          {state.topic?.positions[player?.id || ""] ||
-            (local ? "That’s you" : "Bring a questionable opinion")}
-        </span>
-        <AnimatedScore
-          units={player?.scoreUnits || 0}
-          reduced={reduced}
-          roundId={state.roundId}
-        />
-        {burst && (
-          <div className="score-explosion" key={burst} aria-hidden="true">
-            <i className="burst-ring" />
-            <span className="burst-star">✦</span>
-            {Array.from({ length: 12 }, (_, i) => (
-              <i
-                key={i}
-                className="burst-piece"
-                style={
-                  {
-                    "--dx": `${Math.cos((i * Math.PI) / 6) * (45 + (i % 3) * 12)}px`,
-                    "--dy": `${Math.sin((i * Math.PI) / 6) * (45 + (i % 3) * 12)}px`,
-                    "--spin": `${i * 73}deg`,
-                    background: ["#D8FF3E", "#FF4F9A", "#39D8F2", "#FFF0CE"][
-                      i % 4
-                    ],
-                  } as React.CSSProperties
-                }
-              />
-            ))}
-            <div className="score-burst">
-              <small>THAT COOKS!</small>
-              <b>{burst}</b>
-            </div>
-          </div>
-        )}
-      </div>
-      {lastScore && (
-        <div className="score-note">
-          <b>
-            {lastScore.criterion} +{points(lastScore.deltaUnits)}
-          </b>
-          <span title={lastScore.reason}>{lastScore.reason}</span>
-        </div>
-      )}
-      <div
-        className="round-pips"
-        aria-label={`${player?.wins || 0} round wins`}
-      >
-        {[0, 1].map((n) => (
-          <i key={n} className={(player?.wins || 0) > n ? "won" : ""} />
-        ))}
-        <span>
-          {state.phase === "LOBBY"
-            ? player?.ready
-              ? "READY ✓"
-              : player?.mediaReady
-                ? "DEVICES READY"
-                : "CHECKING DEVICES"
-            : "ROUND WINS"}
-        </span>
-      </div>
-      {active && local && !state.turn?.sealing && (
-        <div className="player-yield">
-          <button
-            className="primary"
-            disabled={!canSpeak(state, player?.id || null)}
-            onClick={() =>
-              client.command({
-                type: "done",
-                turnId: state.turn!.id,
-                lastAudioSeq: client.capture.audioSeq,
-              })
-            }
-          >
-            I’M DONE ↗
-          </button>
-        </div>
-      )}
-    </article>
-  );
-}
+import { Captions } from "./ui/Captions";
+import { CoinView } from "./ui/CoinView";
+import { LobbyView } from "./ui/LobbyView";
+import { PlayerCard } from "./ui/PlayerCard";
+import { PlayerControls } from "./ui/PlayerControls";
+import { ResultView } from "./ui/ResultView";
+import { StageLoader } from "./ui/StageLoader";
+import { TitleView } from "./ui/TitleView";
+import { TopicView } from "./ui/TopicView";
+
 export function App() {
   const bursts = useRef<
     Record<
@@ -346,7 +57,7 @@ export function App() {
         setLevels((v) => ({ ...v, [u.activity!.playerId]: u.activity!.level }));
       const e = u.event;
       if (e?.type === "score_committed") {
-        const score = e.payload as any;
+        const score = e.payload;
         const previous = bursts.current[score.playerId];
         if (previous) clearTimeout(previous.timer);
         const units =
@@ -448,103 +159,18 @@ export function App() {
           </button>
         </div>
       </header>
-      <Stage state={state} reduced={reduced} />
+      <StageLoader state={state} reduced={reduced} />
       {!state ? (
-        <section className="title-layout">
-          <div className="title-copy">
-            <span className="eyebrow">
-              <i /> TWO FRIENDS. ONE TERRIBLE TAKE.
-            </span>
-            <h1>
-              HEAR
-              <br />
-              ME{" "}
-              <span>
-                OUT<span className="asterisk">✳</span>
-              </span>
-              <b className="period">.</b>
-            </h1>
-            <p>
-              Make your case.
-              <br />
-              Watch your friend get cooked.
-            </p>
-            <div className="title-sticker">
-              JUDGED BY
-              <br />
-              <strong>
-                THE HONORABLE
-                <br />
-                BONK
-              </strong>
-              <span>✦ ABSURDLY FAIR ✦</span>
-            </div>
-          </div>
-          <div className="entry-card">
-            <span className="card-kicker">THE COURT IS NOW IN SESSION</span>
-            <h2>
-              Bring a friend.
-              <br />
-              Bring a bad opinion.
-            </h2>
-            <label>
-              Your name
-              <input
-                autoComplete="nickname"
-                value={name}
-                maxLength={20}
-                placeholder="What should Bonk call you?"
-                onChange={(e) => setName(e.target.value)}
-              />
-            </label>
-            {joining && (
-              <label>
-                Room code
-                <input
-                  inputMode="numeric"
-                  value={code}
-                  placeholder="0000"
-                  maxLength={4}
-                  className="code-input"
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                />
-              </label>
-            )}
-            <button
-              className="primary"
-              disabled={busy || !name.trim() || (joining && code.length !== 4)}
-              onClick={() =>
-                void action(() =>
-                  client.enter(joining ? "join" : "create", name, code),
-                )
-              }
-            >
-              {busy
-                ? "Opening court…"
-                : joining
-                  ? "JOIN THE ROOM ↗"
-                  : "CREATE A ROOM ↗"}
-            </button>
-            <button
-              className="text-button"
-              onClick={() => {
-                setJoining(!joining);
-                setCode(new URLSearchParams(location.search).get("room") || "");
-              }}
-            >
-              {joining
-                ? "Start your own argument instead"
-                : "Got a code? Join your friend"}
-            </button>
-            <p className="tiny">
-              2 players · camera + microphone · headphones recommended
-            </p>
-          </div>
-          <div className="title-bottom">
-            <span>NO EXPERTISE REQUIRED.</span>
-            <span>JUST UNREASONABLE CONFIDENCE.</span>
-          </div>
-        </section>
+        <TitleView
+          name={name}
+          code={code}
+          joining={joining}
+          busy={busy}
+          setName={setName}
+          setCode={setCode}
+          setJoining={setJoining}
+          action={action}
+        />
       ) : (
         <>
           <div className="arena-head">
@@ -580,7 +206,7 @@ export function App() {
             )}
           </div>
           <div className="faces">
-            <Face
+            <PlayerCard
               reduced={reduced}
               player={state.players[0]}
               index={0}
@@ -589,7 +215,7 @@ export function App() {
               level={levels[state.players[0]?.id] || 0}
               burst={burst[state.players[0]?.id]}
             />
-            <Face
+            <PlayerCard
               reduced={reduced}
               player={state.players[1]}
               index={1}
@@ -600,232 +226,25 @@ export function App() {
             />
           </div>
           {phase === "LOBBY" && (
-            <section className="center-card lobby">
-              <span className="card-kicker">A VERY SERIOUS SOUND CHECK</span>
-              <h3>
-                {other ? "The jury is assembled." : "Invite your accomplice."}
-              </h3>
-              {!other && <div className="big-code">{state.code}</div>}
-              <p>
-                {other
-                  ? "Say something. Can you hear each other? Then both hit Ready."
-                  : "Send your friend the room code. No sign-up, no dignity required."}
-              </p>
-              {!client.capture.stream ? (
-                <>
-                  <button
-                    className="primary"
-                    onClick={() => void action(() => client.capture.devices())}
-                  >
-                    ENABLE CAMERA + MIC
-                  </button>
-                  <p className="tiny">
-                    Blocked? Allow microphone in Chrome’s site controls, then
-                    retry.
-                  </p>
-                  <button
-                    className="text-button"
-                    onClick={() =>
-                      void action(() => client.capture.devices(false))
-                    }
-                  >
-                    Join with microphone only
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="mic-check">
-                    <span>MIC CHECK</span>
-                    <div>
-                      <i
-                        style={{
-                          width: `${Math.max(3, Math.min(100, client.capture.micLevel * 700))}%`,
-                        }}
-                      />
-                    </div>
-                    <span>
-                      {client.capture.micMuted ? "MUTED" : "SAY HELLO"}
-                    </span>
-                  </div>
-                  <button
-                    className="primary"
-                    disabled={!me?.mediaReady || !other || busy}
-                    onClick={() =>
-                      client.command({ type: "ready", value: !me?.ready })
-                    }
-                  >
-                    {me?.ready
-                      ? "READY ✓ · WAITING FOR FRIEND"
-                      : !other
-                        ? "WAITING FOR YOUR FRIEND"
-                        : !me?.mediaReady
-                          ? "CONNECTING AUDIO…"
-                          : "I’M READY TO ARGUE ↗"}
-                  </button>
-                </>
-              )}
-              <span className="transport-label">
-                {state.mediaMode === "connecting"
-                  ? "Connecting your devices…"
-                  : state.mediaMode === "rtc"
-                    ? "Direct media connected"
-                    : "Relay media connected · 15 fps camera"}
-              </span>
-            </section>
+            <LobbyView
+              state={state}
+              me={me}
+              other={other}
+              busy={busy}
+              action={action}
+            />
           )}
-          {phase === "INTRO_COIN" && (
-            <section className="center-card coin-card">
-              <span className="card-kicker">THE COIN HAS SPOKEN</span>
-              <div className="coin-token">✦</div>
-              <h3>
-                {state.players.find((p) => p.id === state.headsId)?.name} opens.
-              </h3>
-              <p>
-                {state.players.find((p) => p.id === state.tailsId)?.name}{" "}
-                chooses the topic and their side.
-              </p>
-              <span className="pill">
-                YOUR ROLE:{" "}
-                {me?.id === state.headsId
-                  ? "HEADS · OPEN THE CASE"
-                  : "TAILS · PICK THE TOPIC"}
-              </span>
-            </section>
-          )}
+          {phase === "INTRO_COIN" && <CoinView state={state} me={me} />}
           {selecting && (
-            <section className="center-card topic-card">
-              <span className="card-kicker">
-                {state.tailsId === me?.id
-                  ? "YOUR PICK, TAILS"
-                  : "TAILS IS PICKING"}
-              </span>
-              {phase === "TOPIC_SELECT" ? (
-                <>
-                  {state.tailsId === me?.id ? (
-                    <>
-                      <h3>Pick a fight. Politely.</h3>
-                      <div className="suggestions">
-                        {SUGGESTIONS.map((s) => (
-                          <button
-                            key={s.id}
-                            onClick={() =>
-                              client.command({
-                                type: "propose_topic",
-                                text: s.proposition,
-                                chosenPosition: s.positive,
-                                suggestion: s.id,
-                              })
-                            }
-                          >
-                            <span>{s.icon}</span>
-                            {s.label}
-                            <b>↗</b>
-                          </button>
-                        ))}
-                      </div>
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          client.command({
-                            type: "propose_topic",
-                            text: topic,
-                            chosenPosition: position,
-                          });
-                        }}
-                      >
-                        <label>
-                          Or bring your own
-                          <input
-                            value={topic}
-                            onChange={(e) => setTopic(e.target.value)}
-                            maxLength={160}
-                            placeholder="Cats are better roommates than dogs"
-                            required
-                          />
-                        </label>
-                        <label>
-                          Your side
-                          <input
-                            value={position}
-                            onChange={(e) => setPosition(e.target.value)}
-                            maxLength={80}
-                            placeholder="I’m defending cats"
-                            required
-                          />
-                        </label>
-                        <button
-                          className="primary"
-                          disabled={!topic.trim() || !position.trim()}
-                        >
-                          MAKE IT OFFICIAL ↗
-                        </button>
-                      </form>
-                    </>
-                  ) : (
-                    <>
-                      <h3>
-                        {
-                          state.players.find((p) => p.id === state.tailsId)
-                            ?.name
-                        }{" "}
-                        is choosing.
-                      </h3>
-                      <p>
-                        Keep a ridiculous example ready. Bonk respects a good
-                        argument, even a very silly one.
-                      </p>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  <h3>The proposition</h3>
-                  <p className="proposition">{state.topic?.proposition}</p>
-                  <div className="sides">
-                    {state.players.map((p) => (
-                      <div key={p.id}>
-                        <b>{p.name}</b>
-                        <span>{state.topic?.positions[p.id]}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    className="primary"
-                    disabled={state.topic?.confirmations.includes(me!.id)}
-                    onClick={() =>
-                      client.command({
-                        type: "confirm_topic",
-                        topicRevision: state.topic!.revision,
-                      })
-                    }
-                  >
-                    {state.topic?.confirmations.includes(me!.id)
-                      ? "CONFIRMED ✓ · WAITING"
-                      : "THAT’S THE ARGUMENT ↗"}
-                  </button>
-                  <button
-                    className="text-button"
-                    onClick={() =>
-                      client.command({
-                        type: "reject_topic",
-                        topicRevision: state.topic!.revision,
-                      })
-                    }
-                  >
-                    This needs another try
-                  </button>
-                </>
-              )}
-              <span className="transport-label">
-                {Math.max(
-                  0,
-                  Math.ceil(
-                    ((state.phaseDeadline || now) - now - client.offset) / 1000,
-                  ),
-                )}
-                s to decide
-              </span>
-            </section>
+            <TopicView
+              state={state}
+              me={me}
+              topic={topic}
+              position={position}
+              setTopic={setTopic}
+              setPosition={setPosition}
+              now={now}
+            />
           )}
           {inMatch && (
             <>
@@ -884,62 +303,7 @@ export function App() {
                   )}
               </div>
               {(phase === "ROUND_RESOLVE" || phase === "MATCH_RESULT") && (
-                <section className="result-card">
-                  <span className="card-kicker">
-                    {phase === "MATCH_RESULT" ? "THE VERDICT" : "ROUND VERDICT"}
-                  </span>
-                  <h2>
-                    {
-                      state.players.find(
-                        (p) =>
-                          p.id ===
-                          (phase === "MATCH_RESULT"
-                            ? state.winnerId
-                            : state.results.at(-1)?.winnerId),
-                      )?.name
-                    }
-                    <br />
-                    <em>
-                      {phase === "MATCH_RESULT"
-                        ? "wins the case."
-                        : "takes the round."}
-                    </em>
-                  </h2>
-                  <p>{state.results.at(-1)?.reason}</p>
-                  {state.results.at(-1)?.tieBreak && (
-                    <p className="tiny">{state.results.at(-1)?.tieBreak}</p>
-                  )}
-                  {phase === "MATCH_RESULT" && (
-                    <div className="confetti" aria-hidden="true">
-                      {Array.from({ length: 12 }, (_, i) => (
-                        <i
-                          key={i}
-                          style={{
-                            left: `${i * 9}%`,
-                            background: ["#FF4F9A", "#39D8F2", "#20102E"][
-                              i % 3
-                            ],
-                            animationDelay: `${i * 0.06}s`,
-                            rotate: `${i * 37}deg`,
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-                  {phase === "MATCH_RESULT" && (
-                    <button
-                      className="primary"
-                      disabled={state.rematchReady.includes(me!.id)}
-                      onClick={() =>
-                        client.command({ type: "rematch", value: true })
-                      }
-                    >
-                      {state.rematchReady.includes(me!.id)
-                        ? "REMATCH READY ✓"
-                        : "AGAIN. OBVIOUSLY. ↗"}
-                    </button>
-                  )}
-                </section>
+                <ResultView state={state} me={me} />
               )}
               {(phase === "RECOVERING" || phase === "ABORTED") && (
                 <section className="center-card">
@@ -996,66 +360,8 @@ export function App() {
                 )}
             </>
           )}
-          <div className="caption-zone" aria-live="polite">
-            {state.judge && state.judge.status !== "silent" ? (
-              <div className="judge-caption">
-                <span>BONK {state.judgePending ? "···" : "✦"}</span>
-                <p>“{state.judge.text}”</p>
-              </div>
-            ) : phase === "ROUND" ? (
-              <div className="player-captions">
-                {state.players.map((p) => (
-                  <p key={p.id}>
-                    <b>{p.name}</b>
-                    {state.captions[p.id]?.text?.slice(-240) || "…"}
-                  </p>
-                ))}
-              </div>
-            ) : (
-              <div className="judge-caption quiet">
-                <span>BONK ✦</span>
-                <p>
-                  {phase === "LOBBY"
-                    ? "“A strong opinion is not the same as a strong argument. Luckily, this is a game.”"
-                    : state.status}
-                </p>
-              </div>
-            )}
-          </div>
-          <footer className="controls">
-            <div>
-              <button
-                onClick={() => client.capture.muteMic()}
-                className={client.capture.micMuted ? "muted" : ""}
-              >
-                {client.capture.micMuted
-                  ? "MIC OFF"
-                  : client.capture.microphoneAllowed()
-                    ? "MIC ON"
-                    : "AUTO MUTED"}{" "}
-                <span>●</span>
-              </button>
-              <button onClick={() => client.capture.muteCamera()}>
-                {client.capture.cameraOff ? "CAM OFF" : "CAM ON"} <span>▣</span>
-              </button>
-              {!client.capture.stream && (
-                <button
-                  onClick={() => void action(() => client.capture.devices())}
-                >
-                  ENABLE DEVICES
-                </button>
-              )}
-            </div>
-            <div>
-              <button onClick={() => client.sound.mutePeer()}>
-                {client.sound.peerMuted ? "FRIEND MUTED" : "FRIEND AUDIO"}
-              </button>
-              <button onClick={() => client.sound.muteJudge()}>
-                {client.sound.judgeMuted ? "BONK MUTED" : "BONK AUDIO"}
-              </button>
-              <button onClick={() => client.leave()}>LEAVE ↗</button>
-            </div>
-          </footer>
+          <Captions state={state} />
+          <PlayerControls action={action} />
         </>
       )}
       {(error || connection === "reconnecting") && (

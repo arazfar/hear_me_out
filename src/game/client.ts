@@ -8,12 +8,8 @@ import {
   serverMessageSchema,
   type Session,
 } from "../../shared/protocol";
-import {
-  canSpeak,
-  type Command,
-  type GameEvent,
-  type Snapshot,
-} from "../../shared/types";
+import { canSpeak, type Snapshot } from "../../shared/domain";
+import { type Command, type GameEvent } from "../../shared/protocol";
 import { DeviceCapture } from "../media/capture";
 import { PeerMedia } from "../media/peer";
 import { JudgePlayback } from "../media/playback";
@@ -102,6 +98,7 @@ export class Client {
     this.clock.reset();
     const generation = this.connectionGeneration;
     this.disconnecting = false;
+    this.reconnecting = false;
     this.session = session;
     this.state = snapshot;
     this.capture.syncMicrophone();
@@ -235,6 +232,8 @@ export class Client {
     const generation = this.connectionGeneration;
     const session = this.session;
     const request = (this.connectionRequest = new AbortController());
+    this.reconnecting = true;
+    this.capture.syncMicrophone();
     this.notify({ connection: "reconnecting" });
     this.playback.stopJudge();
     this.reconnectTimer = setTimeout(async () => {

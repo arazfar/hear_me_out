@@ -33,6 +33,10 @@ export class PeerMedia {
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
     this.pc = pc;
+    this.makingOffer = false;
+    this.ignoreOffer = false;
+    const current = () =>
+      this.pc === pc && this.client.state?.mediaEpoch === this.pcEpoch;
     this.client.capture.stream.getTracks().forEach((track) => {
       const sender = pc.addTrack(track, this.client.capture.stream!);
       if (track.kind === "video") {
@@ -43,7 +47,7 @@ export class PeerMedia {
     });
     for (const data of this.pendingSignals.splice(0)) void this.signal(data);
     pc.onicecandidate = ({ candidate }) => {
-      if (candidate)
+      if (current() && candidate)
         this.client.send({
           type: "signal",
           mediaEpoch: this.pcEpoch,
@@ -51,10 +55,12 @@ export class PeerMedia {
         });
     };
     pc.ontrack = ({ streams, track }) => {
+      if (!current()) return;
       this.remote = streams[0] || new MediaStream([track]);
       this.client.notify({ media: true });
     };
     pc.onconnectionstatechange = () => {
+      if (!current()) return;
       this.client.notify({ media: true });
       this.client.command({
         type: "media_status",
@@ -67,6 +73,7 @@ export class PeerMedia {
       try {
         this.makingOffer = true;
         await pc.setLocalDescription();
+        if (!current()) return;
         this.client.send({
           type: "signal",
           mediaEpoch: this.pcEpoch,
@@ -74,7 +81,7 @@ export class PeerMedia {
         });
       } catch {
       } finally {
-        this.makingOffer = false;
+        if (current()) this.makingOffer = false;
       }
     };
   }
@@ -86,6 +93,7 @@ export class PeerMedia {
       return;
     }
     if (data.mediaEpoch !== this.pcEpoch) return;
+    const current = () => this.pc === pc && this.pcEpoch === data.mediaEpoch;
     const polite =
       this.client.state!.players[1]?.id === this.client.session!.playerId;
     try {
@@ -96,11 +104,14 @@ export class PeerMedia {
         this.ignoreOffer = !polite && collision;
         if (this.ignoreOffer) return;
         await pc.setRemoteDescription(data.description);
+        if (!current()) return;
         for (const candidate of this.pendingCandidates)
           await pc.addIceCandidate(candidate);
+        if (!current()) return;
         this.pendingCandidates = [];
         if (data.description.type === "offer") {
           await pc.setLocalDescription();
+          if (!current()) return;
           this.client.send({
             type: "signal",
             mediaEpoch: this.pcEpoch,
@@ -109,7 +120,8 @@ export class PeerMedia {
         }
       } else if (data.candidate) {
         if (pc.remoteDescription) await pc.addIceCandidate(data.candidate);
-        else this.pendingCandidates.push(data.candidate);
+        else if (this.pendingCandidates.length < 64)
+          this.pendingCandidates.push(data.candidate);
       }
     } catch {
       /* WSS recovery is server selected after the connection deadline. */
