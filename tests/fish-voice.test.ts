@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { streamVoice } from "../server/providers";
 
 test("Fish voice streams odd PCM chunks with the requested identity, prosody, and excitement", async () => {

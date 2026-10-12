@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback,useEffect,useRef,useState } from "react";
+import {
+canSpeak,
+points,
+scoreShare,
+SUGGESTIONS,
+type Player,
+type Snapshot,
+} from "../shared/types";
 import { client } from "./client";
 import { Stage } from "./Stage";
-import {
-  canSpeak,
-  scoreShare,
-  points,
-  SUGGESTIONS,
-  type Snapshot,
-  type Player,
-} from "../shared/types";
 function AnimatedScore({
   units,
   reduced,

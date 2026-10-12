@@ -1,5 +1,10 @@
+import {
+  canSpeak,
+  type Command,
+  type GameEvent,
+  type Snapshot,
+} from "../shared/types";
 import { ServerClock } from "./media/server-clock";
-import { canSpeak, type Command, type GameEvent, type Snapshot } from "../shared/types";
 export interface Session {
   roomId: string;
   playerId: string;
@@ -60,8 +65,12 @@ export class Client {
   videoInFlight = new Map<number, number>();
   peerTime = 0;
   clock = new ServerClock();
-  get offset() { return this.clock.synced ? this.serverNow() - Date.now() : 0; }
-  serverNow() { return this.clock.synced ? this.clock.now() : Date.now(); }
+  get offset() {
+    return this.clock.synced ? this.serverNow() - Date.now() : 0;
+  }
+  serverNow() {
+    return this.clock.synced ? this.clock.now() : Date.now();
+  }
   connectionGeneration = 0;
   connectionRequest: AbortController | null = null;
   invalidateConnection() {
@@ -105,12 +114,17 @@ export class Client {
     }
     const request = this.acquireDevices(camera);
     this.deviceRequest = request;
-    const clear = () => { if (this.deviceRequest === request) this.deviceRequest = null; };
+    const clear = () => {
+      if (this.deviceRequest === request) this.deviceRequest = null;
+    };
     void request.then(clear, clear);
     return request;
   }
   private async acquireDevices(camera = true) {
+    const generation = this.connectionGeneration;
+    const current = () => generation === this.connectionGeneration;
     await this.unlock();
+    if (!current()) return;
     if (!navigator.mediaDevices?.getUserMedia)
       throw new Error(
         "Camera and microphone need HTTPS. Open the public tunnel link or localhost.",
@@ -124,6 +138,10 @@ export class Client {
             frameRate: { ideal: 24 },
           },
         });
+        if (!current() || !this.stream) {
+          video.getTracks().forEach((t) => t.stop());
+          return;
+        }
         this.stream.addTrack(video.getVideoTracks()[0]);
         this.cameraOff = false;
         this.syncMicrophone();
@@ -133,8 +151,9 @@ export class Client {
       this.notify({ media: true });
       return;
     }
+    let acquired: MediaStream;
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({
+      acquired = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -150,7 +169,8 @@ export class Client {
       });
     } catch (e) {
       if (camera) {
-        this.stream = await navigator.mediaDevices.getUserMedia({
+        if (!current()) return;
+        acquired = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
@@ -161,7 +181,16 @@ export class Client {
         this.cameraOff = true;
       } else throw e;
     }
+    if (!current()) {
+      acquired.getTracks().forEach((t) => t.stop());
+      return;
+    }
+    this.stream = acquired;
     await this.context!.audioWorklet.addModule("/pcm-worklet.js");
+    if (!current()) {
+      acquired.getTracks().forEach((t) => t.stop());
+      return;
+    }
     this.source = this.context!.createMediaStreamSource(
       new MediaStream(this.stream.getAudioTracks()),
     );
@@ -203,10 +232,8 @@ export class Client {
       header.setUint32(9, 16000, true);
       header.setUint32(13, 320, true);
       header.setFloat64(17, this.serverNow(), true);
-      if (allowed)
-        new Uint8Array(packet, 25).set(new Uint8Array(data.pcm));
+      if (allowed) new Uint8Array(packet, 25).set(new Uint8Array(data.pcm));
       audio.send(packet);
-
     };
     this.syncMicrophone();
     this.prepareVideo();
@@ -241,10 +268,14 @@ export class Client {
     await this.context.resume();
   }
   microphoneAllowed() {
-    return !this.micMuted && canSpeak(this.state, this.session?.playerId || null);
+    return (
+      !this.micMuted && canSpeak(this.state, this.session?.playerId || null)
+    );
   }
   syncMicrophone() {
-    this.stream?.getAudioTracks().forEach(t => { t.enabled = this.microphoneAllowed(); });
+    this.stream?.getAudioTracks().forEach((t) => {
+      t.enabled = this.microphoneAllowed();
+    });
   }
   resetVideo() {
     this.videoGeneration++;
@@ -266,9 +297,16 @@ export class Client {
         const header = new DataView(frame);
         let bitmap: ImageBitmap | null = null;
         try {
-          bitmap = await createImageBitmap(new Blob([frame.slice(17)], {type: "image/jpeg"}));
+          bitmap = await createImageBitmap(
+            new Blob([frame.slice(17)], { type: "image/jpeg" }),
+          );
           const seq = header.getUint32(5, true);
-          if (generation !== this.videoGeneration || header.getUint32(1, true) !== this.state?.mediaEpoch || seq <= this.remoteFrameSeq) continue;
+          if (
+            generation !== this.videoGeneration ||
+            header.getUint32(1, true) !== this.state?.mediaEpoch ||
+            seq <= this.remoteFrameSeq
+          )
+            continue;
           this.remoteCanvas ||= document.createElement("canvas");
           if (this.remoteCanvas.width !== 256) this.remoteCanvas.width = 256;
           if (this.remoteCanvas.height !== 144) this.remoteCanvas.height = 144;
@@ -276,11 +314,16 @@ export class Client {
           this.remoteFrameSeq = seq;
           this.remoteFrame = true;
           this.remoteFrameAt = Date.now();
-          this.notify({media: true});
-        } catch { /* Keep the last good frame; the next frame can recover. */ }
-        finally { bitmap?.close(); }
+          this.notify({ media: true });
+        } catch {
+          /* Keep the last good frame; the next frame can recover. */
+        } finally {
+          bitmap?.close();
+        }
       }
-    } finally { this.decodingVideo = false; }
+    } finally {
+      this.decodingVideo = false;
+    }
   }
   prepareVideo() {
     if (!this.stream) return;
@@ -342,9 +385,10 @@ export class Client {
     }, 1000 / 15);
   }
   async enter(kind: "create" | "join", name: string, code?: string) {
+    if (this.session) this.leave();
     this.invalidateConnection();
     const generation = this.connectionGeneration;
-    const request = this.connectionRequest = new AbortController();
+    const request = (this.connectionRequest = new AbortController());
     await this.unlock();
     if (generation !== this.connectionGeneration) return;
     const response = await fetch(
@@ -386,9 +430,14 @@ export class Client {
       );
       ws.binaryType = "arraybuffer";
       this.sockets.set(channel, ws);
-      const current = () => generation === this.connectionGeneration && this.sockets.get(channel) === ws;
+      const current = () =>
+        generation === this.connectionGeneration &&
+        this.sockets.get(channel) === ws;
       ws.onopen = () => {
-        if (!current()) { ws.close(); return; }
+        if (!current()) {
+          ws.close();
+          return;
+        }
         ws.send(JSON.stringify({ type: "auth", ...session, code: undefined }));
         if (channel === "control") {
           this.notify({ connection: "connected" });
@@ -422,8 +471,7 @@ export class Client {
         }
       };
       ws.onclose = () => {
-        if (!this.disconnecting && current())
-          this.scheduleReconnect();
+        if (!this.disconnecting && current()) this.scheduleReconnect();
       };
       ws.onerror = () => {};
     }
@@ -437,7 +485,10 @@ export class Client {
       () =>
         this.command({
           type: "media_status",
-          ready: this.clock.synced && !!this.stream && this.context?.state === "running",
+          ready:
+            this.clock.synced &&
+            !!this.stream &&
+            this.context?.state === "running",
           cameraOn: !this.cameraOff && !!this.stream?.getVideoTracks().length,
           rtc: this.pc?.connectionState === "connected",
         }),
@@ -447,7 +498,7 @@ export class Client {
   async restore() {
     this.invalidateConnection();
     const generation = this.connectionGeneration;
-    const request = this.connectionRequest = new AbortController();
+    const request = (this.connectionRequest = new AbortController());
     const saved = sessionStorage.getItem("hmo-seat");
     if (!saved) return;
     try {
@@ -464,7 +515,12 @@ export class Client {
         throw new Error(body.error);
       }
       this.attach(body.session, body.snapshot);
-      void this.devices().catch(() => this.notify({error: "Your seat is restored. Click Enable devices to resume camera and microphone."}));
+      void this.devices().catch(() =>
+        this.notify({
+          error:
+            "Your seat is restored. Click Enable devices to resume camera and microphone.",
+        }),
+      );
     } catch (e) {
       if (generation !== this.connectionGeneration) return;
       this.notify({
@@ -476,7 +532,7 @@ export class Client {
     if (this.reconnectTimer || this.reconnecting || !this.session) return;
     const generation = this.connectionGeneration;
     const session = this.session;
-    const request = this.connectionRequest = new AbortController();
+    const request = (this.connectionRequest = new AbortController());
     this.notify({ connection: "reconnecting" });
     this.stopJudge();
     this.reconnectTimer = setTimeout(async () => {
@@ -574,7 +630,11 @@ export class Client {
         this.videoInFlight.clear();
         this.remote = null;
       }
-      const wasPeerAllowed = canSpeak(this.state, this.state?.players.find(p => p.id !== this.session?.playerId)?.id || null);
+      const wasPeerAllowed = canSpeak(
+        this.state,
+        this.state?.players.find((p) => p.id !== this.session?.playerId)?.id ||
+          null,
+      );
       const previousMode = this.state?.mediaMode;
       this.state = data.snapshot;
       if (
@@ -587,10 +647,25 @@ export class Client {
       this.syncMicrophone();
       this.updateSpeech();
       this.peerGain?.gain.setTargetAtTime(
-        this.peerMuted || !canSpeak(this.state, this.state?.players.find(p => p.id !== this.session?.playerId)?.id || null) ? 0 : 1,
-        this.context!.currentTime, 0.01,
+        this.peerMuted ||
+          !canSpeak(
+            this.state,
+            this.state?.players.find((p) => p.id !== this.session?.playerId)
+              ?.id || null,
+          )
+          ? 0
+          : 1,
+        this.context!.currentTime,
+        0.01,
       );
-      if (wasPeerAllowed !== canSpeak(this.state, this.state?.players.find(p => p.id !== this.session?.playerId)?.id || null))
+      if (
+        wasPeerAllowed !==
+        canSpeak(
+          this.state,
+          this.state?.players.find((p) => p.id !== this.session?.playerId)
+            ?.id || null,
+        )
+      )
         this.peerPlayback?.port.postMessage({ type: "flush" });
       this.notify({ state: data.snapshot, event: data.seq ? data : undefined });
       if (data.type === "judge_cancelled") {
@@ -712,7 +787,14 @@ export class Client {
       kind = view.getUint8(0),
       rate = view.getUint32(9, true);
     if (kind === 1 && this.state?.mediaMode !== "rtc") {
-      if (!canSpeak(this.state, this.state?.players.find(p => p.id !== this.session?.playerId)?.id || null)) return;
+      if (
+        !canSpeak(
+          this.state,
+          this.state?.players.find((p) => p.id !== this.session?.playerId)
+            ?.id || null,
+        )
+      )
+        return;
       const headerBytes = raw.byteLength - view.getUint32(13, true) * 2;
       if (headerBytes !== 17 && headerBytes !== 25) return;
       if (
@@ -757,8 +839,7 @@ export class Client {
     if (!this.judgeStartContext.has(s.epoch))
       this.judgeStartContext.set(
         s.epoch,
-        this.context.currentTime +
-          (s.startAt - this.serverNow()) / 1000,
+        this.context.currentTime + (s.startAt - this.serverNow()) / 1000,
       );
     for (const c of chunks) {
       const key = `${s.epoch}:${c.offset}`;
@@ -770,11 +851,25 @@ export class Client {
       );
       this.play(c.pcm, 44100, at, this.judgeGain!, true);
       if (c.offset === 0) {
-        setTimeout(() => {
-          if (this.cancelled.has(s.epoch) || this.state?.judge?.epoch !== s.epoch) return;
-          const now = this.serverNow();
-          this.send({type:"playback_metric",latencyMs:Math.max(0,now-s.startAt!),cueToPlaybackMs:s.cueAt ? Math.max(0,now-s.cueAt) : undefined,turnDoneToPlaybackMs:s.turnDoneAt ? Math.max(0,now-s.turnDoneAt) : undefined});
-        }, Math.max(0,(at-this.context.currentTime)*1000));
+        setTimeout(
+          () => {
+            if (
+              this.cancelled.has(s.epoch) ||
+              this.state?.judge?.epoch !== s.epoch
+            )
+              return;
+            const now = this.serverNow();
+            this.send({
+              type: "playback_metric",
+              latencyMs: Math.max(0, now - s.startAt!),
+              cueToPlaybackMs: s.cueAt ? Math.max(0, now - s.cueAt) : undefined,
+              turnDoneToPlaybackMs: s.turnDoneAt
+                ? Math.max(0, now - s.turnDoneAt)
+                : undefined,
+            });
+          },
+          Math.max(0, (at - this.context.currentTime) * 1000),
+        );
       }
     }
     for (const epoch of this.judgeChunks.keys())
@@ -837,7 +932,15 @@ export class Client {
   mutePeer() {
     this.peerMuted = !this.peerMuted;
     if (this.peerGain && this.context)
-      this.peerGain.gain.value = this.peerMuted || !canSpeak(this.state, this.state?.players.find(p => p.id !== this.session?.playerId)?.id || null) ? 0 : 1;
+      this.peerGain.gain.value =
+        this.peerMuted ||
+        !canSpeak(
+          this.state,
+          this.state?.players.find((p) => p.id !== this.session?.playerId)
+            ?.id || null,
+        )
+          ? 0
+          : 1;
     this.notify({ media: true });
   }
   muteJudge() {
@@ -906,6 +1009,14 @@ export class Client {
     this.resetJudgePlayback();
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
+    this.deviceRequest = null;
+    if (this.cameraVideo) {
+      this.cameraVideo.srcObject = null;
+      this.cameraVideo = null;
+    }
+    this.pcEpoch = -1;
+    this.pendingCandidates = [];
+    this.pendingSignals = [];
     this.capture?.disconnect();
     this.source?.disconnect();
     this.session = null;

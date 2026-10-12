@@ -1,7 +1,7 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { Game } from "../server/game";
-import { CRITERIA, CAPS, type Segment } from "../shared/types";
+import { CAPS, CRITERIA, type Segment } from "../shared/types";
 function setup() {
   let time = 100000;
   const g = new Game(

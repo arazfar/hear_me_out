@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { InkSession } from "../server/providers";
 test("provisional transcript captions never create official scoring evidence", () => {
   const segments: any[] = [],

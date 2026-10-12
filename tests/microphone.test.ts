@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { Controller, type Seat } from "../server/controller";
 
 test("timestamped microphone packets retain attribution and reject replay or old media epochs", () => {
@@ -22,14 +22,14 @@ test("timestamped microphone packets retain attribution and reject replay or old
   });
   c.seats.set(a.id, seat());
   c.seats.set(b.id, seat());
-  c.seats
-    .get(b.id)!
-    .sockets.set("audio", {
-      readyState: 1,
-      bufferedAmount: 0,
-      send: (raw: Buffer) => forwarded.push(raw),
-    } as any);
-  c.ink.set(a.id, { send: (pcm: Buffer) => transcribed.push(pcm) } as any);
+  c.seats.get(b.id)!.sockets.set("audio", {
+    readyState: 1,
+    bufferedAmount: 0,
+    send: (raw: Buffer) => forwarded.push(raw),
+  } as any);
+  c.transcription.ink.set(a.id, {
+    send: (pcm: Buffer) => transcribed.push(pcm),
+  } as any);
   const packet = Buffer.alloc(665);
   packet[0] = 1;
   packet.writeUInt32LE(c.game.state.mediaEpoch, 1);
@@ -38,20 +38,20 @@ test("timestamped microphone packets retain attribution and reject replay or old
   packet.writeUInt32LE(320, 13);
   packet.writeDoubleLE(Date.now(), 17);
   packet.writeInt16LE(1234, 25);
-  c.audio(a.id, packet);
+  c.media.audio(a.id, packet);
   assert.equal(transcribed.length, 1);
   assert.equal(transcribed[0].length, 640);
   assert.equal(transcribed[0].readInt16LE(0), 1234);
   assert.equal(forwarded.length, 1);
-  c.audio(a.id, packet);
+  c.media.audio(a.id, packet);
   assert.equal(transcribed.length, 1, "replayed sequence cannot enter STT");
   packet.writeUInt32LE(2, 5);
   packet.writeUInt32LE(99, 1);
-  c.audio(a.id, packet);
+  c.media.audio(a.id, packet);
   assert.equal(transcribed.length, 1);
   packet.writeUInt32LE(c.game.state.mediaEpoch, 1);
   packet.writeDoubleLE(Date.now() - 1000, 17);
-  c.audio(a.id, packet);
+  c.media.audio(a.id, packet);
   assert.equal(
     transcribed.length,
     2,

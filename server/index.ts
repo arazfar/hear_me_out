@@ -1,17 +1,19 @@
-import { acceptUpgrade } from "./transport/upgrade.js";
-import { canSpeak } from "../shared/types.js";
 import "dotenv/config";
 import express from "express";
-import { createServer } from "node:http";
 import { createHash, randomBytes, randomInt } from "node:crypto";
-import { resolve } from "node:path";
 import { existsSync } from "node:fs";
+import { createServer } from "node:http";
+import { resolve } from "node:path";
 import { WebSocket, WebSocketServer } from "ws";
 import { z } from "zod";
+import {
+  canSpeak,
+  SUGGESTIONS,
+  type CommandEnvelope,
+} from "../shared/types.js";
 import { Controller } from "./controller.js";
-import { normalizeTopic } from "./providers.js";
 import { RuleError } from "./game.js";
-import { SUGGESTIONS, type CommandEnvelope } from "../shared/types.js";
+import { acceptUpgrade } from "./transport/upgrade.js";
 
 const app = express(),
   server = createServer(app);
@@ -96,7 +98,9 @@ app.get("/healthz", (_req, res) =>
       phase: r.game.state.phase,
       players: r.game.state.players.length,
       media: r.game.state.mediaMode,
-      sttConnections: [...r.ink.values()].filter((s) => s.connected).length,
+      sttConnections: [...r.transcription.ink.values()].filter(
+        (s) => s.connected,
+      ).length,
     })),
   }),
 );
@@ -167,14 +171,8 @@ app.post("/api/resume", (req, res) => {
     for (const ws of seat.sockets.values()) ws.close(4001, "Seat resumed");
     seat.sockets.clear();
     seat.audioSeq = -1;
-    const player = room.game.player(playerId);
-    player.connected = true;
-    player.captureReady = false;
-    player.mediaReady = false;
-    if (room.game.state.phase === "LOBBY") player.ready = false;
+    room.game.resumePlayer(playerId);
     room.lastActiveAt = Date.now();
-    room.game.state.mediaEpoch++;
-    room.game.state.mediaMode = "connecting";
     for (const s of room.seats.values()) s.rtcReady = false;
     room.game.emit("player_resumed");
     res.json({
@@ -298,18 +296,36 @@ async function command(room: Controller, id: string, data: CommandEnvelope) {
       );
     game.ready(id, c.value);
   } else if (c.type === "media_status")
-    room.mediaStatus(id, c.ready, c.cameraOn, c.rtc);
+    room.media.mediaStatus(id, c.ready, c.cameraOn, c.rtc);
   else if (c.type === "propose_topic") {
     if (
       game.state.tailsId !== id ||
       !["TOPIC_SELECT", "TOPIC_CONFIRM"].includes(game.state.phase)
     )
       throw new RuleError("Tails picks the topic.");
+    room.topicRequest?.abort();
+    const request = (room.topicRequest = new AbortController());
+    const matchId = game.state.matchId;
     const version = game.state.phaseVersion;
+    const epoch = seat.epoch;
     const suggestion = SUGGESTIONS.find((s) => s.id === c.suggestion);
     const t = suggestion
       ? { safe: true, ...suggestion }
-      : await normalizeTopic(c.text, c.chosenPosition);
+      : await room.services.normalizeTopic(
+          c.text,
+          c.chosenPosition,
+          request.signal,
+        );
+    if (
+      room.closed ||
+      request.signal.aborted ||
+      room.topicRequest !== request ||
+      seat.epoch !== epoch ||
+      room.seats.get(id) !== seat ||
+      matchId !== game.state.matchId
+    )
+      throw new RuleError("Topic selection was replaced.");
+    room.topicRequest = null;
     if (!t.safe)
       throw new RuleError(
         "Pick a harmless disagreement, not a targeted attack.",
@@ -326,31 +342,32 @@ async function command(room: Controller, id: string, data: CommandEnvelope) {
   } else if (c.type === "confirm_topic") game.confirm(id, c.topicRevision);
   else if (c.type === "reject_topic") game.reject(id, c.topicRevision);
   else if (c.type === "done") {
-    if (!canSpeak(game.state, id)) throw new RuleError("Wait for your speaking turn.");
+    if (!canSpeak(game.state, id))
+      throw new RuleError("Wait for your speaking turn.");
     if (c.lastAudioSeq > seat.audioSeq + 15)
       throw new RuleError("Invalid audio boundary.");
     game.endTurn(id, c.turnId, c.lastAudioSeq);
   } else if (c.type === "audio_ready")
-    room.audioReady(id, c.utteranceId, c.speechEpoch);
+    room.playback.audioReady(id, c.utteranceId, c.speechEpoch);
   else if (c.type === "barge_in") {
     if (
       canSpeak(game.state, id) &&
-      room.speech?.id === c.utteranceId &&
-      room.speech.epoch === c.speechEpoch &&
+      room.playback.speech?.id === c.utteranceId &&
+      room.playback.speech.epoch === c.speechEpoch &&
       Date.now() - seat.voiceAt < 500
     )
-      room.cancelSpeech();
+      room.playback.cancelSpeech();
   } else if (c.type === "rematch") game.rematch(id, c.value);
-  else if (c.type === "typed_argument") room.typed(id, c.turnId, c.text);
+  else if (c.type === "typed_argument")
+    room.judging.typed(id, c.turnId, c.text);
   else if (c.type === "leave") {
     if (!["LOBBY", "ABORTED", "MATCH_RESULT"].includes(game.state.phase))
       game.abort("A player left. The unfinished match has no judged winner.");
     for (const ws of seat.sockets.values()) ws.close();
-    room.ink.get(id)?.close();
-    room.ink.delete(id);
+    room.transcription.ink.get(id)?.close();
+    room.transcription.ink.delete(id);
     room.seats.delete(id);
-    game.state.players = game.state.players.filter((p) => p.id !== id);
-    game.state.mediaMode = "connecting";
+    game.removePlayer(id);
     game.emit("player_left");
   }
 }
@@ -361,7 +378,8 @@ const wss = new WebSocketServer({
 });
 server.on("upgrade", (req, socket, head) => {
   if (!acceptUpgrade(req.url, req.headers.host, req.headers.origin)) {
-    socket.destroy(); return;
+    socket.destroy();
+    return;
   }
   wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
 });
@@ -412,7 +430,7 @@ wss.on("connection", (ws: WebSocket, req) => {
         result.seat.sockets.get(channel)?.close(4001, "Channel replaced");
         result.seat.sockets.set(channel, ws);
         clearTimeout(timeout);
-        room.game.player(id).connected = true;
+        room.game.connectPlayer(id);
         if (channel === "control")
           ws.send(
             JSON.stringify({
@@ -421,7 +439,7 @@ wss.on("connection", (ws: WebSocket, req) => {
             }),
           );
         if (channel === "audio")
-          room.rotate(
+          room.transcription.rotate(
             id,
             room.game.state.turn?.playerId === id &&
               !room.game.state.turn.sealing
@@ -436,7 +454,7 @@ wss.on("connection", (ws: WebSocket, req) => {
         return;
       }
       if (binary) {
-        if (channel === "audio") room.audio(id, bytes);
+        if (channel === "audio") room.media.audio(id, bytes);
         else if (
           channel === "video" &&
           room.game.state.mediaMode !== "rtc" &&
@@ -446,7 +464,7 @@ wss.on("connection", (ws: WebSocket, req) => {
           Date.now() - videoAt > 40
         ) {
           videoAt = Date.now();
-          room.forward(id, "video", bytes);
+          room.media.forward(id, "video", bytes);
         }
         return;
       }

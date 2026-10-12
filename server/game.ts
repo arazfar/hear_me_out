@@ -6,6 +6,7 @@ import {
   type Claim,
   type Criterion,
   type GameEvent,
+  type JudgeState,
   type Opportunity,
   type Phase,
   type Player,
@@ -79,6 +80,78 @@ export class Game {
       degraded: { tts: false, stt: false },
       winnerId: null,
     };
+  }
+  // Coordination changes enter through these methods; the game owns mutable state.
+  holdFloorForJudge() {
+    const turn = this.state.turn;
+    if (!turn) return;
+    turn.remainingMs = this.remaining(turn);
+    turn.deadline = null;
+    turn.pausedReason = "judge";
+  }
+  setSettlement(status: NonNullable<Turn["settlement"]>) {
+    if (this.state.turn) this.state.turn.settlement = status;
+  }
+  setJudgePending(value: boolean) {
+    this.state.judgePending = value;
+  }
+  caption(id: string, text: string, final: boolean) {
+    this.state.captions[id] = { text, final, at: this.now() };
+  }
+  degrade(provider: "stt" | "tts", status: string) {
+    this.state.degraded[provider] = true;
+    this.state.status = status;
+  }
+  bufferJudge(judge: JudgeState) {
+    this.state.judge = judge;
+  }
+  startJudge(epoch: number, startAt: number) {
+    if (this.state.judge?.epoch !== epoch) return;
+    this.state.judge.status = "speaking";
+    this.state.judge.startAt = startAt;
+  }
+  silenceJudge(epoch: number) {
+    if (this.state.judge?.epoch === epoch) this.state.judge.status = "silent";
+  }
+  finishRoundPresentation() {
+    if (this.state.phase === "ROUND_RESOLVE") {
+      this.state.phaseDeadline = this.now();
+      this.tick();
+    }
+  }
+  connectPlayer(id: string) {
+    this.player(id).connected = true;
+  }
+  disconnectPlayer(id: string) {
+    Object.assign(this.player(id), {
+      connected: false,
+      mediaReady: false,
+      captureReady: false,
+      ready: false,
+    });
+  }
+  resumePlayer(id: string) {
+    Object.assign(this.player(id), {
+      connected: true,
+      captureReady: false,
+      mediaReady: false,
+    });
+    if (this.state.phase === "LOBBY") this.player(id).ready = false;
+    this.state.mediaEpoch++;
+    this.state.mediaMode = "connecting";
+  }
+  removePlayer(id: string) {
+    this.state.players = this.state.players.filter((p) => p.id !== id);
+    this.state.mediaMode = "connecting";
+  }
+  setCaptureReady(id: string, cameraOn: boolean, captureReady: boolean) {
+    Object.assign(this.player(id), { cameraOn, captureReady });
+  }
+  setMediaReady(id: string, value: boolean) {
+    this.player(id).mediaReady = value;
+  }
+  setMediaMode(mode: Snapshot["mediaMode"]) {
+    this.state.mediaMode = mode;
   }
   snapshot(): Snapshot {
     this.state.serverNow = this.now();
@@ -406,7 +479,9 @@ export class Game {
       record.turn.playerId !== segment.playerId ||
       record.roundId !== segment.roundId ||
       this.now() > record.validUntil ||
-      (record.turn.sealing && record.turn.settlement !== "draining" && this.now() > this.sealAt) ||
+      (record.turn.sealing &&
+        record.turn.settlement !== "draining" &&
+        this.now() > this.sealAt) ||
       this.state.roundId !== segment.roundId
     )
       return false;
@@ -639,8 +714,14 @@ export class Game {
         return;
       }
       const t = s.turn;
-      if (t?.sealing && now >= this.sealAt + 15000 && (t.settlement === "draining" || s.judgePending)) {
-        this.abort("Argument processing timed out. No unjudged evidence was skipped; try a fresh match.");
+      if (
+        t?.sealing &&
+        now >= this.sealAt + 15000 &&
+        (t.settlement === "draining" || s.judgePending)
+      ) {
+        this.abort(
+          "Argument processing timed out. No unjudged evidence was skipped; try a fresh match.",
+        );
         return;
       }
       if (

@@ -1,8 +1,8 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { Controller } from "../server/controller";
-import { Client } from "../src/client";
 import { acceptUpgrade } from "../server/transport/upgrade";
+import { Client } from "../src/client";
 
 test("an old failed judgment cannot abort a replacement match", async () => {
   const savedFetch = globalThis.fetch,
@@ -54,8 +54,8 @@ test("an old failed judgment cannot abort a replacement match", async () => {
       source: "voice" as const,
     };
     c.game.registerSegment(segment);
-    c.queue.push(segment);
-    const pending = c.drain();
+    c.judging.queue.push(segment);
+    const pending = c.judging.drain();
     await entered;
     c.game.abort("Old game ended");
     c.game.startMatch();
@@ -80,7 +80,14 @@ test("leaving invalidates an in-flight resume response", async () => {
     await new Promise<Response>((r) => {
       resolve = r;
     });
-  globalThis.sessionStorage = { length: 0, clear: () => {}, getItem: () => null, key: () => null, setItem: () => {}, removeItem: () => {} };
+  globalThis.sessionStorage = {
+    length: 0,
+    clear: () => {},
+    getItem: () => null,
+    key: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+  };
   client.session = {
     roomId: "old",
     playerId: "a",
