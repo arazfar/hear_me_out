@@ -8,7 +8,12 @@ import {
   type GameEvent,
   type Session,
 } from "../shared/protocol";
-import { encodeMicrophone, decodeJudgeAudio } from "../shared/media";
+import {
+  encodeMicrophone,
+  decodeJudgeAudio,
+  encodeVideo,
+  decodeVideo,
+} from "../shared/media";
 export const waitFor = async (check: () => boolean, timeout = 10000) => {
   const at = Date.now();
   while (!check()) {
@@ -29,6 +34,8 @@ export async function post(base: string, path: string, body: unknown) {
 export class WsPeer {
   sockets = new Map<string, WebSocket>();
   seq = 0;
+  checkId = "";
+  videoSeq = 0;
   pcm = new Uint8Array(640);
   interval: ReturnType<typeof setInterval> | null = null;
   errors: string[] = [];
@@ -81,6 +88,16 @@ export class WsPeer {
       this.sockets.set(channel, ws);
       ws.on("message", (raw, binary) => {
         if (binary) {
+          if (channel === "video" && Buffer.isBuffer(raw)) {
+            const frame = decodeVideo(raw);
+            if (frame)
+              this.control({
+                type: "video_ack",
+                seq: frame.seq,
+                mediaEpoch: frame.epoch,
+                probe: frame.probe,
+              });
+          }
           if (channel === "audio" && Buffer.isBuffer(raw)) {
             const packet = decodeJudgeAudio(raw);
             if (packet) {
@@ -141,16 +158,54 @@ export class WsPeer {
             this.state.mediaEpoch,
             ++this.seq,
             Date.now(),
-            this.pcm,
+            this.state.players.find((p) => p.id === this.session.playerId)
+              ?.readiness?.setup === "passed"
+              ? this.pcm
+              : new Uint8Array(640).fill(1),
           ),
         );
-      if (++count % 25 === 0)
+      if (++count % 5 === 0) {
+        const video = this.sockets.get("video");
+        if (video?.readyState === WebSocket.OPEN)
+          video.send(
+            encodeVideo(
+              this.state.mediaEpoch,
+              ++this.videoSeq,
+              Date.now(),
+              new Uint8Array([255, 216, 255, 217]),
+              count % 25 === 0,
+            ),
+          );
+      }
+      if (count % 25 === 0) {
         this.send({
           type: "media_status",
-          ready: true,
-          cameraOn: false,
+          captureId: this.session.playerId + ":mic",
+          cameraId: this.session.playerId + ":camera",
+          mic: true,
+          camera: true,
+          foreground: true,
+          localFrames: count,
+          remoteFrames: 0,
+          mediaEpoch: this.state.mediaEpoch,
           rtc: false,
         });
+        const me = this.state.players.find(
+          (p) => p.id === this.session.playerId,
+        );
+        if (
+          !this.checkId &&
+          me?.captureReady &&
+          me.readiness?.setup === "needed"
+        ) {
+          this.checkId = crypto.randomUUID();
+          this.send({
+            type: "setup_start",
+            checkId: this.checkId,
+            captureId: this.session.playerId + ":mic",
+          });
+        }
+      }
     }, 20);
   }
   close() {

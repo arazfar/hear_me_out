@@ -46,7 +46,7 @@ Example argument: “Waffles' pockets trap syrup, so each bite gets sweetness in
 
 - Direct media failure: automatic low-resolution WSS audio/video, with the mode shown in the lobby.
 - TTS failure: shared judge text/captions, with voice recovery clearly stated.
-- STT failure: retry, then shared typed arguments under the same opportunity budgets while player media remains live. This is degraded recovery, not full voice completion.
+- STT failure: pause both players and repeat a private spoken check. Resume the same floor only after both players regain all required capabilities. Typed recovery has been removed.
 - Persistent judge failure: abort with no invented winner; Rematch or join a fresh room.
 - Unrecoverable provider outage: open `/rehearsal.html` to show the saved successful synthetic rehearsal result/transcript labeled **Rehearsal replay — generated test speech, real providers**. Explain the failed component. Never pass a replay off as a live match.
 

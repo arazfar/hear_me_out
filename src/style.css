@@ -69,8 +69,7 @@ summary:focus-visible {
 }
 .phase-panel :focus-visible,
 .entry-card :focus-visible,
-.dialog :focus-visible,
-.face :focus-visible {
+.dialog :focus-visible {
   outline-color: #602480;
 }
 button:disabled .icon {
@@ -169,14 +168,6 @@ p {
   font-size: 20px;
   line-height: 1;
   text-decoration: none;
-}
-.wordmark span {
-  display: block;
-  font:
-    12px "Space Grotesk",
-    sans-serif;
-  margin-top: 6px;
-  color: var(--muted);
 }
 .header-actions {
   display: flex;
@@ -303,45 +294,15 @@ p {
   box-shadow: var(--shadow);
   color-scheme: light;
 }
-.entry-mark {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  background: var(--lavender);
-  margin-bottom: 24px;
-  transform: rotate(-7deg);
-}
-.entry-mark .icon {
-  width: 26px;
-  height: 26px;
-}
-.entry-card h2 {
-  font-size: 32px;
-  white-space: pre-line;
-}
-.entry-card > p:first-of-type {
-  font-size: 15px;
-  color: #64516b;
-  margin: 12px 0 28px;
-}
 .entry-card .primary {
   margin-top: 20px;
 }
 .entry-note {
-  display: block;
   text-align: center;
   font-size: 12px;
   color: #64516b;
-  padding-top: 24px;
-  margin-top: 16px;
-  border-top: 1px solid #20102e22;
-  line-height: 1.7;
-}
-.entry-note .icon {
-  display: block;
-  margin: 0 auto 6px;
+  margin-top: 20px;
+  line-height: 1.5;
 }
 .code-input {
   font-size: 24px;
@@ -360,19 +321,12 @@ p {
   text-align: center;
   width: min(980px, calc(100% - 48px));
   align-self: center;
-  padding: 8px 0 24px;
+  padding: 4px 0 24px;
 }
 .match-progress {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
   color: var(--muted);
   font-size: 12px;
-  margin-bottom: 10px;
-}
-.match-progress span + span {
-  padding-left: 16px;
-  border-left: 1px solid #fff0ce40;
+  margin-bottom: 8px;
 }
 .arena-heading h1 {
   font-size: clamp(24px, 2.5vw, 36px);
@@ -381,25 +335,23 @@ p {
 }
 .courtroom {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 280px minmax(0, 1fr);
   align-items: start;
-  gap: 28px;
+  gap: 24px;
   width: min(1512px, 100%);
-  margin: 0 auto;
-  padding: 0 32px 20px;
+  margin: auto;
+  padding: 0 32px 48px;
   flex: 1 0 auto;
 }
 .face {
   --player: var(--pink);
   min-width: 0;
   position: relative;
-  color: var(--plum);
-  background: var(--player);
+  color: var(--cream);
+  background: #281833;
   border-radius: var(--radius);
-  padding: 5px;
-  box-shadow:
-    inset 0 2px 0 #ffffff66,
-    0 10px 24px #10031955;
+  padding: 4px;
+  box-shadow: 0 12px 28px #10031944;
 }
 .face-1 {
   --player: var(--cyan);
@@ -410,11 +362,12 @@ p {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px 12px;
-  min-height: 48px;
+  padding: 10px 12px;
+  min-height: 44px;
+  color: var(--player);
 }
 .face-heading h2 {
-  font-size: 20px;
+  font-size: 18px;
   overflow-wrap: anywhere;
 }
 .you-label {
@@ -435,7 +388,7 @@ p {
   display: block;
   width: 3px;
   height: 12px;
-  background: var(--plum);
+  background: var(--player);
   border-radius: 3px;
   transform: scaleY(var(--level));
   transition: transform 100ms;
@@ -444,11 +397,11 @@ p {
   height: 18px;
 }
 .face-picture {
-  aspect-ratio: 16/9;
+  height: clamp(210px, 32vh, 330px);
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  background: #35213f;
+  background: var(--surface);
   contain: paint;
 }
 .face-picture video,
@@ -488,13 +441,15 @@ p {
 .player-status {
   display: flex;
   align-items: center;
-  gap: 7px;
-  background: var(--plum);
+  gap: 6px;
   color: var(--cream);
-  font-size: 13px;
-  padding: 9px 12px;
-  margin-top: 4px;
+  background: var(--surface);
   border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  position: absolute;
+  right: 10px;
+  top: 9px;
 }
 .player-status .icon {
   width: 16px;
@@ -502,9 +457,8 @@ p {
   color: var(--player);
 }
 .has-floor .player-status {
-  background: var(--cream);
+  background: var(--warning);
   color: var(--plum);
-  font-weight: 700;
 }
 .has-floor .player-status .icon {
   color: var(--plum);
@@ -513,121 +467,76 @@ p {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 14px 12px 10px;
+  gap: 12px;
+  padding: 10px 12px 4px;
+  min-height: 56px;
 }
 .position {
-  font-size: 14px;
-  max-width: 67%;
+  font-size: 13px;
+  max-width: 60%;
+  color: var(--muted);
   overflow-wrap: anywhere;
 }
 .score {
   display: flex;
   align-items: baseline;
+  justify-content: flex-end;
   gap: 4px;
-  font-size: 32px;
+  font-size: 34px;
   line-height: 1;
   font-weight: 700;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  color: var(--player);
 }
 .score small {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0;
+  color: var(--muted);
 }
 .round-pips {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 0 12px 12px;
+  padding: 0 12px 10px;
 }
 .round-pips > span {
   display: grid;
   place-items: center;
   width: 18px;
   height: 18px;
-  border: 1.5px solid #20102e70;
+  border: 1.5px solid #d6c6dd70;
   border-radius: 50%;
 }
 .round-pips .won {
-  background: var(--plum);
-  color: var(--player);
-  border-color: var(--plum);
+  background: var(--player);
+  color: var(--plum);
+  border-color: var(--player);
 }
 .round-pips .icon {
   width: 12px;
   height: 12px;
 }
-.round-pips small {
-  font-size: 12px;
-  margin-left: 5px;
-}
-.score-note {
-  margin: 0 3px 3px;
-  background: var(--cream);
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 12px;
-}
-.score-note summary {
-  cursor: pointer;
-  list-style: none;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 4px 8px;
-}
-.score-note summary::-webkit-details-marker {
-  display: none;
-}
-.score-note summary > span:first-child {
-  text-transform: capitalize;
-  font-weight: 700;
-}
-.score-note summary .icon {
-  width: 16px;
-  height: 16px;
-}
-.score-note[open] summary .icon {
-  rotate: 90deg;
-}
-.score-reason-preview {
-  grid-column: 1 / -1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: #5c4565;
-}
-.score-note[open] .score-reason-preview {
-  display: none;
-}
-.score-note > div {
-  max-height: 180px;
-  overflow: auto;
-}
-.score-note p {
-  margin-top: 12px;
-}
-.score-note b {
-  display: block;
-  text-transform: capitalize;
-  margin-bottom: 3px;
+
+.award-slot {
+  position: absolute;
+  left: calc(var(--lane) * 100% / var(--award-slots));
+  width: calc(100% / var(--award-slots));
+  top: 14px;
+  text-align: center;
 }
 .score-burst {
-  position: absolute;
-  right: 8px;
-  bottom: 28px;
-  background: var(--cream);
-  color: var(--plum);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-  padding: 8px 16px;
+  display: inline-block;
+  white-space: nowrap;
+  color: var(--player);
   font:
-    24px Bungee,
+    var(--award-font, 23px) Bungee,
     sans-serif;
   pointer-events: none;
-  animation: score-pop 1.2s var(--ease) both;
+  animation: score-pop 900ms var(--ease) both;
+  text-shadow: 0 3px 8px #10031980;
 }
 .camera-status {
   display: flex;
@@ -650,7 +559,7 @@ p {
   align-items: stretch;
 }
 .stage {
-  height: 170px;
+  height: 190px;
   min-width: 0;
   position: relative;
   pointer-events: none;
@@ -660,7 +569,6 @@ p {
 }
 .phase-content {
   position: relative;
-  animation: phase-arrive var(--phase) var(--ease);
 }
 @keyframes phase-arrive {
   from {
@@ -682,7 +590,7 @@ p {
   overflow-wrap: anywhere;
 }
 .phase-panel h2 {
-  font-size: 24px;
+  font-size: 22px;
 }
 .phase-panel > p {
   font-size: 14px;
@@ -719,33 +627,6 @@ p {
     sans-serif;
   letter-spacing: 0.12em;
 }
-.mic-check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  margin: 18px 0 4px;
-}
-.mic-check meter {
-  flex: 1;
-  min-width: 30px;
-  height: 10px;
-}
-.mic-check meter::-webkit-meter-bar {
-  background: #ded1e3;
-  border: 0;
-  border-radius: 4px;
-}
-.mic-check meter::-webkit-meter-optimum-value {
-  background: #72408e;
-}
-.inline-warning {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px !important;
-  color: #813c26 !important;
-}
 .ready-button {
   background: #d8ebad;
 }
@@ -772,9 +653,6 @@ p {
 .suggestions button .icon {
   width: 16px;
   margin-left: auto;
-}
-.topic-number {
-  display: none;
 }
 .decision-clock {
   display: flex;
@@ -809,26 +687,21 @@ p {
   background: var(--lime);
   border-radius: 50%;
   margin: 0 auto 16px;
-  animation: coin-land 0.8s var(--ease) both;
 }
 .coin-token .icon {
   width: 38px;
   height: 38px;
 }
-.phase-round .stage {
-  order: 2;
-  height: 220px;
-}
 .turn-panel {
   text-align: center;
-  padding: 4px 14px 0;
+  padding: 4px 12px 0;
 }
 .turn-label {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 600;
 }
 .turn-dot {
@@ -843,7 +716,7 @@ p {
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   line-height: 1.12;
-  margin: 4px 0;
+  margin: 6px 0;
 }
 .timer small {
   font-size: 13px;
@@ -874,19 +747,10 @@ p {
 .time-low .timer {
   color: var(--warning);
 }
-.turn-kind {
-  font-size: 14px;
-  font-weight: 600;
-}
 .turn-guidance {
   font-size: 12px;
   color: var(--muted);
   margin: 6px 0 14px;
-}
-.comeback-label {
-  font-size: 12px;
-  color: var(--lime);
-  margin-top: 12px;
 }
 .result-panel {
   position: relative;
@@ -922,7 +786,8 @@ p {
 .winner .face-heading::after {
   content: "WINNER";
   font-size: 11px;
-  background: var(--cream);
+  color: var(--plum);
+  background: var(--player);
   border-radius: 6px;
   padding: 4px 7px;
 }
@@ -953,8 +818,8 @@ p {
 .caption-zone {
   width: min(1100px, calc(100% - 64px));
   align-self: center;
-  min-height: 64px;
-  margin: 0 auto 20px;
+  min-height: 56px;
+  margin: 0 auto 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1007,11 +872,14 @@ p {
 .controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 20px;
-  width: 100%;
-  padding: 16px 32px;
-  background: #1b0d27;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  margin: 0 auto 14px;
+  padding: 6px;
+  border-radius: 16px;
+  background: #160d23;
 }
 .device-controls {
   display: flex;
@@ -1038,29 +906,10 @@ p {
 .controls .muted {
   color: var(--warning);
 }
-.court-footer {
-  font-size: 12px;
-  color: var(--muted);
-  text-align: center;
-}
 .controls .leave-button {
   background: transparent;
 }
-.typed-recovery {
-  width: min(760px, calc(100% - 48px));
-  margin: 0 auto 20px;
-  padding: 16px;
-  background: var(--cream);
-  border-radius: 12px;
-  color: var(--plum);
-}
-.typed-recovery > div {
-  display: flex;
-  gap: 10px;
-}
-.typed-recovery .primary {
-  width: auto;
-}
+
 .room-notice {
   display: flex;
   align-items: center;
@@ -1210,27 +1059,127 @@ p {
   color: var(--muted);
   font-size: 12px;
 }
+/* Cues animate decoration only. Media, captions and input stay put. */
+.award-layer {
+  position: absolute;
+  inset: auto 12px -42px;
+  height: 40px;
+  pointer-events: none;
+}
+.score-wrap {
+  margin-left: auto;
+  transform-origin: right center;
+}
+.score-numbers {
+  min-width: 4.8ch;
+  text-align: right;
+}
+.face-bottom:empty {
+  display: none;
+}
+.face-picture::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--player);
+  border-radius: inherit;
+  opacity: 0.4;
+  pointer-events: none;
+  transition: opacity 180ms;
+}
+.has-floor .face-picture::after {
+  opacity: 1;
+  border-width: 3px;
+}
+.face-heading .activity {
+  margin-left: auto;
+}
+.face:has(.player-status) .activity {
+  visibility: hidden;
+}
+.arena-heading.no-topic {
+  padding: 0;
+  height: 12px;
+}
+.on-title .wordmark {
+  visibility: hidden;
+}
+.primary:not(:disabled):active {
+  transform: translateY(2px) scale(0.98);
+  transition-duration: 70ms;
+}
+.phase-panel > p:empty {
+  display: none;
+}
+.coin-reveal {
+  animation: coin-land 800ms var(--ease) both;
+}
+.handoff {
+  animation: phase-arrive 220ms var(--ease);
+}
+.win-pulse .latest-win {
+  animation: win-pop 600ms var(--ease);
+}
+.celebrating .verdict-icon {
+  animation: win-pop 600ms var(--ease);
+}
+.phase-match_result:has(.celebrating) .stage {
+  animation: bench-impact 180ms ease-out;
+}
 @keyframes score-pop {
   0% {
     opacity: 0;
-    transform: translateY(8px) scale(0.9);
+    transform: translateY(8px) scale(0.6);
   }
-  15%,
+  14% {
+    opacity: 1;
+    transform: translateY(0) scale(1.12);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1);
+  }
   65% {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translateY(-12px);
+    transform: translateY(-18px) scale(1);
   }
 }
 @keyframes coin-land {
   0% {
-    transform: rotateY(180deg) translateY(-8px);
+    transform: translateY(-12px) rotateY(270deg) scale(0.8);
+  }
+  70% {
+    transform: translateY(2px) rotateY(0) scale(1.08);
   }
   100% {
-    transform: rotateY(0) translateY(0);
+    transform: none;
+  }
+}
+@keyframes win-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.3) rotate(-5deg);
+  }
+  60% {
+    transform: scale(0.97) rotate(2deg);
+  }
+}
+@keyframes bench-impact {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  60% {
+    transform: translateX(2px);
   }
 }
 @keyframes confetti-fall {
@@ -1243,12 +1192,12 @@ p {
     opacity: 0;
   }
 }
-@media (max-height: 820px) and (min-width: 1120px) {
+@media (min-width: 1120px) and (max-height: 820px) {
   .app-header {
-    padding-block: 12px;
+    padding-block: 8px;
   }
   .arena-heading {
-    padding-block: 4px 20px;
+    padding-bottom: 12px;
   }
   .arena-heading h1 {
     font-size: 28px;
@@ -1256,41 +1205,17 @@ p {
   .stage {
     height: 150px;
   }
-  .phase-round .stage {
-    height: 180px;
+  .phase-panel {
+    padding: 14px;
   }
   .face-picture {
-    aspect-ratio: auto;
-    height: clamp(150px, 25vh, 205px);
+    height: clamp(180px, 30vh, 330px);
   }
-  .face-heading {
-    min-height: 40px;
-    padding-block: 8px;
-  }
-  .face-bottom {
-    padding-block: 10px 8px;
-  }
-  .face-heading h2 {
-    font-size: 18px;
-  }
-  .score {
-    font-size: 28px;
-  }
-  .phase-panel {
-    padding: 18px;
-  }
-  .phase-panel h2 {
-    font-size: 22px;
+  .result-panel .verdict-icon {
+    display: none;
   }
   .phase-panel > p {
     font-size: 13px;
-  }
-  .caption-zone {
-    min-height: 48px;
-    margin-bottom: 14px;
-  }
-  .controls {
-    padding-block: 12px;
   }
   .title-world .stage {
     height: 300px;
@@ -1298,20 +1223,17 @@ p {
   .title-world h1 {
     font-size: 64px;
   }
-  .entry-card {
-    padding: 26px;
-  }
   .title-layout {
     padding-top: 12px;
   }
 }
 @media (max-width: 1119px) {
   .app-header {
-    padding: 16px 24px;
+    padding: 14px 24px;
   }
   .title-layout {
     gap: 28px;
-    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-columns: minmax(0, 1fr) 320px;
     padding-inline: 24px;
   }
   .title-world h1 {
@@ -1325,15 +1247,14 @@ p {
   }
   .courtroom {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
+    gap: 48px 20px;
     padding-inline: 24px;
   }
   .face-1 {
     grid-column: 2;
   }
   .face-picture {
-    aspect-ratio: auto;
-    height: clamp(130px, 22vh, 210px);
+    height: clamp(160px, 25vh, 260px);
   }
   .center-stage {
     grid-column: 1 / -1;
@@ -1343,10 +1264,8 @@ p {
     align-items: center;
     gap: 24px;
   }
-  .stage,
-  .phase-round .stage {
-    height: 190px;
-    order: initial;
+  .stage {
+    height: 210px;
   }
   .phase-content {
     min-width: 0;
@@ -1354,7 +1273,7 @@ p {
   .phase-panel {
     padding: 20px;
   }
-  .phase-round .turn-panel {
+  .turn-panel {
     display: grid;
     grid-template-columns: 1fr 1fr;
     align-items: center;
@@ -1362,50 +1281,31 @@ p {
     padding: 0;
   }
   .turn-label,
-  .turn-kind,
   .turn-guidance,
-  .comeback-label {
+  .yield-button {
     grid-column: 1 / -1;
   }
-  .turn-guidance {
-    margin-bottom: 6px;
-  }
-  .phase-round .timer-track {
+  .timer-track {
     grid-column: 2;
     grid-row: 2;
     margin: 0;
   }
-  .phase-round .yield-button {
-    grid-column: 1 / -1;
-  }
-  .court-footer {
-    display: none;
-  }
   .caption-zone {
     width: calc(100% - 48px);
-  }
-  .arena-heading {
-    padding-bottom: 20px;
-  }
-  .controls {
-    padding-inline: 24px;
   }
 }
 @media (max-width: 700px) {
   .app-header {
-    padding: 14px 16px;
+    padding: 12px 16px;
   }
   .wordmark {
     font-size: 16px;
   }
-  .wordmark span {
-    font-size: 10px;
-  }
   .header-actions {
-    gap: 6px;
+    gap: 8px;
   }
   .room-code {
-    padding: 8px 10px;
+    padding: 10px;
     gap: 8px;
   }
   .room-code > span {
@@ -1416,8 +1316,8 @@ p {
   }
   .title-layout {
     grid-template-columns: 1fr;
-    gap: 28px;
-    padding: 24px 20px 40px;
+    gap: 20px;
+    padding: 12px 20px 32px;
   }
   .title-world h1 {
     font-size: 48px;
@@ -1426,12 +1326,12 @@ p {
     display: inline;
   }
   .title-world .stage {
-    height: 260px;
+    height: 220px;
   }
   .entry-card {
     width: min(100%, 420px);
     margin: auto;
-    padding: 26px;
+    padding: 24px;
   }
   .arena-heading {
     width: calc(100% - 32px);
@@ -1441,22 +1341,22 @@ p {
     font-size: 23px;
   }
   .courtroom {
-    padding: 0 12px 20px;
-    gap: 12px;
+    padding: 0 12px 32px;
+    gap: 44px 12px;
   }
   .face {
     padding: 3px;
   }
   .face-heading {
     padding: 8px;
-    min-height: 48px;
+    min-height: 44px;
   }
   .face-heading h2 {
     font-size: 15px;
   }
   .you-label {
     display: block;
-    margin: 3px 0 0;
+    margin: 2px 0 0;
     font-size: 11px;
   }
   .face-picture {
@@ -1471,16 +1371,12 @@ p {
     text-align: center;
   }
   .player-status {
+    position: static;
+    margin-top: 4px;
     font-size: 11px;
-    padding: 8px 6px;
-    gap: 5px;
-  }
-  .player-status .icon {
-    width: 14px;
-    height: 14px;
   }
   .face-bottom {
-    padding: 10px 8px;
+    padding: 10px 8px 4px;
     flex-wrap: wrap;
     gap: 8px;
   }
@@ -1494,46 +1390,43 @@ p {
   }
   .round-pips {
     padding-inline: 8px;
-    flex-wrap: wrap;
   }
-  .round-pips small {
-    font-size: 11px;
+
+  .score-burst {
+    font-size: 13px;
   }
-  .score-note {
-    padding: 8px;
+  .award-layer {
+    left: 0;
+    right: 0;
   }
   .center-stage {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;
   }
   .center-stage .stage {
-    height: 140px;
+    height: 160px;
   }
   .phase-content {
     width: min(400px, 100%);
     margin: auto;
   }
-  .phase-round .turn-panel {
-    padding: 16px;
-  }
-  .phase-round .stage {
-    order: 2;
+  .turn-panel {
+    padding: 12px;
   }
   .phase-panel {
     padding: 22px;
   }
   .controls {
-    gap: 8px;
+    gap: 4px;
     flex-wrap: wrap;
-    padding: 12px;
   }
   .device-controls {
-    gap: 6px;
+    gap: 2px;
   }
   .controls button {
     font-size: 12px;
-    padding: 10px;
-    gap: 6px;
+    padding: 8px;
+    gap: 5px;
   }
   .controls .icon {
     width: 16px;
@@ -1541,7 +1434,6 @@ p {
   }
   .caption-zone {
     width: calc(100% - 24px);
-    margin-bottom: 12px;
   }
   .judge-caption,
   .player-caption {
@@ -1552,15 +1444,7 @@ p {
   .caption-zone p {
     font-size: 14px;
   }
-  .typed-recovery {
-    width: calc(100% - 24px);
-  }
-  .typed-recovery > div {
-    flex-wrap: wrap;
-  }
-  .typed-recovery .primary {
-    width: 100%;
-  }
+
   .dialog-content {
     padding: 28px 24px;
   }
@@ -1578,5 +1462,439 @@ p {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+}
+
+/* Inline device check: one action, a real preview, and room for useful feedback. */
+.device-check {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+.setup-preview {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: var(--plum);
+  border-radius: var(--radius-small);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+.setup-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+.setup-preview > .icon {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  color: var(--lavender);
+}
+.setup-status {
+  min-height: 44px;
+  display: grid;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.setup-action {
+  min-height: 48px;
+}
+.setup-meter {
+  width: 100%;
+  height: 12px;
+  accent-color: var(--pink);
+}
+.setup-heard {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.device-help {
+  font-size: 14px;
+}
+.device-help summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.device-help p {
+  margin: 8px 0 12px;
+}
+.device-help label {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.device-help select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  color: var(--plum);
+  background: var(--cream);
+  border: 1px solid var(--plum);
+  border-radius: 8px;
+  padding: 8px;
+  font: inherit;
+}
+.device-check.compact .setup-status {
+  font-size: 14px;
+  min-height: 0;
+}
+.recovery-reason {
+  overflow-wrap: anywhere;
+}
+.face-heading h2 {
+  min-width: 0;
+  flex: 1;
+}
+.face-heading .round-pips {
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 0;
+}
+.face-heading .round-pips > span {
+  width: 12px;
+  height: 12px;
+  border-width: 1px;
+}
+.face-heading .round-pips .icon {
+  width: 9px;
+  height: 9px;
+}
+.face-heading .activity {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+.bonk-aside-slot {
+  min-height: 56px;
+  width: 100%;
+  order: 3;
+}
+.bonk-aside {
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--cream);
+  overflow-wrap: anywhere;
+  animation: phase-arrive 180ms var(--ease);
+}
+.bonk-aside span {
+  display: block;
+  color: var(--lavender);
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+.camera-interruption {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--plum);
+  color: var(--cream);
+  font-size: 12px;
+}
+.center-stage .phase-content {
+  order: 2;
+}
+.controls button,
+.text-button {
+  min-height: 44px;
+}
+@media (max-width: 1119px) {
+  .center-stage > .stage {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .center-stage > .phase-content {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .bonk-aside-slot {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+@media (max-width: 700px) {
+  .app-header {
+    padding: 8px 12px;
+  }
+  .title-layout {
+    padding: 4px 16px 20px;
+    gap: 16px;
+  }
+  .title-world h1 {
+    font-size: 40px;
+  }
+  .title-world .stage {
+    height: 120px;
+  }
+  .title-tagline {
+    font-size: 16px;
+    margin-top: 8px;
+  }
+  .host-credit {
+    display: none;
+  }
+  .entry-card {
+    padding: 20px;
+  }
+  .setup-preview {
+    aspect-ratio: 16 / 9;
+  }
+  .arena-heading {
+    padding-block: 4px 12px;
+  }
+  .arena-heading h1 {
+    font-size: 20px;
+  }
+  .match-progress {
+    font-size: 12px;
+  }
+  .courtroom {
+    gap: 44px 8px;
+    padding: 0 8px 8px;
+  }
+  .face-heading {
+    gap: 6px;
+    padding: 8px 6px;
+  }
+  .face-heading h2 {
+    font-size: 14px;
+  }
+  .face-heading .activity {
+    display: none;
+  }
+  .you-label {
+    display: inline;
+    margin-left: 4px;
+  }
+  .face-picture {
+    height: clamp(96px, 19vh, 150px);
+  }
+  .face-bottom {
+    flex-wrap: nowrap;
+    padding: 8px 6px;
+    gap: 4px;
+  }
+  .position {
+    width: auto;
+    max-width: 55%;
+    font-size: 12px;
+  }
+  .score {
+    font-size: 24px;
+  }
+  .score small {
+    display: none;
+  }
+  .score-numbers {
+    min-width: 4ch;
+  }
+  .center-stage {
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 4px 8px;
+  }
+  .center-stage .stage {
+    height: 100px;
+  }
+  .phase-content {
+    width: 100%;
+  }
+  .phase-panel {
+    padding: 14px;
+  }
+  .phase-panel h2 {
+    font-size: 22px;
+  }
+  .phase-panel > p {
+    font-size: 14px;
+  }
+  .turn-panel {
+    padding: 4px 12px 4px 0;
+  }
+  .timer {
+    font-size: 44px;
+  }
+  .turn-label {
+    font-size: 16px;
+  }
+  .bonk-aside-slot {
+    min-height: 52px;
+  }
+  .bonk-aside {
+    padding-block: 4px;
+  }
+  .controls {
+    margin-top: 8px;
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
+  }
+  .controls button {
+    padding: 8px;
+    font-size: 12px;
+  }
+  .caption-zone {
+    min-height: 44px;
+    margin-top: 8px;
+  }
+  .player-caption,
+  .judge-caption {
+    padding: 10px;
+  }
+  .caption-zone p {
+    font-size: 14px;
+  }
+  .result-panel .verdict-icon {
+    display: none;
+  }
+  .winner .face-heading::after {
+    display: none;
+  }
+  .result-panel h2 span {
+    font-size: 18px;
+    margin-top: 4px;
+  }
+  .result-panel .primary {
+    margin-top: 12px;
+  }
+  .phase-recovering .center-stage,
+  .phase-topic_select .center-stage,
+  .phase-topic_confirm .center-stage {
+    grid-template-columns: 1fr;
+  }
+  .phase-recovering .center-stage > .stage,
+  .phase-topic_select .center-stage > .stage,
+  .phase-topic_confirm .center-stage > .stage {
+    display: none;
+  }
+  .phase-recovering .phase-content,
+  .phase-topic_select .phase-content,
+  .phase-topic_confirm .phase-content {
+    grid-column: 1;
+  }
+}
+@media (max-height: 500px) and (max-width: 1119px) {
+  .face-picture {
+    height: 130px;
+  }
+  .center-stage .stage {
+    height: 100px;
+  }
+}
+@media (max-width: 700px) and (max-height: 740px) {
+  .phase-match_result .caption-zone:empty,
+  .phase-round_resolve .caption-zone:empty {
+    min-height: 12px;
+  }
+  .app-header {
+    padding-block: 4px;
+  }
+  .arena-heading {
+    padding-bottom: 8px;
+  }
+  .match-progress {
+    margin-bottom: 4px;
+  }
+  .courtroom {
+    row-gap: 40px;
+  }
+  .face-heading {
+    min-height: 32px;
+    padding-block: 4px;
+  }
+  .face-picture {
+    height: 96px;
+  }
+  .face-bottom {
+    min-height: 44px;
+    padding-block: 4px;
+  }
+  .timer {
+    font-size: 36px;
+    margin-block: 2px;
+  }
+  .turn-panel {
+    gap: 2px 12px;
+  }
+  .turn-panel .primary {
+    min-height: 44px;
+    padding-block: 8px;
+  }
+  .bonk-aside-slot {
+    min-height: 40px;
+  }
+  .bonk-aside {
+    padding: 0 8px;
+    font-size: 13px;
+  }
+  .bonk-aside span {
+    display: inline;
+    margin-right: 6px;
+  }
+  .player-caption,
+  .judge-caption {
+    display: block;
+    padding: 8px 10px;
+  }
+  .caption-speaker {
+    display: inline-flex;
+    margin-right: 8px;
+  }
+  .caption-zone p {
+    display: inline;
+  }
+  .caption-status {
+    display: block;
+  }
+  .controls {
+    margin-top: 4px;
+    margin-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+  .caption-zone {
+    margin-block: 4px;
+  }
+}
+
+/* Repair keeps one action visible, including on a short phone. */
+.recovery-panel .device-check {
+  margin-top: 12px;
+  gap: 8px;
+}
+.recovery-panel .device-check .primary {
+  margin-top: 0;
+}
+.recovery-panel .device-help summary {
+  justify-content: center;
+}
+:is(.phase-recovering, .phase-aborted) .caption-zone:empty {
+  min-height: 12px;
+}
+@media (max-width: 700px) and (max-height: 740px) {
+  .phase-recovering .courtroom {
+    row-gap: 12px;
+  }
+  .recovery-panel > .icon {
+    display: none;
+  }
+  :is(.phase-recovering, .phase-aborted) .controls {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: calc(100% - 24px);
+    gap: 2px;
+  }
+  :is(.phase-recovering, .phase-aborted) .device-controls {
+    display: contents;
+  }
+  :is(.phase-recovering, .phase-aborted) .controls button {
+    flex-direction: column;
+    padding: 4px;
+    gap: 2px;
   }
 }

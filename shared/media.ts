@@ -1,4 +1,4 @@
-/** Version 2 binary protocol. Views preserve offsets for Node buffers and browser frames. */
+/** Version 3 binary protocol. Views preserve offsets for Node buffers and browser frames. */
 const view = (bytes: Uint8Array) =>
   new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 const uint = (n: number) => Number.isInteger(n) && n >= 0 && n <= 0xffffffff;
@@ -50,13 +50,14 @@ export function encodeMicrophone(
   return packet;
 }
 export function decodeVideo(bytes: Uint8Array) {
-  if (bytes.length < 21 || bytes.length > 64000 || bytes[0] !== 3) return null;
+  if (bytes.length < 25 || bytes.length > 64000 || ![3, 4].includes(bytes[0]))
+    return null;
   const v = view(bytes),
     capturedAt = v.getFloat64(9, true);
   if (
     !Number.isFinite(capturedAt) ||
-    bytes[17] !== 0xff ||
-    bytes[18] !== 0xd8 ||
+    bytes[21] !== 0xff ||
+    bytes[22] !== 0xd8 ||
     bytes.at(-2) !== 0xff ||
     bytes.at(-1) !== 0xd9
   )
@@ -65,7 +66,9 @@ export function decodeVideo(bytes: Uint8Array) {
     epoch: v.getUint32(1, true),
     seq: v.getUint32(5, true),
     capturedAt,
-    jpeg: bytes.subarray(17),
+    jpeg: bytes.subarray(21),
+    generation: v.getUint32(17, true),
+    probe: bytes[0] === 4,
   };
 }
 export function encodeVideo(
@@ -73,21 +76,25 @@ export function encodeVideo(
   seq: number,
   capturedAt: number,
   jpeg: Uint8Array,
+  probe = false,
+  generation = 0,
 ) {
   if (
     !uint(epoch) ||
     !uint(seq) ||
     !Number.isFinite(capturedAt) ||
-    jpeg.length > 63983
+    !uint(generation) ||
+    jpeg.length > 63979
   )
     throw new Error("Invalid video frame");
-  const packet = new Uint8Array(17 + jpeg.length),
+  const packet = new Uint8Array(21 + jpeg.length),
     v = view(packet);
-  v.setUint8(0, 3);
+  v.setUint8(0, probe ? 4 : 3);
   v.setUint32(1, epoch, true);
   v.setUint32(5, seq, true);
   v.setFloat64(9, capturedAt, true);
-  packet.set(jpeg, 17);
+  v.setUint32(17, generation, true);
+  packet.set(jpeg, 21);
   return packet;
 }
 export function decodeJudgeAudio(bytes: Uint8Array) {

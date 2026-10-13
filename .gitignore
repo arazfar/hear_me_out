@@ -11,3 +11,5 @@ output/
 # Local design-tool state
 .impeccable/config.local.json
 .impeccable/hook.cache.json
+# Local implementation-pass reports; durable guidance lives in project docs.
+.impeccable/review/*-validation.md

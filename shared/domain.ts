@@ -45,6 +45,12 @@ export const playerSchema = z.object({
   mediaReady: z.boolean(),
   captureReady: z.boolean(),
   cameraOn: z.boolean(),
+  readiness: z
+    .object({
+      setup: z.enum(["needed", "checking", "passed", "failed"]),
+      blockers: z.array(z.string()),
+    })
+    .optional(),
   wins: z.number().finite(),
   scoreUnits: z.number().finite(),
 });
@@ -80,7 +86,7 @@ export const segmentSchema = z.object({
   text: z.string(),
   stableAt: z.number().finite(),
   eligible: z.boolean(),
-  source: z.union([z.literal("voice"), z.literal("typed")]),
+  source: z.literal("voice"),
 });
 export type Segment = z.infer<typeof segmentSchema>;
 export const scoreEventSchema = z.object({
@@ -165,7 +171,7 @@ export const snapshotSchema = z.object({
   status: z.string(),
   judgePending: z.boolean(),
   recoveryDeadline: z.union([z.number().finite(), z.null()]),
-  degraded: z.object({ tts: z.boolean(), stt: z.boolean() }),
+  degraded: z.object({ tts: z.boolean() }),
   winnerId: z.union([z.string(), z.null()]),
 });
 export type Snapshot = z.infer<typeof snapshotSchema>;

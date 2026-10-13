@@ -2,8 +2,14 @@
 import { randomUUID } from "node:crypto";
 import { createApp } from "../server/app";
 import { CRITERIA, snapshotSchema } from "../shared/domain";
+import type { GameEvent } from "../shared/protocol";
 import { services } from "../tests/fixtures";
 
+const heldJudges = new Map<
+  string,
+  { wait: Promise<void>; release: () => void }
+>();
+let speechDelay = 200;
 const runtime = createApp({
   providersReady: () => true,
   services: services({
@@ -24,7 +30,27 @@ const runtime = createApp({
         closing: false,
         failed: false,
         send: (audio) => {
-          if (audio.some((x) => x !== 0)) heard = true;
+          if (audio.some((x) => x !== 0) && !closed) {
+            if (!heard && !turnId)
+              setTimeout(() => {
+                if (closed) return;
+                // Exercise the same interim/final callback boundary as Ink.
+                handlers.caption("Bonk, hear", false);
+                handlers.caption("Bonk, hear me out.", true);
+                handlers.segment({
+                  id: randomUUID(),
+                  playerId,
+                  roundId,
+                  turnId: null,
+                  sessionEpoch: "browser-check",
+                  text: "Bonk, hear me out.",
+                  stableAt: Date.now(),
+                  eligible: false,
+                  source: "voice",
+                });
+              }, speechDelay);
+            heard = true;
+          }
         },
         close: async () => {
           if (closed) return true;
@@ -58,7 +84,16 @@ const runtime = createApp({
       _claims,
       jobId,
       ids,
+      _onScore,
+      _recentReactions,
+      signal,
     ) => {
+      const held = heldJudges.get(state.code);
+      if (held) {
+        signal?.addEventListener("abort", held.release, { once: true });
+        await held.wait;
+        signal?.removeEventListener("abort", held.release);
+      }
       const s = segments[0];
       return {
         jobId,
@@ -69,8 +104,7 @@ const runtime = createApp({
           segmentId: s.id,
           criterion,
           quality: s.playerId === state.players[0].id ? 3 : 1,
-          reason:
-            "Answers the bread-hinge distinction with a clear counterexample.",
+          reason: "That bread hinge makes your case.",
         })),
         arguments: [
           {
@@ -90,16 +124,133 @@ const runtime = createApp({
     },
   }),
 });
+const awardReplays = new Map<string, GameEvent[]>();
 // Test-only inspection and failure injection. These routes do not exist in production.
 runtime.app.post("/__test/state/:code", (req, res) => {
   const room = runtime.registry.rooms.get(req.params.code);
   res.json(room?.game.snapshot() || null);
 });
 runtime.app.post("/__test/reset", (_req, res) => {
+  for (const held of heldJudges.values()) held.release();
+  heldJudges.clear();
+  speechDelay = 200;
+  awardReplays.clear();
   for (const room of runtime.registry.rooms.values()) room.close();
   runtime.registry.rooms.clear();
   runtime.registry.byId.clear();
   runtime.registry.buckets.clear();
+  res.json({ ok: true });
+});
+runtime.app.post("/__test/provider", (req, res) => {
+  speechDelay = Math.max(
+    0,
+    Math.min(16000, Number(req.body.speechDelay) || 200),
+  );
+  res.json({ ok: true });
+});
+// Exercise an actual asynchronous provider request while the floor stays live.
+runtime.app.post("/__test/judge/:code/:action", (req, res) => {
+  const room = runtime.registry.rooms.get(req.params.code);
+  const turn = room?.game.state.turn;
+  if (req.params.action === "release") {
+    heldJudges.get(req.params.code)?.release();
+    heldJudges.delete(req.params.code);
+    res.json({ ok: true });
+    return;
+  }
+  if (
+    req.params.action !== "hold" ||
+    !room ||
+    !turn ||
+    room.game.state.phase !== "ROUND" ||
+    turn.sealing ||
+    turn.pausedReason ||
+    room.judging.busy
+  ) {
+    res.status(409).end();
+    return;
+  }
+  let release!: () => void;
+  const wait = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  heldJudges.set(req.params.code, { wait, release });
+  room.judging.onSegment({
+    id: randomUUID(),
+    playerId: turn.playerId,
+    turnId: turn.id,
+    roundId: room.game.state.roundId!,
+    sessionEpoch: "held-judge-fixture",
+    text: "A bread hinge does not change a sandwich.",
+    stableAt: Date.now(),
+    eligible: true,
+    source: "voice",
+  });
+  res.json(room.game.snapshot());
+});
+// Real score commits, with controlled quality, for temporal UI assertions.
+runtime.app.post("/__test/award/:code", (req, res) => {
+  const room = runtime.registry.rooms.get(req.params.code);
+  const turn = room?.game.state.turn;
+  if (!room || !turn || room.game.state.phase !== "ROUND" || turn.sealing) {
+    res.status(409).end();
+    return;
+  }
+  const quality = Number(req.body.quality);
+  if (![1, 2, 3, 4].includes(quality)) {
+    res.status(400).end();
+    return;
+  }
+  const segment = {
+    id: randomUUID(),
+    playerId: turn.playerId,
+    turnId: turn.id,
+    roundId: room.game.state.roundId!,
+    sessionEpoch: "feedback-fixture",
+    text: "A bread hinge does not change a sandwich.",
+    stableAt: Date.now(),
+    eligible: true,
+    source: "voice" as const,
+  };
+  room.game.registerSegment(segment);
+  const events: GameEvent[] = [],
+    previous = room.game.onEvent;
+  room.game.onEvent = (event) => {
+    if (event.type === "score_committed") events.push(event);
+    previous(event);
+  };
+  try {
+    for (const criterion of CRITERIA)
+      room.game.score({
+        ...segment,
+        segmentId: segment.id,
+        criterion,
+        quality,
+        reason: "Uses a sub as a counterexample.",
+      });
+  } finally {
+    room.game.onEvent = previous;
+  }
+  awardReplays.set(req.params.code, events);
+  res.json({
+    ids: events.map((e) => (e.type === "score_committed" ? e.payload.id : "")),
+    snapshot: room.game.snapshot(),
+  });
+});
+runtime.app.post("/__test/replay/:code", (req, res) => {
+  const room = runtime.registry.rooms.get(req.params.code);
+  if (!room) {
+    res.status(404).end();
+    return;
+  }
+  for (const seat of room.seats.values()) {
+    const ws = seat.sockets.get("control");
+    for (const event of awardReplays.get(req.params.code) || [])
+      ws?.send(JSON.stringify(event));
+    ws?.send(
+      JSON.stringify({ type: "snapshot", snapshot: room.game.snapshot() }),
+    );
+  }
   res.json({ ok: true });
 });
 runtime.app.post("/__test/failure/:code/:kind", (req, res) => {
@@ -113,9 +264,9 @@ runtime.app.post("/__test/failure/:code/:kind", (req, res) => {
       "The connection could not recover. Start a fresh match together.",
     );
   if (req.params.kind === "stt")
-    room.game.degrade(
-      "stt",
-      "Speech recognition is unavailable. Type your argument.",
+    room.transcription.sttFailure(
+      room.game.state.turn!.playerId,
+      room.game.state.turn!.id,
     );
   if (req.params.kind === "tts")
     room.game.degrade(
@@ -135,6 +286,7 @@ runtime.app.post("/__test/present/:code", (req, res) => {
   room.playback.cancelSpeech();
   room.game.roundStartedAt = Date.now();
   room.game.state = snapshotSchema.parse({ ...room.game.state, ...req.body });
+  if (room.game.state.turn?.sealing) room.game.sealAt = Date.now();
   room.game.emit("media_status");
   res.json({ ok: true });
 });

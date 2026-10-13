@@ -1,3 +1,4 @@
+import { encodeVideo, decodeVideo } from "../shared/media";
 import { PROTOCOL_VERSION, type Session } from "../shared/protocol";
 import "dotenv/config";
 import { WebSocket } from "ws";
@@ -25,6 +26,8 @@ class Peer {
   state: Snapshot;
   sockets = new Map<string, WebSocket>();
   seq = 0;
+  videoSeq = 0;
+  setup = false;
   pcm: Buffer = Buffer.alloc(640);
   interval: ReturnType<typeof setInterval> | undefined;
   voiceHashes: string[] = [];
@@ -77,6 +80,18 @@ class Peer {
       );
       s.on("message", (raw, binary) => {
         if (binary) {
+          if (ch === "video" && Buffer.isBuffer(raw)) {
+            const frame = decodeVideo(raw);
+            if (frame)
+              this.sockets.get("control")!.send(
+                JSON.stringify({
+                  type: "video_ack",
+                  seq: frame.seq,
+                  mediaEpoch: frame.epoch,
+                  probe: frame.probe,
+                }),
+              );
+          }
           if (ch === "audio" && Buffer.isBuffer(raw) && raw[0] === 2) {
             this.voiceHashes.push(
               createHash("sha256")
@@ -143,7 +158,7 @@ class Peer {
       .send(
         Buffer.concat([
           h,
-          canSpeak(this.state, this.session.playerId)
+          this.setup || canSpeak(this.state, this.session.playerId)
             ? this.pcm
             : Buffer.alloc(640),
         ]),
@@ -159,13 +174,36 @@ const pa = new Peer(a.session, a.snapshot),
 await pa.connect();
 await pb.connect();
 const status = setInterval(() => {
-  for (const p of [pa, pb])
+  for (const p of [pa, pb]) {
     p.command({
       type: "media_status",
-      ready: true,
-      cameraOn: false,
+      captureId: p.session.playerId + ":mic",
+      cameraId: p.session.playerId + ":camera",
+      mic: true,
+      camera: true,
+      foreground: true,
+      localFrames: p.seq,
+      remoteFrames: 0,
+      mediaEpoch: p.state.mediaEpoch,
       rtc: false,
     });
+    for (const probe of [true, false])
+      setTimeout(
+        () =>
+          p.sockets
+            .get("video")
+            ?.send(
+              encodeVideo(
+                p.state.mediaEpoch,
+                ++p.videoSeq,
+                Date.now(),
+                new Uint8Array([255, 216, 255, 217]),
+                probe,
+              ),
+            ),
+        probe ? 0 : 100,
+      );
+  }
 }, 1000);
 async function wait(check: () => boolean, timeout = 40000) {
   const at = Date.now();
@@ -175,16 +213,56 @@ async function wait(check: () => boolean, timeout = 40000) {
       throw Error("Unexpected caption-only voice recovery");
     if (pa.errors.length || pb.errors.length)
       throw Error("Command error: " + [...pa.errors, ...pb.errors].join("; "));
-    if (pa.state.degraded.stt)
-      throw Error(
-        "Voice integration entered typed STT recovery: " + pa.state.status,
-      );
     if (Date.now() - at > timeout)
       throw Error(`Wait expired in ${pa.state.phase}: ${pa.state.status}`);
     await sleep(100);
   }
 }
+const audioCache = new Map<string, Buffer>();
+async function voice(text: string) {
+  if (audioCache.has(text)) return audioCache.get(text)!;
+  const c: Buffer[] = [];
+  await streamVoice(
+    text,
+    (p) => c.push(Buffer.from(p)),
+    () => false,
+    12,
+  );
+  const bytes = Buffer.concat(c),
+    f = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.length / 4),
+    pcm = Buffer.alloc(Math.floor((f.length * 16000) / 44100) * 2);
+  for (let i = 0; i < pcm.length / 2; i++)
+    pcm.writeInt16LE(
+      Math.max(
+        -32768,
+        Math.min(32767, Math.round(f[Math.floor((i * 44100) / 16000)] * 32767)),
+      ),
+      i * 2,
+    );
+  audioCache.set(text, pcm);
+  return pcm;
+}
+await wait(() => pa.state.players.every((p) => p.captureReady));
+for (const p of [pa, pb]) {
+  p.setup = true;
+  p.command({
+    type: "setup_start",
+    checkId: crypto.randomUUID(),
+    captureId: p.session.playerId + ":mic",
+  });
+}
+await sleep(700);
+const testPhrase = await voice("Bonk, hear me out.");
+for (let i = 0; i < testPhrase.length; i += 640) {
+  for (const p of [pa, pb]) {
+    p.pcm = Buffer.alloc(640);
+    testPhrase.copy(p.pcm, 0, i, i + 640);
+  }
+  await sleep(20);
+}
+for (const p of [pa, pb]) p.pcm.fill(0);
 await wait(() => pa.state.players.every((p) => p.mediaReady));
+for (const p of [pa, pb]) p.setup = false;
 console.log(
   JSON.stringify({
     room: a.session.code,
@@ -212,30 +290,6 @@ await wait(() => pa.state.phase === "TOPIC_CONFIRM");
 pa.command({ type: "confirm_topic", topicRevision: pa.state.topic!.revision });
 pb.command({ type: "confirm_topic", topicRevision: pb.state.topic!.revision });
 await wait(() => pa.state.phase === "ROUND");
-const audioCache = new Map<string, Buffer>();
-async function voice(text: string) {
-  if (audioCache.has(text)) return audioCache.get(text)!;
-  const c: Buffer[] = [];
-  await streamVoice(
-    text,
-    (p) => c.push(Buffer.from(p)),
-    () => false,
-    12,
-  );
-  const bytes = Buffer.concat(c),
-    f = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.length / 4),
-    pcm = Buffer.alloc(Math.floor((f.length * 16000) / 44100) * 2);
-  for (let i = 0; i < pcm.length / 2; i++)
-    pcm.writeInt16LE(
-      Math.max(
-        -32768,
-        Math.min(32767, Math.round(f[Math.floor((i * 44100) / 16000)] * 32767)),
-      ),
-      i * 2,
-    );
-  audioCache.set(text, pcm);
-  return pcm;
-}
 let turns = 0;
 
 while (true) {

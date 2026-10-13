@@ -33,7 +33,24 @@ test(
             closing: false,
             failed: false,
             send: (audio) => {
-              if (audio.some((x) => x !== 0)) heard = true;
+              if (audio.some((x) => x !== 0) && !closed) {
+                if (!heard && !turnId)
+                  setTimeout(() => {
+                    if (!closed)
+                      handlers.segment({
+                        id: crypto.randomUUID(),
+                        playerId,
+                        roundId,
+                        turnId: null,
+                        sessionEpoch: "setup",
+                        text: "Bonk hear me out",
+                        stableAt: Date.now(),
+                        eligible: false,
+                        source: "voice",
+                      });
+                  }, 100);
+                heard = true;
+              }
             },
             close: async () => {
               if (closed) return true;
@@ -201,7 +218,7 @@ test(
     assert.equal(pa.state.winnerId, pb.state.winnerId);
     assert.deepEqual(pa.errors, []);
     assert.deepEqual(pb.errors, []);
-    assert.deepEqual(pa.state.degraded, { stt: false, tts: false });
+    assert.deepEqual(pa.state.degraded, { tts: false });
     const cancelled = new Set([...pa.cancelled, ...pb.cancelled]);
     let completed = 0;
     for (const [epoch, hashes] of pa.voice) {
@@ -233,6 +250,11 @@ test(
       1,
     );
     const old = pa.state.matchId;
+    await waitFor(
+      () =>
+        pa.state.players.every((p) => p.mediaReady) &&
+        pb.state.players.every((p) => p.mediaReady),
+    );
     pa.send({ type: "rematch", value: true });
     pb.send({ type: "rematch", value: true });
     await waitFor(

@@ -1,5 +1,15 @@
 import { canSpeak, type Player, type Snapshot } from "../../shared/domain";
 
+export function turnStatus(state: Snapshot, playerId?: string) {
+  const turn = state.turn;
+  if (!turn) return "";
+  if (turn.sealing) return "Bonk is scoring…";
+  if (turn.pausedReason === "judge") return "Bonk has the floor";
+  if (turn.pausedReason) return "Clock paused";
+  const speaker = state.players.find((p) => p.id === turn.playerId);
+  return `${turn.playerId === playerId ? "Your" : (speaker?.name || "Your friend") + "’s"} ${turn.kind}`;
+}
+
 export function playerStatus(
   state: Snapshot,
   player: Player | undefined,
@@ -12,7 +22,7 @@ export function playerStatus(
     return player.ready
       ? "Ready"
       : player.mediaReady
-        ? "Sound check ready"
+        ? "Connected"
         : "Checking devices";
   if (state.phase === "TOPIC_CONFIRM")
     return state.topic?.confirmations.includes(player.id)
@@ -29,7 +39,7 @@ export function playerStatus(
   if (state.phase === "ROUND_RESOLVE" || state.phase === "MATCH_RESULT")
     return state.results.at(-1)?.winnerId === player.id
       ? "Round winner"
-      : "Case presented";
+      : "Round complete";
   if (canSpeak(state, player.id))
     return local
       ? micMuted
@@ -49,15 +59,15 @@ export function phaseTitle(state: Snapshot) {
   if (state.topic) return state.topic.proposition;
   switch (state.phase) {
     case "LOBBY":
-      return "Good friends. Bad takes.";
+      return "Sound check";
     case "INTRO_COIN":
-      return "Let’s settle who starts.";
+      return "Who goes first?";
     case "TOPIC_SELECT":
-      return "Pick a hill to die on.";
+      return "Pick a topic";
     case "RECOVERING":
       return "A brief recess.";
     case "ABORTED":
-      return "This court is adjourned.";
+      return "Match interrupted";
     default:
       return "The court of bad takes.";
   }

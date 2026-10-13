@@ -1,28 +1,28 @@
 export const PHRASES = {
   welcome: [
-    "Welcome to questionable opinions, confidently delivered.",
-    "Welcome to the court of spectacular nonsense.",
-    "Good evening, esteemed experts in absolutely nothing.",
+    "Court is open. Let’s hear those opinions.",
+    "Welcome! I trust you brought a terrible take.",
+    "The court of bad takes is in session.",
   ],
   coin: [
     "Let fate take the blame!",
-    "One coin. Two egos. Excellent odds.",
-    "Heads or tails. Dignity loses either way.",
+    "Let’s see who gets the first word.",
+    "Heads goes first. Tails picks the topic.",
   ],
   topic: [
-    "Choose your hill. Defend it irresponsibly.",
+    "What are we arguing about?",
     "Pick a fight worthy of these tiny podiums.",
-    "Choose the controversy your group chat deserves.",
+    "Pick something you’d argue about over dinner.",
   ],
   nudge: [
-    "The suspense is delicious. Pick your disaster.",
-    "Any hill will do. Bring a shovel.",
-    "We need a topic, not a doctoral thesis.",
+    "Anything you two disagree about?",
+    "The breakfast arguments are always good.",
+    "Pick a topic so we can get started.",
   ],
   round: [
-    "New round. Same hill. Sharper shovels.",
-    "Round reset. Opinions remain on probation.",
-    "Fresh points. Bring better nonsense.",
+    "Next round. Who’s changing my mind?",
+    "Points reset. Let’s hear your next case.",
+    "New round. I’m listening.",
   ],
 } as const;
 export const FIXED_LINES = Object.values(PHRASES).flat();

@@ -1,3 +1,4 @@
+import { DeviceCheck } from "./DeviceCheck";
 import { client } from "../game/client";
 import { Icon } from "./Icon";
 import { StageLoader } from "./StageLoader";
@@ -34,7 +35,7 @@ export function TitleView({
         <p className="title-tagline">Two friends. One terrible take.</p>
         <StageLoader state={null} reduced={reduced} hero />
         <p className="host-credit">
-          Presiding judge: <strong>the Honorable Bonk</strong>
+          <strong>The Honorable Bonk</strong>
         </p>
       </div>
       <form
@@ -47,75 +48,71 @@ export function TitleView({
             );
         }}
       >
-        <div className="entry-mark" aria-hidden="true">
-          <Icon name="gavel" />
-        </div>
-        <h2>
-          {joining
-            ? "Your friend awaits."
-            : "Bring a friend.\nStart an argument."}
-        </h2>
-        <p>
-          {joining
-            ? "Enter their four-digit room code."
-            : "Bonk will hear you both out."}
-        </p>
-        <label htmlFor="player-name">Your name</label>
-        <input
-          id="player-name"
-          autoComplete="nickname"
-          value={name}
-          maxLength={20}
-          placeholder="What should Bonk call you?"
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-        {joining && (
+        {(client.setup.inline || client.reconnecting) && client.session ? (
+          <DeviceCheck />
+        ) : (
           <>
-            <label htmlFor="room-code">Room code</label>
+            <label htmlFor="player-name">Your name</label>
             <input
-              id="room-code"
-              inputMode="numeric"
-              autoComplete="off"
-              pattern="[0-9]{4}"
-              value={code}
-              placeholder="0000"
-              maxLength={4}
-              className="code-input"
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              id="player-name"
+              autoComplete="nickname"
+              value={name}
+              maxLength={20}
+              placeholder="What’s your name?"
+              onChange={(e) => setName(e.target.value)}
               required
             />
+            {joining && (
+              <>
+                <label htmlFor="room-code">Room code</label>
+                <input
+                  id="room-code"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  pattern="[0-9]{4}"
+                  value={code}
+                  placeholder="0000"
+                  maxLength={4}
+                  className="code-input"
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  required
+                />
+              </>
+            )}
+            {error && (
+              <p className="form-error" role="alert">
+                <Icon name="warning" />
+                {error}
+              </p>
+            )}
+            <button
+              className="primary"
+              disabled={busy || !name.trim() || (joining && code.length !== 4)}
+            >
+              {busy ? "Opening court…" : joining ? "Join room" : "Create room"}
+              <Icon name="arrow" />
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => {
+                if (busy) {
+                  client.leave();
+                  return;
+                }
+                setJoining(!joining);
+                setCode(new URLSearchParams(location.search).get("room") || "");
+              }}
+            >
+              {busy
+                ? "Cancel"
+                : joining
+                  ? "Create your own room"
+                  : "Join a friend"}
+            </button>
+            <p className="entry-note">Mic & camera required</p>
           </>
         )}
-        {error && (
-          <p className="form-error" role="alert">
-            <Icon name="warning" />
-            {error}
-          </p>
-        )}
-        <button
-          className="primary"
-          disabled={busy || !name.trim() || (joining && code.length !== 4)}
-        >
-          {busy ? "Opening court…" : joining ? "Join room" : "Create room"}
-          <Icon name="arrow" />
-        </button>
-        <button
-          type="button"
-          className="text-button"
-          disabled={busy}
-          onClick={() => {
-            setJoining(!joining);
-            setCode(new URLSearchParams(location.search).get("room") || "");
-          }}
-        >
-          {joining ? "Create your own room" : "Have a code? Join a friend"}
-        </button>
-        <p className="entry-note">
-          <Icon name="headphones" />2 players · microphone required
-          <br />
-          Headphones recommended
-        </p>
       </form>
     </section>
   );

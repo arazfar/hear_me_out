@@ -28,7 +28,7 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
       {selecting ? (
         choosing ? (
           <>
-            <h2>{custom ? "Your own bad take." : "Your pick."}</h2>
+            <h2>{custom ? "Your topic" : "Pick a topic"}</h2>
             {custom ? (
               <form
                 onSubmit={(e) => {
@@ -40,7 +40,7 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
                   });
                 }}
               >
-                <label htmlFor="proposition">The proposition</label>
+                <label htmlFor="proposition">The argument</label>
                 <input
                   id="proposition"
                   value={topic}
@@ -68,7 +68,7 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
               </form>
             ) : (
               <div className="suggestions">
-                {SUGGESTIONS.map((s, i) => (
+                {SUGGESTIONS.map((s) => (
                   <button
                     key={s.id}
                     onClick={() =>
@@ -80,9 +80,6 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
                       })
                     }
                   >
-                    <span className="topic-number" aria-hidden="true">
-                      {i + 1}
-                    </span>
                     {s.label}
                     <Icon name="arrow" />
                   </button>
@@ -102,7 +99,7 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
               {state.players.find((p) => p.id === state.tailsId)?.name} is
               choosing.
             </h2>
-            <p>You’ll open the case. Prepare a ridiculous example.</p>
+            <p>You go first.</p>
             <span className="waiting-dots" aria-label="Waiting">
               <i />
               <i />
@@ -112,12 +109,8 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
         )
       ) : (
         <>
-          <h2>{confirmed ? "You’re in." : "That’s the argument?"}</h2>
-          <p>
-            {confirmed
-              ? "Waiting for your friend to confirm."
-              : "Check the proposition and your side."}
-          </p>
+          <h2>{confirmed ? "You’re in!" : "Ready to defend your side?"}</h2>
+          <p>{confirmed ? "Waiting for your friend to confirm." : ""}</p>
           <button
             className="primary"
             disabled={confirmed || !me}

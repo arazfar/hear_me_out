@@ -10,12 +10,15 @@ import {
 } from "../../shared/protocol";
 import { canSpeak, type Snapshot } from "../../shared/domain";
 import { type Command, type GameEvent } from "../../shared/protocol";
+import { Connection } from "./connection";
+import { DeviceSetup } from "./setup";
 import { DeviceCapture } from "../media/capture";
 import { PeerMedia } from "../media/peer";
 import { JudgePlayback } from "../media/playback";
 import { ServerClock } from "../media/server-clock";
 import { AudioOutput } from "../media/sound";
 import { RelayVideo } from "../media/video";
+import { FeedbackController, type FeedbackCue } from "./feedback";
 export type Update = {
   state?: Snapshot;
   event?: GameEvent;
@@ -23,8 +26,13 @@ export type Update = {
   connection?: string;
   activity?: { playerId: string; level: number };
   media?: true;
+  feedback?: FeedbackCue;
+  feedbackReset?: boolean;
 };
 export class Client {
+  feedback = new FeedbackController();
+  connection = new Connection(this);
+  setup = new DeviceSetup(this);
   capture = new DeviceCapture(this);
   sound = new AudioOutput(this);
   peer = new PeerMedia(this);
@@ -40,21 +48,26 @@ export class Client {
   serverNow() {
     return this.clock.synced ? this.clock.now() : Date.now();
   }
-  connectionGeneration = 0;
-  connectionRequest: AbortController | null = null;
-  invalidateConnection() {
-    this.connectionGeneration++;
-    this.connectionRequest?.abort();
-    this.connectionRequest = null;
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = null;
-    this.reconnecting = false;
-  }
+  private entryRequest: AbortController | null = null;
   pingTimer: ReturnType<typeof setInterval> | null = null;
   statusTimer: ReturnType<typeof setInterval> | null = null;
-  reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  disconnecting = false;
-  reconnecting = false;
+  get reconnecting() {
+    return this.connection.blocked;
+  }
+  closeTransport() {
+    const sockets = [...this.sockets.values()];
+    this.sockets.clear();
+    for (const socket of sockets) socket.close();
+    if (this.pingTimer) clearInterval(this.pingTimer);
+    if (this.statusTimer) clearInterval(this.statusTimer);
+    this.pingTimer = this.statusTimer = null;
+  }
+  invalidateConnection() {
+    this.entryRequest?.abort();
+    this.entryRequest = null;
+    this.connection.cancel();
+    this.closeTransport();
+  }
   listeners = new Set<(u: Update) => void>();
   on(update: (u: Update) => void) {
     this.listeners.add(update);
@@ -63,50 +76,90 @@ export class Client {
     };
   }
   notify(u: Update) {
+    if (u.state) {
+      const result = this.feedback.accept(u.state, u.event);
+      u = {
+        ...u,
+        feedback: result.cue,
+        feedbackReset: result.reset || u.feedbackReset,
+      };
+    }
+    if (u.connection === "left" || u.connection === "reconnecting")
+      u.feedbackReset = true;
+    if (typeof document !== "undefined" && document.hidden)
+      u.feedback = undefined;
+    if (u.activity && u.activity.level > 0.02) this.sound.duckForSpeech();
+    if (u.state) this.sound.updateEffectsGain();
+    if (u.feedbackReset) this.sound.stopEffects();
     for (const f of this.listeners) f(u);
   }
   async enter(kind: "create" | "join", name: string, code?: string) {
     if (this.session) this.leave();
+    this.capture.micMuted = this.capture.cameraOff = false;
+    this.setup.inline = true;
+    this.setup.phase = "connecting";
+    this.notify({ media: true });
     this.invalidateConnection();
-    const generation = this.connectionGeneration;
-    const request = (this.connectionRequest = new AbortController());
-    await this.sound.unlock();
-    if (generation !== this.connectionGeneration) return;
-    const response = await fetch(
-      kind === "create" ? "/api/rooms" : "/api/join",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, code }),
-        signal: request.signal,
-      },
-    );
-    const body = await response.json();
-    if (generation !== this.connectionGeneration) return;
-    if (!response.ok) throw new Error(body.error);
-    this.attach(body.session, body.snapshot);
+    const request = (this.entryRequest = new AbortController());
+    const current = () =>
+      this.entryRequest === request && !request.signal.aborted;
+    // Start from the tap, but let seat cancellation complete even if an audio
+    // module is slow. DeviceSetup owns awaiting and reporting this same attempt.
+    void this.sound.unlock().catch(() => {});
+    if (!current()) return;
+    const reservation = fetch(kind === "create" ? "/api/rooms" : "/api/join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, code }),
+    }).then(async (response) => {
+      const body = await response.json();
+      if (!current() && body.session) this.releaseSeat(body.session);
+      return { response, body };
+    });
+    let cancel = () => {};
+    const cancelled = new Promise<never>((_, reject) => {
+      cancel = () => reject(new Error("Couldn’t connect to court. Try again."));
+      request.signal.addEventListener("abort", cancel, { once: true });
+    });
+    const timer = setTimeout(() => request.abort(), 10000);
     try {
-      await this.capture.devices();
+      const { response, body } = await Promise.race([reservation, cancelled]);
+      if (!current()) return;
+      if (!response.ok) throw new Error(body.error);
+      clearTimeout(timer);
+      if (await this.connection.open(body.session, body.snapshot))
+        await this.setup.run();
     } catch (error) {
-      this.notify({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Couldn’t connect your microphone. Choose Enable mic to retry.",
-      });
+      if (this.entryRequest === request) {
+        this.setup.inline = false;
+        this.setup.phase = "idle";
+        throw error;
+      }
+    } finally {
+      clearTimeout(timer);
+      request.signal.removeEventListener("abort", cancel);
+      if (this.entryRequest === request) this.entryRequest = null;
     }
   }
+  releaseSeat(session: Session & { resumeId?: string }) {
+    void fetch("/api/leave", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(session),
+      keepalive: true,
+    }).catch(() => {});
+  }
+
   attach(session: Session, snapshot: Snapshot) {
     this.clock.reset();
-    const generation = this.connectionGeneration;
-    this.disconnecting = false;
-    this.reconnecting = false;
+    this.closeTransport();
+    this.peer.reset();
+    this.video.resetVideo();
     this.session = session;
     this.state = snapshot;
     this.capture.syncMicrophone();
     this.capture.audioSeq = 0;
-    sessionStorage.setItem("hmo-seat", JSON.stringify(session));
-    this.notify({ state: snapshot, connection: "connecting" });
+    this.notify({ state: snapshot });
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
     for (const channel of ["control", "audio", "video"]) {
       const ws = new WebSocket(
@@ -114,9 +167,7 @@ export class Client {
       );
       ws.binaryType = "arraybuffer";
       this.sockets.set(channel, ws);
-      const current = () =>
-        generation === this.connectionGeneration &&
-        this.sockets.get(channel) === ws;
+      const current = () => this.sockets.get(channel) === ws;
       ws.onopen = () => {
         if (!current()) {
           ws.close();
@@ -131,9 +182,9 @@ export class Client {
           }),
         );
         if (channel === "control") {
-          this.notify({ connection: "connected" });
           this.send({ type: "ping", clientTime: performance.now() });
         }
+        this.connection.progress();
       };
       ws.onmessage = (event) => {
         if (!current()) return;
@@ -145,19 +196,15 @@ export class Client {
           const decoded = decodeVideo(new Uint8Array(frame));
           if (
             !this.state ||
-            this.state.mediaMode === "rtc" ||
             !decoded ||
             decoded.epoch !== this.state.mediaEpoch
           )
             return;
-          const seq = decoded.seq;
-          const ack = () =>
-            this.send({
-              type: "video_ack",
-              seq,
-              mediaEpoch: new DataView(frame).getUint32(1, true),
-            });
-          ack();
+          if (decoded.probe) {
+            void this.video.probe(frame);
+            return;
+          }
+          if (this.state.mediaMode === "rtc") return;
           this.video.pendingVideo = frame;
           void this.video.decodeVideo();
         }
@@ -170,7 +217,7 @@ export class Client {
           });
           return;
         }
-        if (!this.disconnecting && current()) this.scheduleReconnect();
+        if (current()) this.scheduleReconnect();
       };
       ws.onerror = () => {};
     }
@@ -180,103 +227,77 @@ export class Client {
       10000,
     );
     if (this.statusTimer) clearInterval(this.statusTimer);
-    this.statusTimer = setInterval(
-      () =>
-        this.command({
-          type: "media_status",
-          ready:
-            this.clock.synced &&
-            !!this.capture.stream &&
-            this.sound.context?.state === "running",
-          cameraOn:
-            !this.capture.cameraOff &&
-            !!this.capture.stream?.getVideoTracks().length,
-          rtc: this.peer.pc?.connectionState === "connected",
-        }),
-      1200,
-    );
+    this.statusTimer = setInterval(() => void this.reportHealth(), 1000);
   }
+  reporting = false;
+  async reportHealth() {
+    if (this.reporting || !this.session || !this.state) return;
+    this.reporting = true;
+    const session = this.session;
+    try {
+      // Device/privacy failures must not wait for an asynchronous RTC stats read.
+      void this.peer.sample();
+      if (session !== this.session || !this.state) return;
+      const audio = this.capture.stream?.getAudioTracks()[0],
+        camera = this.capture.stream?.getVideoTracks()[0];
+      this.command({
+        type: "media_status",
+        captureId: audio?.id || "",
+        cameraId: camera?.id || "",
+        micSource:
+          !!audio &&
+          audio.readyState === "live" &&
+          !audio.muted &&
+          !this.capture.captureFailed &&
+          this.sound.context?.state === "running",
+        mic:
+          !!audio &&
+          audio.readyState === "live" &&
+          !audio.muted &&
+          !this.capture.captureFailed &&
+          !this.capture.micMuted &&
+          this.sound.context?.state === "running" &&
+          this.clock.synced,
+        camera:
+          !!camera &&
+          camera.readyState === "live" &&
+          !camera.muted &&
+          !this.capture.cameraOff,
+        foreground: !document.hidden,
+        localFrames: this.video.localFrames,
+        remoteFrames: this.peer.remoteFrames,
+        cameraGeneration: this.video.captureGeneration,
+        mediaEpoch: this.state.mediaEpoch,
+        rtc: this.peer.pc?.connectionState === "connected",
+        rtcFailed: ["failed", "disconnected", "closed"].includes(
+          this.peer.pc?.connectionState || "",
+        ),
+      });
+    } finally {
+      this.reporting = false;
+    }
+  }
+
   async restore() {
-    this.invalidateConnection();
-    const generation = this.connectionGeneration;
-    const request = (this.connectionRequest = new AbortController());
     const saved = sessionStorage.getItem("hmo-seat");
     if (!saved) return;
     try {
-      const response = await fetch("/api/resume", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: saved,
-        signal: request.signal,
-      });
-      const body = await response.json();
-      if (generation !== this.connectionGeneration) return;
-      if (!response.ok) {
-        sessionStorage.removeItem("hmo-seat");
-        throw new Error(body.error);
-      }
-      this.attach(body.session, body.snapshot);
-      void this.capture.devices().catch((error: Error) =>
-        this.notify({
-          error: "Your seat is restored. " + error.message,
-        }),
-      );
-    } catch (e) {
-      if (generation !== this.connectionGeneration) return;
-      this.notify({
-        error: e instanceof Error ? e.message : "Could not reconnect.",
-      });
+      await this.connection.restore(saved);
+    } catch {
+      sessionStorage.removeItem("hmo-seat");
+      this.notify({ error: "Your seat expired. Join a new court." });
     }
   }
   scheduleReconnect() {
-    if (this.reconnectTimer || this.reconnecting || !this.session) return;
-    const generation = this.connectionGeneration;
-    const session = this.session;
-    const request = (this.connectionRequest = new AbortController());
-    this.reconnecting = true;
-    this.capture.syncMicrophone();
-    this.notify({ connection: "reconnecting" });
-    this.playback.stopJudge();
-    this.reconnectTimer = setTimeout(async () => {
-      this.reconnectTimer = null;
-      if (generation !== this.connectionGeneration) return;
-      this.reconnecting = true;
-      try {
-        const response = await fetch("/api/resume", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(session),
-          signal: request.signal,
-        });
-        const body = await response.json();
-        if (generation !== this.connectionGeneration) return;
-        if (!response.ok) {
-          if (response.status === 401) {
-            this.leave();
-            this.notify({
-              error:
-                "The demo server restarted or your seat expired. Create or join a fresh room.",
-            });
-            return;
-          }
-          throw new Error(body.error);
-        }
-        this.disconnecting = true;
-        for (const ws of this.sockets.values()) ws.close();
-        this.sockets.clear();
-        this.peer.pc?.close();
-        this.peer.pc = null;
-        this.peer.pcEpoch = -1;
-        this.video.resetVideo();
-        this.attach(body.session, body.snapshot);
-      } catch {
-        if (generation !== this.connectionGeneration) return;
-        this.reconnecting = false;
-        this.scheduleReconnect();
-      } finally {
-        if (generation === this.connectionGeneration) this.reconnecting = false;
-      }
-    }, 1000);
+    this.connection.lost();
+  }
+  async retryConnection() {
+    if (
+      this.session &&
+      (await this.connection.open(this.session, undefined, 0, true))
+    ) {
+      if (this.setup.inline) await this.setup.run();
+    }
   }
   send(data: unknown) {
     const ws = this.sockets.get("control");
@@ -284,13 +305,20 @@ export class Client {
   }
   command(command: Command) {
     if (!this.session || !this.state) return;
+    if (
+      this.reconnecting &&
+      !["media_status", "setup_cancel", "leave"].includes(command.type)
+    )
+      return;
+    const commandId = crypto.randomUUID();
     this.send({
-      commandId: crypto.randomUUID(),
+      commandId,
       connectionEpoch: this.session.connectionEpoch,
       matchId: this.state.matchId,
       expectedPhaseVersion: this.state.phaseVersion,
       command,
     });
+    return commandId;
   }
   message(raw: unknown) {
     const parsed = serverMessageSchema.safeParse(raw);
@@ -301,6 +329,10 @@ export class Client {
       return;
     }
     const data = parsed.data;
+    if (data.type === "setup_result") {
+      this.setup.result(data);
+      return;
+    }
     if (data.type === "video_ack") {
       if (data.mediaEpoch === this.state?.mediaEpoch)
         this.video.videoInFlight.delete(data.seq);
@@ -308,6 +340,7 @@ export class Client {
     }
     if (data.type === "pong") {
       this.clock.observe(data.serverNow, performance.now() - data.clientTime);
+      this.connection.progress();
       return;
     }
     if (data.type === "activity") {
@@ -319,6 +352,19 @@ export class Client {
       return;
     }
     if (data.type === "ack") {
+      if (
+        data.ok === false &&
+        this.setup.busy &&
+        data.commandId === this.setup.commandId
+      ) {
+        this.setup.result({
+          type: "setup_result",
+          checkId: this.setup.checkId,
+          status: "failed",
+          text: data.error || "Couldn’t start the check. Try again.",
+        });
+        return;
+      }
       if (data.ok === false)
         this.notify({ error: data.error || "Request could not complete." });
       return;
@@ -328,6 +374,7 @@ export class Client {
       return;
     }
     if ("snapshot" in data) {
+      if (this.session && data.snapshot.roomId !== this.session.roomId) return;
       if (
         this.state &&
         data.snapshot.seq < this.state.seq &&
@@ -353,6 +400,7 @@ export class Client {
       );
       const previousMode = this.state?.mediaMode;
       this.state = data.snapshot;
+      this.connection.observe(data.snapshot);
       if (
         previousMode !== this.state?.mediaMode &&
         this.state?.mediaMode === "rtc"
@@ -387,6 +435,7 @@ export class Client {
         state: data.snapshot,
         event: "seq" in data ? data : undefined,
       });
+      if (data.type === "authenticated") this.connection.progress(true);
       if (data.type === "judge_cancelled") {
         const epoch = data.payload?.epoch;
         this.playback.cancelled.add(epoch);
@@ -447,15 +496,13 @@ export class Client {
     }
   }
   leave() {
-    this.command({ type: "leave" });
+    const departure = this.connection.departure();
+    this.setup.cancel();
+    if (departure) this.releaseSeat(departure);
     this.invalidateConnection();
     this.clock.reset();
-    this.disconnecting = true;
-    for (const ws of this.sockets.values()) ws.close();
-    this.sockets.clear();
-    this.peer.pc?.close();
-    this.peer.pc = null;
-    this.peer.remote = null;
+
+    this.peer.reset();
     this.video.resetVideo();
     this.video.videoInFlight.clear();
     this.sound.peerPlayback?.port.postMessage({ type: "flush" });
@@ -466,9 +513,7 @@ export class Client {
     ])
       if (timer) clearInterval(timer);
     this.playback.resetJudgePlayback();
-    this.capture.stream?.getTracks().forEach((t) => t.stop());
-    this.capture.stream = null;
-    this.capture.deviceRequest = null;
+    this.capture.stop();
     if (this.video.cameraVideo) {
       this.video.cameraVideo.srcObject = null;
       this.video.cameraVideo = null;

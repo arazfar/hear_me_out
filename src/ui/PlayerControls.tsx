@@ -30,7 +30,7 @@ export function PlayerControls({
           onClick={() =>
             mic
               ? client.capture.muteMic()
-              : void action(() => client.capture.devices(false))
+              : void action(() => client.setup.run())
           }
         >
           <Icon name={!mic || muted || !allowed ? "mic-off" : "mic"} />

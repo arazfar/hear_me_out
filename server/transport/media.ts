@@ -1,6 +1,7 @@
 import { WebSocket } from "ws";
 import { decodeMicrophone } from "../../shared/media.js";
 import { canSpeak } from "../../shared/domain.js";
+import type { Command } from "../../shared/protocol.js";
 import type { RoomController } from "../rooms/room.js";
 export class RoomMedia {
   constructor(readonly room: RoomController) {}
@@ -14,12 +15,17 @@ export class RoomMedia {
       packet.epoch !== this.room.game.state.mediaEpoch ||
       packet.seq <= seat.audioSeq ||
       packet.seq > seat.audioSeq + 4096 ||
+      packet.capturedAt < this.room.services.now() - 3000 ||
       packet.capturedAt > this.room.services.now() + 1000
     )
       return;
     const { seq, capturedAt } = packet;
     seat.audioSeq = seq;
     seat.lastAudioAt = this.room.services.now();
+    if (this.room.readiness.testing(id)) {
+      this.room.transcription.checkAudio(id, packet.pcm);
+      return;
+    }
     const allowed = canSpeak(this.room.game.state, id);
     const boundary = this.room.transcription.sealedAudio.get(id);
     const draining =
@@ -69,17 +75,33 @@ export class RoomMedia {
         ws.send(raw);
     }
   }
-  mediaStatus(id: string, ready: boolean, cameraOn: boolean, rtc: boolean) {
-    const seat = this.room.seats.get(id)!,
-      player = this.room.game.player(id);
-    seat.rtcReady = rtc;
-    this.room.game.setCaptureReady(
-      id,
-      cameraOn,
-      ready &&
-        !!seat.sockets.get("audio") &&
-        this.room.services.now() - seat.lastAudioAt < 2000,
-    );
+  mediaStatus(
+    id: string,
+    observation: Extract<Command, { type: "media_status" }>,
+  ) {
+    this.room.readiness.observe(id, observation);
+    if (this.room.game.state.mediaMode === "rtc" && observation.rtcFailed)
+      this.setMedia("wss");
+    this.selectMode();
+  }
+  selectMode() {
+    if (this.room.game.state.mediaMode === "rtc") {
+      const stalled =
+        this.room.game.state.players.every((p) => p.captureReady) &&
+        this.room.game.state.players.some((p) =>
+          p.readiness?.blockers.includes("peer_video"),
+        );
+      if (stalled && !this.rtcTimer)
+        this.rtcTimer = this.room.later(() => {
+          this.rtcTimer = null;
+          this.setMedia("wss");
+        }, 3000);
+      else if (!stalled && this.rtcTimer) {
+        this.room.services.clearTimeout(this.rtcTimer);
+        this.rtcTimer = null;
+      }
+      return;
+    }
     if (
       this.room.game.state.mediaMode === "connecting" &&
       this.room.game.state.players.length === 2 &&
@@ -98,16 +120,6 @@ export class RoomMedia {
           process.env.FORCE_WSS === "true" ? 100 : 8000,
         );
     }
-    this.room.game.setMediaReady(
-      id,
-      player.captureReady && this.room.game.state.mediaMode !== "connecting",
-    );
-    this.room.game.emit("media_status");
-    if (
-      this.room.game.state.phase === "RECOVERING" &&
-      this.room.game.state.players.every((p) => p.connected && p.mediaReady)
-    )
-      this.room.game.resumeRecovery();
   }
   setMedia(mode: "rtc" | "wss") {
     if (this.room.game.state.mediaMode === mode) return;

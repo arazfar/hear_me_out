@@ -16,7 +16,13 @@ export async function command(
   if (data.connectionEpoch !== seat.epoch)
     throw new RuleError("This connection was replaced.");
   if (
-    !["media_status", "audio_ready", "leave"].includes(c.type) &&
+    ![
+      "media_status",
+      "setup_start",
+      "setup_cancel",
+      "audio_ready",
+      "leave",
+    ].includes(c.type) &&
     (data.matchId !== game.state.matchId ||
       data.expectedPhaseVersion !== game.state.phaseVersion)
   )
@@ -24,11 +30,11 @@ export async function command(
       "The stage moved on. Try again with the current screen.",
     );
   room.lastActiveAt = Date.now();
-  if (c.type === "ready") {
+  if ((c.type === "ready" || c.type === "rematch") && c.value)
+    room.readiness.tick();
+  if (c.type === "ready" || c.type === "rematch") {
     if (c.value && !registry.providersReady())
-      throw new RuleError(
-        "The server needs OpenAI, Cartesia transcription, and Fish Audio voice keys before a live game.",
-      );
+      throw new RuleError("Bonk isn’t ready to host. Try again shortly.");
     if (
       c.value &&
       [...registry.rooms.values()].some(
@@ -40,9 +46,12 @@ export async function command(
       throw new RuleError(
         "The demo stage is occupied. Try again after that match.",
       );
-    game.ready(id, c.value);
-  } else if (c.type === "media_status")
-    room.media.mediaStatus(id, c.ready, c.cameraOn, c.rtc);
+    if (c.type === "ready") game.ready(id, c.value);
+    else game.rematch(id, c.value);
+  } else if (c.type === "media_status") room.media.mediaStatus(id, c);
+  else if (c.type === "setup_start")
+    room.readiness.start(id, c.checkId, c.captureId);
+  else if (c.type === "setup_cancel") room.readiness.cancel(id, c.checkId);
   else if (c.type === "propose_topic") {
     if (
       game.state.tailsId !== id ||
@@ -95,17 +104,5 @@ export async function command(
     game.endTurn(id, c.turnId, c.lastAudioSeq);
   } else if (c.type === "audio_ready")
     room.playback.audioReady(id, c.utteranceId, c.speechEpoch);
-  else if (c.type === "rematch") game.rematch(id, c.value);
-  else if (c.type === "typed_argument")
-    room.judging.typed(id, c.turnId, c.text);
-  else if (c.type === "leave") {
-    if (!["LOBBY", "ABORTED", "MATCH_RESULT"].includes(game.state.phase))
-      game.abort("A player left. The unfinished match has no judged winner.");
-    for (const ws of seat.sockets.values()) ws.close();
-    room.transcription.ink.get(id)?.close();
-    room.transcription.ink.delete(id);
-    room.seats.delete(id);
-    game.removePlayer(id);
-    game.emit("player_left");
-  }
+  else if (c.type === "leave") room.leave(id);
 }

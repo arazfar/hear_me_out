@@ -5,10 +5,12 @@ import { Judging } from "../judge/judging.js";
 import { JudgePlayback } from "../judge/playback.js";
 import { RoomMedia } from "../transport/media.js";
 import { defaultServices, type RoomServices } from "./services.js";
+import { Readiness } from "./readiness.js";
 import { Transcription } from "./transcription.js";
 export type Seat = {
   tokenHash: string;
   epoch: number;
+  resume?: { id: string; fromEpoch: number; toEpoch: number };
   sockets: Map<string, WebSocket>;
   audioSeq: number;
   lastAudioAt: number;
@@ -20,6 +22,7 @@ export type Seat = {
 export class RoomController {
   judging = new Judging(this);
   transcription = new Transcription(this);
+  readiness = new Readiness(this);
   playback = new JudgePlayback(this);
   media = new RoomMedia(this);
   game: Game;
@@ -107,13 +110,6 @@ export class RoomController {
       )
     )
       this.playback.cancelSpeech();
-    if (
-      event.type === "phase_changed" &&
-      ["LOBBY", "MATCH_RESULT", "ABORTED"].includes(event.snapshot.phase)
-    ) {
-      for (const stream of this.transcription.ink.values()) stream.close();
-      this.transcription.ink.clear();
-    }
     if (event.type === "coin_committed") {
       this.playback.cancelSpeech();
       this.judging.cancelJudgment();
@@ -226,12 +222,13 @@ export class RoomController {
           this.game.state.turn?.id !== turnId
         )
           return;
-        if (!drained && !this.game.state.degraded.stt) {
+        if (!drained) {
           this.game.abort(
-            "Transcription could not finish safely. No unjudged evidence was skipped. Try a fresh match.",
+            "Bonk couldn’t finish that turn. Start a fresh match.",
           );
           return;
         }
+        this.transcription.rotate(playerId, null);
         this.game.setSettlement(
           this.judging.busy || this.judging.queue.length ? "scoring" : "ready",
         );
@@ -282,14 +279,46 @@ export class RoomController {
   disconnect(id: string) {
     const p = this.game.player(id);
     this.game.disconnectPlayer(id);
-    this.transcription.ink.get(id)?.close();
-    this.transcription.ink.delete(id);
+    this.transcription.disconnect(id);
     this.game.recover(
       `${p.name} disconnected. Holding their seat and the clock.`,
     );
     this.game.emit("player_disconnected");
   }
+  leave(id: string) {
+    const seat = this.seats.get(id);
+    if (!seat) return;
+    const { game } = this;
+    if (!["LOBBY", "ABORTED", "MATCH_RESULT"].includes(game.state.phase))
+      game.abort(
+        `${game.player(id).name} left the court. No winner this time.`,
+      );
+    // Revoke callback/socket ownership before closing anything that can emit a
+    // final transcript or a disconnect. Both departure transports use this path.
+    this.seats.delete(id);
+    this.transcription.release(id);
+    this.readiness.records.delete(id);
+    for (const ws of seat.sockets.values()) ws.close();
+    if (game.state.phase === "MATCH_RESULT") {
+      // The seat is gone, but the finished verdict still refers to this player.
+      game.disconnectPlayer(id);
+      game.setMediaReady(id, false);
+      game.setCaptureReady(id, false, false);
+    } else game.removePlayer(id);
+    game.emit("player_left");
+  }
   tick() {
+    for (const [id, stream] of this.transcription.ink) {
+      if (
+        !stream.connected &&
+        !stream.closing &&
+        !stream.failed &&
+        !this.transcription.connecting(id)
+      )
+        this.transcription.sttFailure(id, stream.turnId);
+    }
+    this.readiness.tick();
+    this.media.selectMode();
     this.game.tick();
   }
   close() {

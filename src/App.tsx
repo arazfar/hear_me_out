@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { Snapshot } from "../shared/domain";
 import { client } from "./game/client";
+import {
+  ConnectionCheck,
+  RecoveryCheck,
+  currentReadinessPresentation,
+} from "./ui/DeviceCheck";
+import { BonkReaction } from "./ui/BonkReaction";
 import { Captions } from "./ui/Captions";
 import { CoinView } from "./ui/CoinView";
 import { Dialog } from "./ui/Dialog";
@@ -14,34 +20,65 @@ import { TitleView } from "./ui/TitleView";
 import { TopicView } from "./ui/TopicView";
 import { TurnPanel } from "./ui/TurnPanel";
 import { useMediaVersion, useReducedMotion, useServerNow } from "./ui/hooks";
-import { phaseTitle } from "./ui/presentation";
+import { phaseTitle, turnStatus } from "./ui/presentation";
 
 function Recovery({ state }: { state: Snapshot }) {
   const now = useServerNow(),
-    aborted = state.phase === "ABORTED";
+    disconnected = client.reconnecting,
+    aborted = state.phase === "ABORTED" && !disconnected,
+    departed = aborted && state.players.length < 2;
   return (
     <section className="phase-panel recovery-panel">
       <Icon name={aborted ? "gavel" : "refresh"} />
-      <h2>{aborted ? "Let’s call a recess." : "Holding your place."}</h2>
-      <p>{state.status}</p>
-      {state.recoveryDeadline && !aborted && (
+      <h2>
+        {client.connection.phase === "offline"
+          ? "Still offline"
+          : aborted
+            ? "Match interrupted"
+            : "Holding your place"}
+      </h2>
+      {disconnected ? (
+        <ConnectionCheck />
+      ) : !aborted ? (
+        <RecoveryCheck />
+      ) : (
+        <p>{state.status}</p>
+      )}
+      {departed && (
+        <button className="primary" onClick={() => client.leave()}>
+          Back to menu
+          <Icon name="arrow" />
+        </button>
+      )}
+      {aborted &&
+        !departed &&
+        !state.players.find((p) => p.id === client.session?.playerId)
+          ?.mediaReady && <RecoveryCheck />}
+      {state.recoveryDeadline && !aborted && !disconnected && (
         <p className="decision-clock">
           {Math.max(0, Math.ceil((state.recoveryDeadline - now) / 1000))}s to
           reconnect
         </p>
       )}
-      {aborted && (
-        <button
-          className="primary"
-          disabled={state.rematchReady.includes(client.session?.playerId || "")}
-          onClick={() => client.command({ type: "rematch", value: true })}
-        >
-          {state.rematchReady.includes(client.session?.playerId || "")
-            ? "Waiting for your friend"
-            : "Try a fresh match"}
-          <Icon name="refresh" />
-        </button>
-      )}
+      {aborted &&
+        !departed &&
+        state.players.find((p) => p.id === client.session?.playerId)
+          ?.mediaReady && (
+          <button
+            className="primary"
+            disabled={
+              !state.players.find((p) => p.id === client.session?.playerId)
+                ?.mediaReady ||
+              state.rematchReady.includes(client.session?.playerId || "")
+            }
+            onClick={() => client.command({ type: "rematch", value: true })}
+          >
+            {state.rematchReady.includes(client.session?.playerId || "")
+              ? "Waiting for your friend"
+              : "Try a fresh match"}
+            <Icon name="refresh" />
+          </button>
+        )}
     </section>
   );
 }
@@ -49,7 +86,6 @@ function AudioSettings({ state }: { state: Snapshot | null }) {
   useMediaVersion();
   return (
     <>
-      <p>Control what you hear. Your friend’s settings stay theirs.</p>
       <div className="audio-options">
         <button
           aria-pressed={!client.sound.peerMuted}
@@ -68,17 +104,14 @@ function AudioSettings({ state }: { state: Snapshot | null }) {
           <b>{client.sound.judgeMuted ? "Off" : "On"}</b>
         </button>
       </div>
-      <p className="support-copy">
-        {state?.mediaMode === "connecting"
-          ? "Connecting audio…"
-          : state?.mediaMode === "wss"
-            ? "Connected through the media relay."
-            : "Direct media connected."}
-      </p>
+      {state?.mediaMode === "connecting" && (
+        <p className="support-copy">Connecting audio…</p>
+      )}
     </>
   );
 }
 export function App() {
+  useMediaVersion();
   const [state, setState] = useState<Snapshot | null>(client.state),
     [name, setName] = useState(""),
     [code, setCode] = useState(
@@ -87,53 +120,60 @@ export function App() {
   const [joining, setJoining] = useState(/^\d{4}$/.test(code)),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [notice, setNotice] = useState(""),
-    [connection, setConnection] = useState("");
+    [notice, setNotice] = useState("");
   const [dialog, setDialog] = useState<"rules" | "audio" | null>(null),
-    [typed, setTyped] = useState(""),
-    [celebrate, setCelebrate] = useState(false);
+    [celebrate, setCelebrate] = useState(false),
+    [reveal, setReveal] = useState(false);
   const [reduced, setReduced] = useReducedMotion();
   const actionLock = useRef(false),
     heading = useRef<HTMLHeadingElement>(null),
     previousPhase = useRef<string | undefined>(undefined);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let soundAt = 0;
-    const seen = new Set<string>();
+    let coinTimer: ReturnType<typeof setTimeout> | undefined;
     const unsub = client.on((u) => {
       if (u.state) setState(u.state);
       if (u.connection) {
-        setConnection(u.connection);
         if (u.connection === "left") {
           setState(null);
           setError("");
           setCelebrate(false);
-          setTyped("");
         }
       }
       if (u.error) setError(u.error);
-      const event = u.event;
-      if (!event) return;
-      const key = event.snapshot.matchId + ":" + event.seq;
-      if (seen.has(key)) return;
-      seen.add(key);
-      if (seen.size > 256) seen.delete(seen.values().next().value!);
-      if (event.type === "score_committed" && Date.now() - soundAt > 450) {
-        client.sound.effect("score");
-        soundAt = Date.now();
+      if (u.feedbackReset) {
+        setCelebrate(false);
+        setReveal(false);
+        clearTimeout(timer);
+        clearTimeout(coinTimer);
       }
-      if (event.type === "coin_committed") client.sound.effect("coin");
-      if (event.type === "round_result" || event.type === "match_result") {
+      const cue = u.feedback;
+      if (!cue) return;
+      if (cue.kind === "score") client.sound.effect("score");
+      if (cue.kind === "coin") {
+        client.sound.effect("coin");
+        setReveal(true);
+        clearTimeout(coinTimer);
+        coinTimer = setTimeout(() => setReveal(false), 850);
+      }
+      if (cue.kind === "round" || cue.kind === "match") {
         client.sound.effect("verdict");
         setCelebrate(true);
         clearTimeout(timer);
         timer = setTimeout(() => setCelebrate(false), 1200);
       }
     });
+    const visibility = () => {
+      client.notify({ feedbackReset: true });
+      void client.reportHealth();
+    };
+    document.addEventListener("visibilitychange", visibility);
     void client.restore();
     return () => {
       unsub();
       clearTimeout(timer);
+      clearTimeout(coinTimer);
+      document.removeEventListener("visibilitychange", visibility);
     };
   }, []);
   useEffect(() => {
@@ -146,10 +186,8 @@ export function App() {
       previousPhase.current = state?.phase;
       if (document.activeElement === document.body)
         heading.current?.focus({ preventScroll: true });
-      setTyped("");
     }
   }, [state?.phase, state?.turn?.id]);
-  useEffect(() => setTyped(""), [state?.turn?.id]);
   const action = async (fn: () => Promise<void>) => {
     if (actionLock.current) return;
     actionLock.current = true;
@@ -188,33 +226,39 @@ export function App() {
   };
   const me = state?.players.find((p) => p.id === client.session?.playerId),
     other = state?.players.find((p) => p.id !== client.session?.playerId);
-  const phase = state?.phase;
+  const phase = client.reconnecting ? "RECOVERING" : state?.phase;
+  const inRoom = !!state && !client.setup.inline;
+  const readiness = currentReadinessPresentation();
   const phaseLabel = !state
     ? ""
     : phase === "ROUND"
-      ? "Round " +
-        state.round +
-        ". " +
-        state.players.find((p) => p.id === state.turn?.playerId)?.name +
-        " has the floor."
-      : phase === "LOBBY"
-        ? "Sound check"
-        : phase === "TOPIC_SELECT"
-          ? "Choose a topic"
-          : phase === "TOPIC_CONFIRM"
-            ? "Confirm the proposition"
-            : phase === "INTRO_COIN"
-              ? "The coin has spoken"
-              : phase === "ROUND_RESOLVE"
-                ? "Round verdict"
-                : phase === "MATCH_RESULT"
-                  ? "Match verdict"
-                  : state.status;
+      ? "Round " + state.round + ". " + turnStatus(state, me?.id)
+      : phase === "ABORTED" && state.players.length < 2
+        ? state.status
+        : phase === "MATCH_RESULT" && !other?.connected
+          ? "Match complete. Your friend isn’t here."
+          : phase === "RECOVERING" ||
+              (["LOBBY", "MATCH_RESULT", "ABORTED"].includes(phase || "") &&
+                state.players.some((p) => !p.mediaReady))
+            ? readiness.message || readiness.label || "Checking devices…"
+            : phase === "LOBBY"
+              ? "Ready to argue"
+              : phase === "TOPIC_SELECT"
+                ? "Choose a topic"
+                : phase === "TOPIC_CONFIRM"
+                  ? "Confirm the proposition"
+                  : phase === "INTRO_COIN"
+                    ? "The coin has spoken"
+                    : phase === "ROUND_RESOLVE"
+                      ? "Round verdict"
+                      : phase === "MATCH_RESULT"
+                        ? "Match verdict"
+                        : state.status;
   return (
     <main
       className={
         "app " +
-        (state ? "in-room phase-" + phase?.toLowerCase() : "on-title") +
+        (inRoom ? "in-room phase-" + phase?.toLowerCase() : "on-title") +
         (reduced ? " reduced-motion" : "")
       }
     >
@@ -228,10 +272,10 @@ export function App() {
           }}
           aria-label="Hear Me Out"
         >
-          HEAR ME OUT<span>The court of bad takes</span>
+          HEAR ME OUT
         </a>
         <div className="header-actions">
-          {state && (
+          {state && (state.phase !== "LOBBY" || state.players.length === 2) && (
             <button
               className="room-code"
               onClick={copyInvite}
@@ -254,7 +298,7 @@ export function App() {
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {phaseLabel}
       </div>
-      {!state ? (
+      {!inRoom ? (
         <TitleView
           name={name}
           code={code}
@@ -269,16 +313,21 @@ export function App() {
         />
       ) : (
         <>
-          <section className="arena-heading">
+          <section
+            className={"arena-heading " + (!state.topic ? "no-topic" : "")}
+          >
             {state.round > 0 && (
               <div className="match-progress">
                 <>
                   <span>Round {state.round}</span>
-                  <span>First to 2 wins</span>
                 </>
               </div>
             )}
-            <h1 ref={heading} tabIndex={-1}>
+            <h1
+              ref={heading}
+              tabIndex={-1}
+              className={!state.topic ? "sr-only" : undefined}
+            >
               {phaseTitle(state)}
             </h1>
           </section>
@@ -292,6 +341,7 @@ export function App() {
             />
             <div className="center-stage">
               <StageLoader state={state} reduced={reduced} />
+              {phase === "ROUND" && <BonkReaction state={state} />}
               <div
                 className="phase-content"
                 key={
@@ -312,7 +362,9 @@ export function App() {
                     copyInvite={copyInvite}
                   />
                 )}
-                {phase === "INTRO_COIN" && <CoinView state={state} me={me} />}
+                {phase === "INTRO_COIN" && (
+                  <CoinView state={state} me={me} reveal={reveal} />
+                )}
                 {(phase === "TOPIC_SELECT" || phase === "TOPIC_CONFIRM") && (
                   <TopicView state={state} me={me} />
                 )}
@@ -335,62 +387,18 @@ export function App() {
               reduced={reduced}
             />
           </div>
-          {state.degraded.stt &&
-            phase === "ROUND" &&
-            state.turn?.playerId === me?.id &&
-            !state.turn?.sealing && (
-              <form
-                className="typed-recovery"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (!typed.trim()) return;
-                  client.command({
-                    type: "typed_argument",
-                    turnId: state.turn!.id,
-                    text: typed.trim(),
-                  });
-                  setTyped("");
-                }}
-              >
-                <label htmlFor="typed-argument">
-                  Speech recognition is unavailable. Type your argument.
-                </label>
-                <div>
-                  <input
-                    id="typed-argument"
-                    value={typed}
-                    onChange={(e) => setTyped(e.target.value)}
-                    maxLength={1000}
-                    required
-                  />
-                  <button
-                    className="primary"
-                    disabled={!!state.turn?.pausedReason || !typed.trim()}
-                  >
-                    Submit
-                    <Icon name="arrow" />
-                  </button>
-                </div>
-              </form>
-            )}
           <Captions state={state} />
-          {(error || connection === "reconnecting") && (
+          {error && !client.reconnecting && (
             <div className="room-notice" role="alert">
               <Icon name="warning" />
-              <p>
-                {connection === "reconnecting"
-                  ? "Reconnecting. Your seat is on hold."
-                  : error}
-              </p>
-              {connection !== "reconnecting" && (
-                <button
-                  className="icon-button"
-                  aria-label="Dismiss error"
-                  onClick={() => setError("")}
-                >
-                  <Icon name="close" />
-                </button>
-              )}
+              <p>{error}</p>
+              <button
+                className="icon-button"
+                aria-label="Dismiss error"
+                onClick={() => setError("")}
+              >
+                <Icon name="close" />
+              </button>
             </div>
           )}
           <PlayerControls
@@ -408,35 +416,32 @@ export function App() {
       )}
       {dialog && (
         <Dialog
-          title={
-            dialog === "rules" ? "Make your case." : "Sound in your court."
-          }
+          title={dialog === "rules" ? "How to play" : "Sound"}
           onClose={() => setDialog(null)}
         >
           {dialog === "audio" ? (
             <AudioSettings state={state} />
           ) : (
             <>
-              <p>
-                Two friends. One ridiculous proposition. First to two round
-                wins.
-              </p>
+              <p>Win two rounds to win the match.</p>
               <ol className="rules-list">
                 <li>
-                  <strong>Pick your fight.</strong> Heads opens. Tails chooses
-                  the topic and a side. You both confirm.
+                  Heads goes first. Tails picks the topic and a side. Both
+                  players confirm.
                 </li>
                 <li>
-                  <strong>Speak. Listen. Answer.</strong> Each round: a case, a
-                  rebuttal, and a closing for each player. Take 30 seconds, or
-                  15 for your closing. “I’m done” passes the floor.
+                  Each round, you both make a case, rebut, and close. You get 30
+                  seconds per turn, 15 for your closing. “I’m done” passes the
+                  floor.
                 </li>
                 <li>
-                  <strong>Earn the verdict.</strong> Up to 10 points per turn,
-                  30 per round. More words don’t mean more points. Bonk’s voice
-                  pauses the clock.
+                  Earn up to 10 points per turn, 30 per round. Points reset each
+                  round. Bonk pauses the clock while speaking.
                 </li>
               </ol>
+              <p className="support-copy">
+                Headphones help keep your friend’s voice out of your mic.
+              </p>
               <details className="rubric">
                 <summary>How Bonk scores</summary>
                 <p>

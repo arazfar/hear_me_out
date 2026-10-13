@@ -97,6 +97,7 @@ test("settlement accepts delayed final evidence, waits for scoring, and then adv
   );
   const a = g.addPlayer("Sam"),
     b = g.addPlayer("Alex");
+  g.state.players.forEach((p) => (p.mediaReady = true));
   g.startMatch();
   g.selectTopic();
   g.proposeTopic(
@@ -160,6 +161,7 @@ test("settlement timeout aborts rather than skipping pending evidence", () => {
   );
   const a = g.addPlayer("Sam"),
     b = g.addPlayer("Alex");
+  g.state.players.forEach((p) => (p.mediaReady = true));
   g.startMatch();
   g.selectTopic();
   g.proposeTopic(

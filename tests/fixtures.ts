@@ -57,6 +57,7 @@ export function startRound(game: Game) {
     game.addPlayer("Sam");
     game.addPlayer("Alex");
   }
+  game.state.players.forEach((p) => (p.mediaReady = true));
   game.startMatch();
   game.selectTopic();
   game.proposeTopic(

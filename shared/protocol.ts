@@ -4,7 +4,7 @@ import {
   scoreEventSchema,
   snapshotSchema,
 } from "./domain.js";
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 export const commandEnvelopeSchema = z
   .object({
     commandId: z.string().max(80),
@@ -16,9 +16,31 @@ export const commandEnvelopeSchema = z
       z
         .object({
           type: z.literal("media_status"),
-          ready: z.boolean(),
-          cameraOn: z.boolean(),
+          captureId: z.string().max(100),
+          cameraId: z.string().max(100),
+          mic: z.boolean(),
+          camera: z.boolean(),
+          foreground: z.boolean(),
+          micSource: z.boolean().optional(),
+          rtcFailed: z.boolean().optional(),
+          localFrames: z.number().int().nonnegative(),
+          cameraGeneration: z.number().int().nonnegative().optional(),
+          remoteFrames: z.number().int().nonnegative(),
+          mediaEpoch: z.number().int(),
           rtc: z.boolean(),
+        })
+        .strict(),
+      z
+        .object({
+          type: z.literal("setup_start"),
+          checkId: z.string().min(1).max(100),
+          captureId: z.string().min(1).max(100),
+        })
+        .strict(),
+      z
+        .object({
+          type: z.literal("setup_cancel"),
+          checkId: z.string().max(100),
         })
         .strict(),
       z
@@ -56,13 +78,6 @@ export const commandEnvelopeSchema = z
         })
         .strict(),
       z.object({ type: z.literal("rematch"), value: z.boolean() }).strict(),
-      z
-        .object({
-          type: z.literal("typed_argument"),
-          turnId: z.string(),
-          text: z.string().min(1).max(1000),
-        })
-        .strict(),
       z.object({ type: z.literal("leave") }).strict(),
     ]),
   })
@@ -114,7 +129,12 @@ export const auxiliarySchema = z.union([
   z.object({ type: z.literal("snapshot_request") }).strict(),
   signalSchema,
   z
-    .object({ type: z.literal("video_ack"), seq: uint, mediaEpoch: uint })
+    .object({
+      type: z.literal("video_ack"),
+      seq: uint,
+      mediaEpoch: uint,
+      probe: z.boolean().optional(),
+    })
     .strict(),
   z
     .object({
@@ -154,6 +174,14 @@ export const eventPayloads = {
   }),
   comeback_window: z.object({ playerId: id, deficitUnits: uint }),
   score_committed: scoreEventSchema,
+  bonk_reaction: z.object({
+    id,
+    awardId: id,
+    playerId: id,
+    roundId: id,
+    turnId: id,
+    text: z.string().max(80),
+  }),
   round_result: roundResultSchema,
   judge_started: z.object({ startAt: time, epoch: uint }),
   judge_cancelled: z.object({ epoch: uint }),
@@ -206,6 +234,7 @@ export const gameEventSchema = z.union([
   event("turn_sealed"),
   event("comeback_window"),
   event("score_committed"),
+  event("bonk_reaction"),
   event("round_result"),
   event("judge_started"),
   event("judge_cancelled"),
@@ -214,6 +243,12 @@ export const gameEventSchema = z.union([
 ]);
 export type GameEvent = z.infer<typeof gameEventSchema>;
 export const serverMessageSchema = z.union([
+  z.object({
+    type: z.literal("setup_result"),
+    checkId: id,
+    status: z.enum(["listening", "passed", "failed"]),
+    text: z.string().max(300),
+  }),
   gameEventSchema,
   z.object({
     type: z.enum(["authenticated", "snapshot"]),
@@ -234,6 +269,11 @@ export const serverMessageSchema = z.union([
     error: z.string().optional(),
   }),
   z.object({ type: z.literal("error"), error: z.string() }),
-  z.object({ type: z.literal("video_ack"), seq: uint, mediaEpoch: uint }),
+  z.object({
+    type: z.literal("video_ack"),
+    seq: uint,
+    mediaEpoch: uint,
+    probe: z.boolean().optional(),
+  }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;

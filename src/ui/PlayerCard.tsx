@@ -10,6 +10,11 @@ import { AnimatedScore } from "./AnimatedScore";
 import { Icon } from "./Icon";
 import { useMediaVersion } from "./hooks";
 import { playerStatus } from "./presentation";
+import {
+  AwardQueue,
+  awardCapacity,
+  type AwardNotice,
+} from "../game/award-queue";
 
 export function PlayerCard({
   player,
@@ -27,19 +32,46 @@ export function PlayerCard({
   const video = useRef<HTMLVideoElement>(null),
     relayCanvas = useRef<HTMLCanvasElement>(null),
     activity = useRef<HTMLSpanElement>(null);
-  const [burst, setBurst] = useState(0);
+  const [presentation, setPresentation] = useState<{
+    notices: AwardNotice[];
+    slots: number;
+    fontSize: number;
+  }>({ notices: [], slots: 1, fontSize: 23 });
+  const [winPulse, setWinPulse] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const scoreWrap = useRef<HTMLDivElement>(null),
+    awardLayer = useRef<HTMLDivElement>(null),
+    quiet = useRef(reduced);
+  quiet.current = reduced;
+  useEffect(() => {
+    if (reduced) scoreWrap.current?.getAnimations().forEach((a) => a.cancel());
+  }, [reduced]);
   const version = useMediaVersion();
-  const active = state.turn?.playerId === player?.id && state.phase === "ROUND";
+  const active =
+    !client.reconnecting &&
+    state.turn?.playerId === player?.id &&
+    state.phase === "ROUND";
   const winner =
     state.phase === "MATCH_RESULT" && state.winnerId === player?.id;
+  const offlineResult =
+    state.phase === "MATCH_RESULT" && player?.connected === false;
   const showScore = state.round > 0;
-  const scores = state.ledger.filter(
-    (e) => e.playerId === player?.id && e.roundId === state.roundId,
-  );
-  const lastScore = scores.at(-1);
-  const status = playerStatus(state, player, local, client.capture.micMuted);
+  const emptyStatus =
+    state.phase === "ABORTED" ? "Left the court" : "Waiting for your friend";
+  const status = !player
+    ? emptyStatus
+    : offlineResult
+      ? "Offline"
+      : client.reconnecting
+        ? "Reconnecting"
+        : playerStatus(state, player, local, client.capture.micMuted);
   const camera =
-    !!player?.cameraOn && (local ? !client.capture.cameraOff : true);
+    !offlineResult &&
+    !!player?.cameraOn &&
+    (local ? !client.capture.cameraOff : true);
+  const interrupted = player?.readiness?.blockers.some((b) =>
+    ["camera", "camera_delivery", "connection"].includes(b),
+  );
   const media = local
     ? client.capture.stream
     : state.mediaMode === "rtc"
@@ -48,8 +80,8 @@ export function PlayerCard({
   const showVideo = camera && !!media;
   const showRelay =
     camera && !local && state.mediaMode === "wss" && !!client.video.remoteFrame;
-  const muted =
-    local || client.sound.peerMuted || !canSpeak(state, player?.id || null);
+  // Peer audio uses the unlocked Web Audio path; video stays autoplay-safe on phones.
+  const muted = true;
   const attach = useCallback((node: HTMLVideoElement | null) => {
     video.current = node;
   }, []);
@@ -64,34 +96,86 @@ export function PlayerCard({
         ?.drawImage(client.video.remoteCanvas, 0, 0, 256, 144);
   }, [media, muted, showRelay, version]);
   useEffect(() => {
-    setBurst(0);
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let sum = 0,
-      at = 0;
-    const seen = new Set<number>();
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const queue = new AwardQueue();
+    let displayTimer: ReturnType<typeof setTimeout> | undefined,
+      pulse: Animation | undefined;
+    const display = () => {
+      clearTimeout(displayTimer);
+      const now = performance.now();
+      const width = awardLayer.current?.clientWidth || 96;
+      const { notices, slots, nextAt } = queue.advance(
+        now,
+        awardCapacity(width),
+      );
+      setPresentation({
+        notices,
+        slots,
+        // Keep occupied slots legible and separate if the window shrinks mid-cue.
+        fontSize: Math.min(23, width / slots / 4.5),
+      });
+      if (Number.isFinite(nextAt))
+        displayTimer = setTimeout(display, Math.max(1, nextAt - now));
+    };
+    const clear = () => {
+      for (const timer of timers) clearTimeout(timer);
+      timers.clear();
+      clearTimeout(displayTimer);
+      queue.clear();
+      pulse?.cancel();
+      setPresentation((previous) => ({ ...previous, notices: [] }));
+      setWinPulse(false);
+      setAnnouncement("");
+    };
+    clear();
+    const resize = new ResizeObserver(display);
+    if (awardLayer.current) resize.observe(awardLayer.current);
+    const later = (fn: () => void, ms: number) => {
+      const timer = setTimeout(() => {
+        timers.delete(timer);
+        fn();
+      }, ms);
+      timers.add(timer);
+    };
     const unsub = client.on((u) => {
       if (u.activity && u.activity.playerId === player?.id && activity.current)
         activity.current.style.setProperty(
           "--level",
           String(Math.max(0.12, u.activity.level)),
         );
-      if (
-        u.event?.type !== "score_committed" ||
-        u.event.payload.playerId !== player?.id ||
-        seen.has(u.event.seq)
-      )
-        return;
-      seen.add(u.event.seq);
-      if (seen.size > 128) seen.delete(seen.values().next().value!);
-      sum = (Date.now() - at < 500 ? sum : 0) + u.event.payload.deltaUnits;
-      at = Date.now();
-      setBurst(sum);
-      clearTimeout(timer);
-      timer = setTimeout(() => setBurst(0), 1200);
+      if (u.feedbackReset) clear();
+      const cue = u.feedback;
+      if (!cue || cue.playerId !== player?.id) return;
+      if (cue.kind === "score") {
+        queue.enqueue(cue);
+        display();
+        setAnnouncement(
+          `+${points(cue.deltaUnits)}. ${points(cue.totalUnits)} points.`,
+        );
+        if (!quiet.current) {
+          pulse?.cancel();
+          pulse = scoreWrap.current?.animate(
+            [
+              { transform: "scale(1)" },
+              {
+                transform: `scale(${cue.deltaUnits >= 8 ? 1.12 : 1.07})`,
+                offset: 0.3,
+              },
+              { transform: "scale(1)" },
+            ],
+            { duration: 240, easing: "cubic-bezier(.16,1,.3,1)" },
+          );
+        }
+      }
+      if (cue.kind === "round" || cue.kind === "match") {
+        setWinPulse(true);
+        later(() => setWinPulse(false), 700);
+      }
     });
     return () => {
       unsub();
-      clearTimeout(timer);
+      resize.disconnect();
+      clear();
     };
   }, [player?.id, state.matchId, state.roundId]);
   return (
@@ -109,6 +193,28 @@ export function PlayerCard({
           {player?.name || "Your friend"}
           {local && <span className="you-label">you</span>}
         </h2>
+        {showScore && (
+          <div
+            className={"round-pips " + (winPulse ? "win-pulse" : "")}
+            role="img"
+            aria-label={(player?.wins || 0) + " of 2 round wins"}
+            title={(player?.wins || 0) + " of 2 round wins"}
+          >
+            {[0, 1].map((n) => (
+              <span
+                key={n}
+                className={
+                  (player?.wins || 0) > n
+                    ? "won" +
+                      (n === (player?.wins || 0) - 1 ? " latest-win" : "")
+                    : ""
+                }
+              >
+                {(player?.wins || 0) > n && <Icon name="check" />}
+              </span>
+            ))}
+          </div>
+        )}
         <span className="activity" ref={activity} aria-hidden="true">
           <i />
           <i />
@@ -122,7 +228,10 @@ export function PlayerCard({
           playsInline
           muted={muted}
           hidden={!showVideo}
-          aria-label={(player?.name || "Player") + "’s live camera"}
+          aria-label={
+            (player?.name || "Player") +
+            (interrupted ? "’s paused camera" : "’s live camera")
+          }
           style={{ transform: local ? "scaleX(-1)" : undefined }}
         />
         <canvas
@@ -131,8 +240,14 @@ export function PlayerCard({
           height={144}
           hidden={!showRelay}
           role="img"
-          aria-label={(player?.name || "Player") + "’s live camera"}
+          aria-label={
+            (player?.name || "Player") +
+            (interrupted ? "’s paused camera" : "’s live camera")
+          }
         />
+        {camera && interrupted && (showVideo || showRelay) && (
+          <span className="camera-interruption">Video paused</span>
+        )}
         {!showVideo && !showRelay && (
           <div className="avatar">
             <span>
@@ -141,93 +256,82 @@ export function PlayerCard({
               )}
             </span>
             <small>
-              {!player
-                ? "A seat for your bad influence"
-                : camera
-                  ? "Connecting camera…"
-                  : "Camera off"}
+              {offlineResult
+                ? "Offline"
+                : !player
+                  ? emptyStatus
+                  : camera
+                    ? "Connecting camera…"
+                    : "Camera off"}
             </small>
           </div>
         )}
-        {!player?.connected && player && (
-          <span className="camera-status">
-            <Icon name="refresh" />
-            Reconnecting
-          </span>
-        )}
       </div>
-      <div className="player-status">
-        <Icon
-          name={
-            winner
-              ? "trophy"
-              : active && canSpeak(state, player?.id || null)
-                ? local && client.capture.micMuted
-                  ? "mic-off"
-                  : "mic"
-                : state.phase === "LOBBY" && player?.ready
-                  ? "check"
-                  : "headphones"
-          }
-        />
-        <span>{status}</span>
-      </div>
-      <div className="face-bottom">
-        <p className="position">
-          {state.topic?.positions[player?.id || ""] ||
-            (player
-              ? local
-                ? "Your side of the courtroom"
-                : "The other side of the story"
-              : "Invite them with your room code")}
-        </p>
-        {showScore && (
-          <AnimatedScore
-            units={player?.scoreUnits || 0}
-            reduced={reduced}
-            roundId={state.roundId}
-          />
-        )}
-        {burst > 0 && (
-          <span className="score-burst" key={lastScore?.id} aria-hidden="true">
-            +{points(burst)}
-          </span>
-        )}
-      </div>
-      {showScore && (
-        <div
-          className="round-pips"
-          aria-label={(player?.wins || 0) + " of 2 round wins"}
-        >
-          {[0, 1].map((n) => (
-            <span key={n} className={(player?.wins || 0) > n ? "won" : ""}>
-              {(player?.wins || 0) > n && <Icon name="check" />}
-            </span>
-          ))}
-          <small>Round wins</small>
-        </div>
-      )}
-      {lastScore && (
-        <details className="score-note">
-          <summary>
+      <span className="sr-only">{status}</span>
+      {player &&
+        ((!player.connected && !offlineResult) ||
+          (state.phase === "LOBBY" && player.ready) ||
+          (active && local && client.capture.micMuted)) && (
+          <div className="player-status">
+            <Icon
+              name={
+                !player.connected
+                  ? "refresh"
+                  : player.ready && state.phase === "LOBBY"
+                    ? "check"
+                    : "mic-off"
+              }
+            />
             <span>
-              {lastScore.criterion} +{points(lastScore.deltaUnits)}
+              {!player.connected
+                ? "Reconnecting"
+                : state.phase === "LOBBY"
+                  ? "Ready"
+                  : "Unmute to speak"}
             </span>
-            <Icon name="chevron" />
-            <span className="score-reason-preview">{lastScore.reason}</span>
-          </summary>
-          <div>
-            {scores.map((s) => (
-              <p key={s.id}>
-                <b>
-                  {s.criterion} +{points(s.deltaUnits)}
-                </b>
-                {s.reason}
-              </p>
-            ))}
           </div>
-        </details>
-      )}
+        )}
+      <div className="face-bottom">
+        {state.topic?.positions[player?.id || ""] && (
+          <p className="position">{state.topic.positions[player!.id]}</p>
+        )}
+        {showScore && (
+          <div className="score-wrap" ref={scoreWrap}>
+            <AnimatedScore
+              playerId={player?.id}
+              units={player?.scoreUnits || 0}
+              reduced={reduced}
+              roundId={state.roundId}
+            />
+          </div>
+        )}
+      </div>
+      <div
+        className="award-layer"
+        ref={awardLayer}
+        aria-hidden="true"
+        style={
+          {
+            "--award-slots": presentation.slots,
+            "--award-font": `${presentation.fontSize}px`,
+          } as React.CSSProperties
+        }
+      >
+        {presentation.notices.map((award) => (
+          <span
+            key={award.id}
+            className="award-slot"
+            style={{ "--lane": award.slot } as React.CSSProperties}
+          >
+            <span className="score-burst" data-award-id={award.id}>
+              +{points(award.deltaUnits)}
+            </span>
+          </span>
+        ))}
+      </div>
+      <span className="sr-only" role="status" aria-atomic="true">
+        {announcement}
+      </span>
     </article>
   );
 }

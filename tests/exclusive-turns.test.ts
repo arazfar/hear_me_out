@@ -3,6 +3,7 @@ import test from "node:test";
 import { RoomController, type Seat } from "../server/rooms/room";
 import { canSpeak, scoreShare, type Turn } from "../shared/domain";
 import { Client } from "../src/game/client";
+import { flush } from "./fixtures";
 function setup() {
   const c = new RoomController("1234");
   const a = c.game.addPlayer("Sam"),
@@ -24,33 +25,47 @@ function setup() {
   c.game.state.turn = turn;
   return { c, a, b, turn };
 }
-test("exclusive floor policy protects both transports and preserves manual mute", () => {
+test("exclusive floor policy protects both transports and preserves manual mute", async () => {
   const { c, a, b, turn } = setup();
   const client = new Client();
   client.state = c.game.state;
   client.session = { playerId: a.id } as any;
   const track = { enabled: true };
   client.capture.stream = { getAudioTracks: () => [track] } as any;
+  let transmitted: unknown;
+  client.peer.audioSender = {
+    replaceTrack: async (next: MediaStreamTrack | null) => {
+      transmitted = next;
+    },
+  } as RTCRtpSender;
+  client.capture.syncMicrophone();
+  await flush();
+  assert.equal(transmitted, track);
   assert(canSpeak(c.game.state, a.id));
   assert(!canSpeak(c.game.state, b.id));
   client.capture.micMuted = true;
   client.capture.syncMicrophone();
+  await flush();
   assert(!track.enabled);
+  assert.equal(transmitted, null);
   client.capture.micMuted = false;
-  client.reconnecting = true;
+  client.connection.phase = "connecting";
   client.capture.syncMicrophone();
-  assert(
-    !track.enabled,
-    "connection recovery closes the WebRTC microphone immediately",
-  );
-  client.reconnecting = false;
+  await flush();
+  assert(!client.capture.microphoneAllowed());
+  assert.equal(transmitted, null, "recovery sends no RTC microphone audio");
+  client.connection.phase = "connected";
 
   turn.playerId = b.id;
   client.capture.syncMicrophone();
-  assert(!track.enabled);
+  await flush();
+  assert(!client.capture.microphoneAllowed());
+  assert.equal(transmitted, null);
   turn.playerId = a.id;
   client.capture.syncMicrophone();
+  await flush();
   assert(track.enabled);
+  assert.equal(transmitted, track);
   for (const mode of ["rtc", "wss"] as const) {
     c.game.state.mediaMode = mode;
     const pcm: Buffer[] = [],
@@ -143,6 +158,7 @@ test("floor is paused before publication and stale completion cannot unlock anot
   c.playback.speech = speech;
   c.playback.finishSpeech(speech);
   assert.equal(turn.pausedReason, "judge");
+  c.game.state.players.forEach((p) => (p.mediaReady = true));
   c.playback.speech = { ...speech, turnId: turn.id };
   c.playback.cancelSpeech();
   assert.equal(turn.pausedReason, null);
@@ -167,12 +183,12 @@ test("relay decode retains delayed frames, coalesces pending work and rejects ol
     }),
   };
   const frame = (seq: number) => {
-    const f = new ArrayBuffer(18),
+    const f = new ArrayBuffer(22),
       v = new DataView(f);
     v.setUint32(1, client.state!.mediaEpoch, true);
     v.setUint32(5, seq, true);
     v.setFloat64(9, Date.now() - 5000, true);
-    v.setUint8(17, seq);
+    v.setUint8(21, seq);
     return f;
   };
   let release!: () => void;
@@ -220,7 +236,7 @@ test("automatic device restore and a simultaneous enable click share one capture
   let calls = 0,
     resumed = 0,
     release!: () => void;
-  (client.capture as any).acquireDevices = () => {
+  (client.capture as any).acquire = () => {
     calls++;
     return new Promise<void>((r) => {
       release = r;

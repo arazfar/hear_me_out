@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { canSpeak, type Snapshot } from "../../shared/domain";
 import { client } from "../game/client";
 import { Icon } from "./Icon";
 import { useMediaVersion, useServerNow } from "./hooks";
+import { turnStatus } from "./presentation";
 
 export function TurnPanel({
   state,
@@ -11,24 +13,25 @@ export function TurnPanel({
   playerId?: string;
 }) {
   const now = useServerNow();
+  const [handoff, setHandoff] = useState("");
+  useEffect(
+    () =>
+      client.on((u) => {
+        if (u.feedbackReset) setHandoff("");
+        if (u.feedback?.kind === "turn") setHandoff(u.feedback.id);
+      }),
+    [],
+  );
   useMediaVersion();
   const turn = state.turn;
   if (!turn) return null;
   const mine = turn.playerId === playerId;
-  const speaker = state.players.find((p) => p.id === turn.playerId);
   const paused = !!turn.pausedReason || turn.sealing;
   const seconds = Math.max(
     0,
     Math.ceil((turn.deadline ? turn.deadline - now : turn.remainingMs) / 1000),
   );
-  const judging = turn.sealing || state.judgePending;
-  const status = turn.sealing
-    ? "Making it official"
-    : turn.pausedReason
-      ? "Clock paused"
-      : mine
-        ? "Your turn"
-        : speaker?.name + "’s turn";
+  const status = turnStatus(state, playerId);
   return (
     <section
       className={"turn-panel " + (seconds <= 5 && !paused ? "time-low" : "")}
@@ -42,7 +45,7 @@ export function TurnPanel({
       }
       aria-label="Current turn"
     >
-      <div className="turn-label">
+      <div key={handoff} className={"turn-label " + (handoff ? "handoff" : "")}>
         <span className="turn-dot" />
         {status}
       </div>
@@ -67,24 +70,12 @@ export function TurnPanel({
           }}
         />
       </div>
-      <div className="turn-kind">
-        {turn.kind === "case"
-          ? "Make your case"
-          : turn.kind === "rebuttal"
-            ? "Answer their argument"
-            : "Your closing argument"}
-      </div>
-      <p className="turn-guidance">
-        {turn.pausedReason === "judge"
-          ? "Bonk has the floor."
-          : judging
-            ? "Bonk is scoring that."
-            : mine && client.capture.micMuted
-              ? "Unmute to make your point."
-              : mine
-                ? "Say your piece. Then pass it on."
-                : "Your chance to answer is coming."}
-      </p>
+      {mine && client.capture.micMuted && !paused && (
+        <p className="turn-guidance">Your mic is off.</p>
+      )}
+      {turn.pausedReason === "judge" && (
+        <p className="turn-guidance">Clock paused</p>
+      )}
       {mine && !turn.sealing && (
         <button
           className="primary yield-button"
@@ -100,9 +91,6 @@ export function TurnPanel({
           I’m done
           <Icon name="arrow" />
         </button>
-      )}
-      {state.comebackPlayerId && turn.kind === "closing" && (
-        <p className="comeback-label">A comeback is still on the table.</p>
       )}
     </section>
   );

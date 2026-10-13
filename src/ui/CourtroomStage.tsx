@@ -62,15 +62,10 @@ function Bonk({
   const time = useRef(0),
     strike = useRef(-100);
   useEffect(() => {
-    const seen = new Set<string>();
-    return client.on(({ event }) => {
-      if (!event || !["round_result", "match_result"].includes(event.type))
-        return;
-      const key = event.snapshot.matchId + ":" + event.seq;
-      if (seen.has(key)) return;
-      seen.add(key);
-      if (seen.size > 32) seen.delete(seen.values().next().value!);
-      strike.current = time.current;
+    return client.on(({ feedback, feedbackReset }) => {
+      if (feedbackReset) strike.current = -100;
+      if (feedback?.kind === "round" || feedback?.kind === "match")
+        strike.current = time.current;
     });
   }, []);
   useFrame((_, delta) => {

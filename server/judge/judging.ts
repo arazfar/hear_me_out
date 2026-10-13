@@ -1,5 +1,5 @@
-import { createHash, randomUUID } from "node:crypto";
-import { canSpeak, type Segment } from "../../shared/domain.js";
+import { randomUUID } from "node:crypto";
+import { type Segment } from "../../shared/domain.js";
 import { type Proposal } from "../providers/index.js";
 import type { RoomController } from "../rooms/room.js";
 import { safeReaction, voiceSettingsKey } from "./personality.js";
@@ -188,9 +188,7 @@ export class Judging {
     } catch {
       if (!current()) return;
       this.room.recordFailure("judgment");
-      this.room.game.abort(
-        "The judge could not score reliably. No winner was invented. Try a new match.",
-      );
+      this.room.game.abort("Bonk couldn’t finish scoring. Try a new match.");
     } finally {
       if (!current()) return;
       this.judgeRequest = null;
@@ -207,33 +205,6 @@ export class Judging {
       if (this.queue.length) void this.drain();
       else this.prepareHandoff();
     }
-  }
-  typed(id: string, turnId: string, text: string) {
-    if (
-      !canSpeak(this.room.game.state, id) ||
-      !this.room.game.state.degraded.stt ||
-      this.room.game.state.turn?.id !== turnId ||
-      this.room.game.state.turn.playerId !== id ||
-      this.room.game.state.turn.sealing
-    )
-      throw new Error("Typed recovery is not available for this opportunity.");
-    const s: Segment = {
-      id: createHash("sha256")
-        .update(`${turnId}:${text}`)
-        .digest("hex")
-        .slice(0, 24),
-      playerId: id,
-      roundId: this.room.game.state.roundId!,
-      turnId,
-      sessionEpoch: "typed",
-      text,
-      stableAt: this.room.services.now(),
-      eligible: true,
-      source: "typed",
-    };
-    this.room.game.caption(id, text, true);
-    this.room.game.emit("transcript");
-    this.onSegment(s);
   }
   acceptReaction(
     turnId: string,
@@ -252,6 +223,7 @@ export class Judging {
     const text = safeReaction(reaction.text);
     if (
       !text ||
+      this.repeatsAside(text) ||
       !record ||
       record.roundId !== this.room.game.state.roundId ||
       !evidence ||
@@ -278,9 +250,17 @@ export class Judging {
   latestReaction(turnId = this.room.playback.lastSealedTurnId) {
     if (!turnId) return null;
     const reaction = this.reactions.get(turnId);
-    return reaction && reaction.revision === this.argumentRevision.get(turnId)
+    return reaction &&
+      !this.repeatsAside(reaction.text) &&
+      reaction.revision === this.argumentRevision.get(turnId)
       ? reaction.text
       : null;
+  }
+  private repeatsAside(text: string) {
+    const lower = text.toLowerCase();
+    return [...this.room.game.shownReasons].some((reason) =>
+      lower.includes(reason),
+    );
   }
   handoff(playerId: string, kind: string, previousTurnId: string | null) {
     const player = this.room.game.player(playerId);
@@ -292,6 +272,7 @@ export class Judging {
       );
     if (
       planned &&
+      !this.repeatsAside(planned.text) &&
       planned.roundId === this.room.game.state.roundId &&
       !answered &&
       this.room.game.canIntervene()
@@ -324,7 +305,7 @@ export class Judging {
     return {
       text: reaction
         ? `${reaction} ${player.name}, your turn.`
-        : `${sameRound ? "Case presented. " : ""}${player.name}, ${kind === "case" ? "make your case" : kind === "rebuttal" ? "your rebuttal" : "your closing argument"}.`,
+        : `${player.name}, ${kind === "case" ? "make your case" : kind === "rebuttal" ? "your rebuttal" : "your closing argument"}.`,
       intervention: false,
     };
   }

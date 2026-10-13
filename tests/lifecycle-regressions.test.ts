@@ -3,6 +3,53 @@ import test from "node:test";
 import { RoomController } from "../server/rooms/room";
 import { acceptUpgrade } from "../server/transport/upgrade";
 import { Client } from "../src/game/client";
+import { deferred, flush } from "./fixtures";
+
+test("cancelled reservations release late seats even while audio unlock is pending", async () => {
+  const client = new Client();
+  const savedFetch = globalThis.fetch,
+    savedStorage = globalThis.sessionStorage;
+  const reservation = deferred<Response>();
+  const released: unknown[] = [];
+  let attached = false;
+  client.sound.unlock = () => new Promise<void>(() => {});
+  client.attach = () => {
+    attached = true;
+  };
+  globalThis.sessionStorage = { removeItem: () => {} } as unknown as Storage;
+  globalThis.fetch = async (url, init) => {
+    if (url === "/api/leave") {
+      released.push(JSON.parse(init!.body as string));
+      return new Response("{}");
+    }
+    return reservation.promise;
+  };
+  try {
+    const entering = client.enter("create", "Alex");
+    await flush();
+    client.leave();
+    await entering;
+    const session = {
+      roomId: "old",
+      playerId: "a",
+      token: "fixture",
+      connectionEpoch: 1,
+      code: "1234",
+    };
+    reservation.resolve(
+      new Response(JSON.stringify({ session, snapshot: {} })),
+    );
+    await flush();
+    assert.equal(attached, false);
+    assert.equal(client.setup.busy, false);
+    assert.equal(client.capture.stream, null);
+    assert.deepEqual(released, [session]);
+  } finally {
+    client.leave();
+    globalThis.fetch = savedFetch;
+    globalThis.sessionStorage = savedStorage;
+  }
+});
 
 test("an old failed judgment cannot abort a replacement match", async () => {
   const savedFetch = globalThis.fetch,
@@ -30,6 +77,7 @@ test("an old failed judgment cannot abort a replacement match", async () => {
   try {
     const a = c.game.addPlayer("Sam"),
       b = c.game.addPlayer("Alex");
+    c.game.state.players.forEach((p) => (p.mediaReady = true));
     c.game.startMatch();
     c.game.selectTopic();
     c.game.proposeTopic(
@@ -58,6 +106,7 @@ test("an old failed judgment cannot abort a replacement match", async () => {
     const pending = c.judging.drain();
     await entered;
     c.game.abort("Old game ended");
+    c.game.state.players.forEach((p) => (p.mediaReady = true));
     c.game.startMatch();
     const match = c.game.state.matchId;
     release();
@@ -76,10 +125,12 @@ test("leaving invalidates an in-flight resume response", async () => {
   let resolve!: (r: Response) => void;
   const savedFetch = globalThis.fetch,
     savedStorage = globalThis.sessionStorage;
-  globalThis.fetch = async () =>
-    await new Promise<Response>((r) => {
-      resolve = r;
-    });
+  globalThis.fetch = async (url) =>
+    url === "/api/leave"
+      ? new Response("{}")
+      : await new Promise<Response>((r) => {
+          resolve = r;
+        });
   globalThis.sessionStorage = {
     length: 0,
     clear: () => {},

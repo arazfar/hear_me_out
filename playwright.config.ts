@@ -11,7 +11,6 @@ export default defineConfig({
     ["json", { outputFile: "output/playwright/results.json" }],
   ],
   use: {
-    channel: "chrome",
     headless: true,
     viewport: { width: 1280, height: 720 },
     permissions: ["camera", "microphone"],
@@ -25,8 +24,29 @@ export default defineConfig({
     },
   },
   projects: [
-    { name: "rtc", use: { baseURL: "http://127.0.0.1:3102" } },
-    { name: "relay", use: { baseURL: "http://127.0.0.1:3103" } },
+    {
+      name: "rtc",
+      use: { channel: "chrome", baseURL: "http://127.0.0.1:3102" },
+    },
+    {
+      name: "relay",
+      use: { channel: "chrome", baseURL: "http://127.0.0.1:3103" },
+    },
+    {
+      name: "phone",
+      grep: /two players|phone layouts/,
+      use: { channel: "chrome", baseURL: "http://127.0.0.1:3102" },
+    },
+    {
+      name: "webkit",
+      grep: /two players|phone layouts/,
+      use: {
+        browserName: "webkit",
+        channel: undefined,
+        baseURL: "http://127.0.0.1:3102",
+        launchOptions: { args: [] },
+      },
+    },
   ],
   webServer: [
     {

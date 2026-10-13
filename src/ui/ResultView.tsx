@@ -1,4 +1,5 @@
 import type { Player, Snapshot } from "../../shared/domain";
+import { RecoveryCheck, currentReadinessPresentation } from "./DeviceCheck";
 import { client } from "../game/client";
 import { Icon } from "./Icon";
 export function ResultView({
@@ -16,6 +17,8 @@ export function ResultView({
   const winner = state.players.find((p) => p.id === winnerId);
   const ready = !!me && state.rematchReady.includes(me.id);
   const otherReady = state.rematchReady.some((id) => id !== me?.id);
+  const other = state.players.find((p) => p.id !== me?.id);
+  const readiness = currentReadinessPresentation();
   return (
     <section
       className={"phase-panel result-panel " + (celebrate ? "celebrating" : "")}
@@ -23,32 +26,51 @@ export function ResultView({
       <Icon name="trophy" className="verdict-icon" />
       <h2>
         {winner?.name || "The court"}
-        <span>{final ? "wins the case." : "takes the round."}</span>
+        <span>{final ? "wins the match!" : "wins this round."}</span>
       </h2>
       <p>{result?.reason || state.status}</p>
-      {result?.tieBreak && <p className="tie-break">{result.tieBreak}</p>}
-      {final ? (
+      {result?.tieBreak && result.tieBreak !== result.reason && (
+        <p className="tie-break">{result.tieBreak}</p>
+      )}
+      {final && !other?.connected ? (
         <>
-          <button
-            className="primary"
-            disabled={ready || !me}
-            onClick={() => client.command({ type: "rematch", value: true })}
-          >
-            {ready ? "Rematch ready" : "Again. Obviously."}
-            <Icon name={ready ? "check" : "refresh"} />
+          <p className="support-copy">Your friend isn’t here.</p>
+          <button className="primary" onClick={() => client.leave()}>
+            Back to menu
+            <Icon name="arrow" />
           </button>
-          <p className="support-copy">
-            {ready
-              ? "Waiting for your friend."
-              : otherReady
-                ? "Your friend wants a rematch."
-                : "New coin. New argument."}
-          </p>
+        </>
+      ) : final ? (
+        <>
+          {!me?.mediaReady && <RecoveryCheck />}
+          {me?.mediaReady && (
+            <button
+              className="primary"
+              disabled={ready || !me?.mediaReady}
+              onClick={() => client.command({ type: "rematch", value: true })}
+            >
+              {ready ? "Rematch ready" : "Rematch"}
+              <Icon name={ready ? "check" : "refresh"} />
+            </button>
+          )}
+          {me?.mediaReady && (
+            <p className="support-copy">
+              {other && !other.mediaReady
+                ? readiness.message
+                : ready
+                  ? "Waiting for your friend."
+                  : otherReady
+                    ? "Your friend wants a rematch."
+                    : ""}
+            </p>
+          )}
         </>
       ) : (
         <p className="next-round">
           <Icon name="arrow" />
-          Next round after Bonk’s verdict
+          {winner && winner.wins >= 2
+            ? "Bonk has the final verdict"
+            : "Next round after the verdict"}
         </p>
       )}
       {celebrate && final && (

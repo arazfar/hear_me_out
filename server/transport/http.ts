@@ -5,6 +5,16 @@ import { PROTOCOL_VERSION } from "../../shared/protocol.js";
 import { RuleError } from "../game/game.js";
 
 import type { RoomRegistry } from "../rooms/registry.js";
+import type { Seat } from "../rooms/room.js";
+
+function ownsResume(seat: Seat, epoch: number, id?: string) {
+  return (
+    !!id &&
+    seat.resume?.id === id &&
+    seat.resume.fromEpoch === epoch &&
+    seat.resume.toEpoch === seat.epoch
+  );
+}
 export function registerHttp(app: express.Express, registry: RoomRegistry) {
   const { rooms, byId, rate, name, session, authenticate } = registry;
   app.get("/healthz", (_req, res) =>
@@ -102,18 +112,41 @@ export function registerHttp(app: express.Express, registry: RoomRegistry) {
           .json({ error: "Reconnect limit reached. Try again shortly." });
         return;
       }
-      const { roomId, playerId, token } = z
-        .object({ roomId: z.string(), playerId: z.string(), token: z.string() })
+      const { roomId, playerId, token, connectionEpoch, resumeId } = z
+        .object({
+          roomId: z.string(),
+          playerId: z.string(),
+          token: z.string(),
+          connectionEpoch: z.number().int().positive(),
+          resumeId: z.uuid().optional(),
+        })
         .parse(req.body);
       const { room, seat } = authenticate(roomId, playerId, token);
-      seat.epoch++;
-      for (const ws of seat.sockets.values()) ws.close(4001, "Seat resumed");
-      seat.sockets.clear();
-      seat.audioSeq = -1;
-      room.game.resumePlayer(playerId);
+      const retry = ownsResume(seat, connectionEpoch, resumeId);
+      if (
+        !retry &&
+        (connectionEpoch !== seat.epoch ||
+          (resumeId && seat.resume?.id === resumeId))
+      ) {
+        res.status(409).json({
+          error: "This seat was reconnected elsewhere. Join a new court.",
+        });
+        return;
+      }
+      // Only the owner can retry or cancel an accepted, unanswered transition.
+      if (!retry) {
+        seat.epoch++;
+        seat.resume = resumeId
+          ? { id: resumeId, fromEpoch: connectionEpoch, toEpoch: seat.epoch }
+          : undefined;
+        for (const ws of seat.sockets.values()) ws.close(4001, "Seat resumed");
+        seat.sockets.clear();
+        seat.audioSeq = -1;
+        room.game.resumePlayer(playerId);
+        for (const s of room.seats.values()) s.rtcReady = false;
+        room.game.emit("player_resumed");
+      }
       room.lastActiveAt = Date.now();
-      for (const s of room.seats.values()) s.rtcReady = false;
-      room.game.emit("player_resumed");
       res.json({
         protocolVersion: PROTOCOL_VERSION,
         session: {
@@ -127,6 +160,29 @@ export function registerHttp(app: express.Express, registry: RoomRegistry) {
       });
     } catch {
       res.status(401).json({ error: "Your seat expired. Join a new court." });
+    }
+  });
+  app.post("/api/leave", (req, res) => {
+    try {
+      const { roomId, playerId, token, connectionEpoch, resumeId } = z
+        .object({
+          roomId: z.string(),
+          playerId: z.string(),
+          token: z.string(),
+          connectionEpoch: z.number().int(),
+          resumeId: z.uuid().optional(),
+        })
+        .parse(req.body);
+      const { room, seat } = authenticate(roomId, playerId, token);
+      if (
+        seat.epoch !== connectionEpoch &&
+        !ownsResume(seat, connectionEpoch, resumeId)
+      )
+        throw new RuleError("This connection was replaced.");
+      room.leave(playerId);
+      res.json({ ok: true });
+    } catch {
+      res.status(401).json({ error: "This seat is no longer active." });
     }
   });
 }

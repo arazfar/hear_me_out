@@ -78,7 +78,7 @@ export class Game {
       status: "The court is waiting for two questionable opinions.",
       judgePending: false,
       recoveryDeadline: null,
-      degraded: { tts: false, stt: false },
+      degraded: { tts: false },
       winnerId: null,
     };
   }
@@ -99,7 +99,7 @@ export class Game {
   caption(id: string, text: string, final: boolean) {
     this.state.captions[id] = { text, final, at: this.now() };
   }
-  degrade(provider: "stt" | "tts", status: string) {
+  degrade(provider: "tts", status: string) {
     this.state.degraded[provider] = true;
     this.state.status = status;
   }
@@ -150,6 +150,10 @@ export class Game {
   }
   setMediaReady(id: string, value: boolean) {
     this.player(id).mediaReady = value;
+    if (!value) {
+      this.player(id).ready = false;
+      this.state.rematchReady = this.state.rematchReady.filter((p) => p !== id);
+    }
   }
   setMediaMode(mode: Snapshot["mediaMode"]) {
     this.state.mediaMode = mode;
@@ -215,7 +219,7 @@ export class Game {
     const p = this.player(id);
     if (value && !p.mediaReady)
       throw new RuleError(
-        "Finish the microphone and peer connection check first.",
+        "Finish the mic, camera, and connection check first.",
       );
     p.ready = value;
     this.emit("ready_changed");
@@ -225,12 +229,31 @@ export class Game {
     )
       this.startMatch();
   }
+  allMediaReady() {
+    return (
+      this.state.players.length === 2 &&
+      this.state.players.every((p) => p.connected && p.mediaReady)
+    );
+  }
+  pendingResume: string | undefined;
+  recoveryPause: string | null = null;
+  reactionTurns = new Set<string>();
+  reactionAt = -Infinity;
+  shownReasons = new Set<string>();
   startMatch() {
+    if (!this.allMediaReady())
+      throw new RuleError(
+        "Both players need a working mic, camera, and connection.",
+      );
+    this.reactionTurns.clear();
+    this.shownReasons.clear();
+    this.reactionAt = -Infinity;
+    this.pendingResume = undefined;
     this.state.captions = {};
     this.state.judgePending = false;
     this.recoverySpent = 0;
     this.state.recoveryDeadline = null;
-    this.state.degraded = { tts: false, stt: false };
+    this.state.degraded = { tts: false };
     this.state.matchId = randomUUID();
     this.state.headsId = this.state.players[randomInt(2)].id;
     this.state.tailsId = this.other(this.state.headsId).id;
@@ -258,7 +281,7 @@ export class Game {
     this.emit("coin_committed");
   }
   selectTopic() {
-    this.state.status = `${this.player(this.state.tailsId!).name}, pick your hill to die on.`;
+    this.state.status = `${this.player(this.state.tailsId!).name}, choose a topic and your side.`;
     this.setPhase("TOPIC_SELECT", this.topicRejections ? 20000 : 45000);
   }
   proposeTopic(
@@ -282,7 +305,7 @@ export class Game {
       revision: (this.state.topic?.revision ?? 0) + 1,
       confirmations: [],
     };
-    this.state.status = "Same topic. Opposite sides. Both of you sign off.";
+    this.state.status = "Check the topic and confirm your side.";
     this.setPhase("TOPIC_CONFIRM", 20000);
   }
   confirm(id: string, revision: number) {
@@ -420,6 +443,11 @@ export class Game {
       (reason && t.pausedReason !== reason)
     )
       return;
+    if (this.state.phase !== "ROUND" || !this.allMediaReady()) {
+      this.pendingResume = reason || t.pausedReason;
+      return;
+    }
+    this.pendingResume = undefined;
     t.pausedReason = null;
     t.deadline = this.now() + t.remainingMs;
     this.emit("clock_changed");
@@ -523,6 +551,29 @@ export class Game {
     this.state.ledger.push(event);
     this.ledgerVersion++;
     this.emit("score_committed", event);
+    const text = event.reason.trim();
+    if (
+      this.state.phase === "ROUND" &&
+      this.state.turn?.id === event.turnId &&
+      !this.reactionTurns.has(event.turnId) &&
+      this.now() - this.reactionAt >= 6000 &&
+      (!this.state.judge || this.state.judge.status === "silent") &&
+      text.length > 0 &&
+      text.length <= 80 &&
+      text.split(/\s+/).length <= 8
+    ) {
+      this.reactionTurns.add(event.turnId);
+      this.reactionAt = this.now();
+      this.shownReasons.add(text.toLowerCase());
+      this.emit("bonk_reaction", {
+        id: randomUUID(),
+        awardId: event.id,
+        playerId: event.playerId,
+        roundId: event.roundId,
+        turnId: event.turnId,
+        text,
+      });
+    }
     return true;
   }
   claim(claim: Claim) {
@@ -580,13 +631,14 @@ export class Game {
             .reduce((n, e) => n + e.deltaUnits, 0);
         if (total(a.id) !== total(b.id)) {
           chosen = total(a.id) > total(b.id) ? a : b;
-          tieBreak = `Tie broken by ${criterion}`;
+          tieBreak = `Tied on points. ${criterion[0].toUpperCase() + criterion.slice(1)} breaks the tie.`;
           break;
         }
       }
       if (!chosen) {
         chosen = this.state.players[randomInt(2)];
-        tieBreak = "Exact dead heat · server coin toss";
+        tieBreak =
+          "Tied on points and every criterion. A coin toss decides it.";
       }
       winner = chosen;
     }
@@ -596,7 +648,7 @@ export class Game {
       )
       .sort((a, b) => b.deltaUnits - a.deltaUnits)[0];
     const reason =
-      tieBreak ?? decisive?.reason ?? "The committed score decides this round.";
+      tieBreak ?? decisive?.reason ?? "The higher score wins this round.";
     winner.wins++;
     this.state.results.push({
       round: this.state.round,
@@ -622,12 +674,11 @@ export class Game {
     if (!["MATCH_RESULT", "ABORTED"].includes(this.state.phase))
       throw new RuleError("Finish the match first.");
     this.state.rematchReady = this.state.rematchReady.filter((p) => p !== id);
+    if (value && !this.player(id).mediaReady)
+      throw new RuleError("Check your mic and camera before the rematch.");
     if (value) this.state.rematchReady.push(id);
     this.emit("rematch_changed");
-    if (
-      this.state.rematchReady.length === 2 &&
-      this.state.players.every((p) => p.connected)
-    )
+    if (this.state.rematchReady.length === 2 && this.allMediaReady())
       this.startMatch();
   }
   recover(status: string) {
@@ -652,6 +703,7 @@ export class Game {
       const t = this.state.turn;
       t.remainingMs = this.remaining(t);
       t.deadline = null;
+      this.recoveryPause = t.pausedReason;
       t.pausedReason = "connection";
     }
     this.recoveryStarted = this.now();
@@ -661,7 +713,7 @@ export class Game {
     this.setPhase("RECOVERING");
   }
   resumeRecovery() {
-    if (this.state.phase !== "RECOVERING") return;
+    if (this.state.phase !== "RECOVERING" || !this.allMediaReady()) return;
     const elapsed = this.now() - this.recoveryStarted;
     this.recoverySpent += elapsed;
     this.roundStartedAt += elapsed;
@@ -671,8 +723,16 @@ export class Game {
       this.sealAt = this.now() + this.recoverySealRemaining;
       this.turns.get(this.state.turn.id)!.validUntil = this.sealAt + 15000;
     }
-    this.resume("connection");
-    this.state.status = "Back in court. Same score. Same argument.";
+    if (this.state.turn && !this.state.turn.sealing) {
+      // A canceled judge cue no longer owns the floor; all device blockers are clear.
+      this.state.turn.pausedReason =
+        this.recoveryPause && this.recoveryPause !== "judge"
+          ? this.recoveryPause
+          : "connection";
+      this.resume(this.state.turn.pausedReason);
+    }
+    this.recoveryPause = null;
+    this.state.status = "Back in court.";
     this.emit("reconnected");
   }
   abort(status: string) {
@@ -688,16 +748,12 @@ export class Game {
       s = this.state;
     if (s.phase === "RECOVERING") {
       if (now >= (s.recoveryDeadline ?? Infinity))
-        this.abort(
-          "Connection recovery expired. No judged winner was awarded.",
-        );
+        this.abort("We couldn’t reconnect in time. Start a fresh match.");
       return;
     }
     if (s.phase === "ROUND") {
       if (now - this.roundStartedAt > 240000) {
-        this.abort(
-          "The round could not finish safely. No winner was invented.",
-        );
+        this.abort("Bonk couldn’t finish the round. Try a fresh match.");
         return;
       }
       const t = s.turn;
@@ -707,7 +763,7 @@ export class Game {
         (t.settlement === "draining" || s.judgePending)
       ) {
         this.abort(
-          "Argument processing timed out. No unjudged evidence was skipped; try a fresh match.",
+          "Bonk couldn’t finish scoring this round. No winner this time.",
         );
         return;
       }

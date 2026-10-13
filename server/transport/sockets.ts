@@ -97,14 +97,7 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
                 snapshot: room.game.snapshot(),
               }),
             );
-          if (channel === "audio")
-            room.transcription.rotate(
-              id,
-              room.game.state.turn?.playerId === id &&
-                !room.game.state.turn.sealing
-                ? room.game.state.turn.id
-                : null,
-            );
+          if (channel === "audio") room.transcription.rotate(id);
           return;
         }
         const seat = room.seats.get(id);
@@ -120,7 +113,7 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
         if (binary) {
           if (channel === "audio" && rate(`audio:${id}`, 100, 1000))
             room.media.audio(id, bytes);
-          else if (channel === "video" && room.game.state.mediaMode !== "rtc") {
+          else if (channel === "video") {
             const frame = decodeVideo(bytes);
             if (videoEpoch !== room.game.state.mediaEpoch) {
               videoEpoch = room.game.state.mediaEpoch;
@@ -129,12 +122,19 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
             if (
               frame &&
               frame.epoch === videoEpoch &&
+              frame.generation ===
+                (room.readiness.get(id).observation?.cameraGeneration ?? 0) &&
+              frame.capturedAt >= Date.now() - 3000 &&
+              frame.capturedAt <= Date.now() + 1000 &&
               frame.seq > videoSeq &&
               Date.now() - videoAt > 40
             ) {
               videoSeq = frame.seq;
               videoAt = Date.now();
-              room.media.forward(id, "video", bytes);
+              room.readiness.sent(id, frame.seq, frame.probe);
+              if (frame.probe) ws.send(bytes);
+              else if (room.game.state.mediaMode !== "rtc")
+                room.media.forward(id, "video", bytes);
             }
           }
           return;
@@ -157,16 +157,18 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
             throw new RuleError("Control rate exceeded.");
           if (data.type === "video_ack") {
             if (
-              data.mediaEpoch === room.game.state.mediaEpoch &&
-              Number.isInteger(data.seq) &&
-              data.seq >= 0 &&
-              rate(`videoack:${id}`, 30, 1000)
-            )
-              room.send(room.game.other(id)?.id, {
-                type: "video_ack",
-                seq: data.seq,
-                mediaEpoch: data.mediaEpoch,
-              });
+              room.readiness.received(id, data.seq, data.mediaEpoch, data.probe)
+            ) {
+              const target = data.probe
+                ? id
+                : room.game.state.players.find((p) => p.id !== id)?.id;
+              if (target)
+                room.send(target, {
+                  type: "video_ack",
+                  seq: data.seq,
+                  mediaEpoch: data.mediaEpoch,
+                });
+            }
             return;
           }
           if (data.type === "ping") {
@@ -268,7 +270,8 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
       const seat = room.seats.get(id)!;
       if (seat.epoch !== epoch || seat.sockets.get(channel) !== ws) return;
       seat.sockets.delete(channel);
-      if (channel === "control" || channel === "audio") room.disconnect(id);
+      if (channel === "control" || channel === "audio" || channel === "video")
+        room.disconnect(id);
     });
     ws.on("error", () => {});
   });
