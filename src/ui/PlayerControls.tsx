@@ -19,12 +19,11 @@ export function PlayerControls({
       ?.getVideoTracks()
       .some((t) => t.readyState === "live") && !client.capture.cameraOff;
   const muted = client.capture.micMuted;
-  const allowed = client.capture.microphoneAllowed();
   return (
     <footer className="controls" aria-label="Player controls">
       <div className="device-controls">
         <button
-          disabled={busy}
+          disabled={busy && !mic}
           aria-pressed={!!mic && !muted}
           className={muted ? "muted" : ""}
           onClick={() =>
@@ -33,17 +32,10 @@ export function PlayerControls({
               : void action(() => client.setup.run())
           }
         >
-          <Icon name={!mic || muted || !allowed ? "mic-off" : "mic"} />
-          {!mic
-            ? "Enable mic"
-            : muted
-              ? "Mic off"
-              : allowed
-                ? "Mic on"
-                : "Mic paused"}
+          <Icon name={!mic || muted ? "mic-off" : "mic"} />
+          {!mic ? "Enable mic" : muted ? "Mic off" : "Mic on"}
         </button>
         <button
-          disabled={busy}
           aria-pressed={!!camera}
           onClick={() => client.capture.muteCamera()}
         >

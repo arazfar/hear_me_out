@@ -2,6 +2,7 @@ import type { Player, Snapshot } from "../../shared/domain";
 import { RecoveryCheck, currentReadinessPresentation } from "./DeviceCheck";
 import { client } from "../game/client";
 import { Icon } from "./Icon";
+import { rematchPresentation } from "./presentation";
 export function ResultView({
   state,
   me,
@@ -15,10 +16,9 @@ export function ResultView({
     result = state.results.at(-1);
   const winnerId = final ? state.winnerId : result?.winnerId;
   const winner = state.players.find((p) => p.id === winnerId);
-  const ready = !!me && state.rematchReady.includes(me.id);
-  const otherReady = state.rematchReady.some((id) => id !== me?.id);
   const other = state.players.find((p) => p.id !== me?.id);
   const readiness = currentReadinessPresentation();
+  const { ready, actionLabel } = rematchPresentation(state, me?.id, readiness);
   return (
     <section
       className={"phase-panel result-panel " + (celebrate ? "celebrating" : "")}
@@ -49,30 +49,18 @@ export function ResultView({
               disabled={ready || !me?.mediaReady}
               onClick={() => client.command({ type: "rematch", value: true })}
             >
-              {ready ? "Rematch ready" : "Rematch"}
+              {actionLabel}
               <Icon name={ready ? "check" : "refresh"} />
             </button>
           )}
-          {me?.mediaReady && (
-            <p className="support-copy">
-              {other && !other.mediaReady
-                ? readiness.message
-                : ready
-                  ? "Waiting for your friend."
-                  : otherReady
-                    ? "Your friend wants a rematch."
-                    : ""}
-            </p>
-          )}
+          {me?.mediaReady &&
+            other &&
+            !other.mediaReady &&
+            readiness.message && (
+              <p className="support-copy">{readiness.message}</p>
+            )}
         </>
-      ) : (
-        <p className="next-round">
-          <Icon name="arrow" />
-          {winner && winner.wins >= 2
-            ? "Bonk has the final verdict"
-            : "Next round after the verdict"}
-        </p>
-      )}
+      ) : null}
       {celebrate && final && (
         <div className="confetti" aria-hidden="true">
           {Array.from({ length: 10 }, (_, i) => (

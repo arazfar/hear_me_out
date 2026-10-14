@@ -1,5 +1,5 @@
-import { encodeMicrophone } from "../../shared/media";
-import { canSpeak } from "../../shared/domain";
+import { encodeMicrophone, type CapturePurpose } from "../../shared/media";
+import { canConverse, canSendJudgeInput } from "../../shared/domain";
 import type { Client } from "../game/client";
 import { loadWorklet } from "./worklet";
 
@@ -48,6 +48,15 @@ export class DeviceCapture {
   worklet: AudioWorkletNode | null = null;
   source: MediaStreamAudioSourceNode | null = null;
   audioSeq = 0;
+  pendingDone: string | null = null;
+  doneAt = 0;
+  private closedEpoch = -1;
+  private gateKey = "";
+  private clockSyncedAt = 0;
+  private isolation = new Map<
+    string,
+    { complete: () => void; cancel: () => void }
+  >();
   private acquisition: Acquisition | null = null;
   private silence: GainNode | null = null;
   private cleanup: (() => void)[] = [];
@@ -64,6 +73,12 @@ export class DeviceCapture {
   }
   stop() {
     this.cancelRequest();
+    for (const pending of this.isolation.values()) pending.cancel();
+    this.isolation.clear();
+    this.pendingDone = null;
+    this.closedEpoch = -1;
+    this.gateKey = "";
+    this.clockSyncedAt = 0;
     this.cleanup.splice(0).forEach((fn) => fn());
     this.cleanup = [];
     this.worklet?.disconnect();
@@ -235,6 +250,7 @@ export class DeviceCapture {
       this.worklet = graph.worklet;
       this.silence = graph.silence;
       this.captureFailed = false;
+      this.gateKey = "";
       this.listenToAudio(graph.worklet);
       attempt.nodes.clear();
     }
@@ -266,9 +282,25 @@ export class DeviceCapture {
     let levelAt = 0;
     worklet.port.onmessage = ({ data }) => {
       if (worklet !== this.worklet) return;
-      const allowed = this.microphoneAllowed();
-      this.micLevel = allowed ? data.level : 0;
-      if (Date.now() - levelAt > 100) {
+      if (data.type === "isolated") {
+        this.isolation.get(data.requestId)?.complete();
+        return;
+      }
+      const context = this.client.sound.context;
+      if (
+        context?.state === "running" &&
+        performance.now() - this.clockSyncedAt >= 250
+      ) {
+        this.clockSyncedAt = performance.now();
+        worklet.port.postMessage({
+          type: "clock",
+          serverAt: this.client.serverNow(),
+          contextAt: context.currentTime,
+        });
+      }
+      const allowed = !this.micMuted;
+      this.micLevel = allowed ? data.level || 0 : 0;
+      if (Date.now() - levelAt > 100 && data.type !== "end") {
         levelAt = Date.now();
         this.client.notify(
           this.client.session
@@ -282,20 +314,50 @@ export class DeviceCapture {
         );
       }
       const socket = this.client.sockets.get("audio");
-      if (
-        !this.client.clock.synced ||
-        socket?.readyState !== WebSocket.OPEN ||
-        socket.bufferedAmount > 8000
-      )
+      if (!this.client.clock.synced || socket?.readyState !== WebSocket.OPEN)
         return;
+      const gameplay = data.purpose === "gameplay",
+        privateAudio = data.purpose === "private";
+      if (socket.bufferedAmount > 64000) {
+        // Never silently lose eligible evidence. A broken uplink must enter bounded recovery.
+        if (gameplay || privateAudio || data.type === "end") socket.close();
+        return;
+      }
+      if (data.type === "end") {
+        socket.send(
+          encodeMicrophone(
+            data.mediaEpoch,
+            ++this.audioSeq,
+            data.capturedAt,
+            new Uint8Array(),
+            { purpose: "gameplay", inputEpoch: data.inputEpoch, end: true },
+          ),
+        );
+        if (data.done && this.pendingDone)
+          this.client.command({
+            type: "done",
+            turnId: this.pendingDone,
+            lastAudioSeq: this.audioSeq,
+          });
+        return;
+      }
+      const health =
+        data.purpose === "health" ||
+        (!gameplay && !privateAudio && this.client.state?.mediaMode === "rtc");
       socket.send(
         encodeMicrophone(
-          this.client.state?.mediaEpoch || 0,
+          data.mediaEpoch,
           ++this.audioSeq,
-          this.client.serverNow(),
-          allowed
-            ? new Uint8Array(data.pcm)
-            : new Uint8Array(data.pcm.byteLength),
+          data.capturedAt,
+          health
+            ? new Uint8Array()
+            : allowed
+              ? new Uint8Array(data.pcm)
+              : new Uint8Array(data.pcm.byteLength),
+          {
+            purpose: health ? "health" : data.purpose,
+            inputEpoch: health ? 0 : data.inputEpoch,
+          },
         ),
       );
     };
@@ -340,21 +402,109 @@ export class DeviceCapture {
         .catch(() => {});
     }
   }
-  microphoneAllowed() {
+  privateCheck() {
+    const setup = this.client.setup;
     return (
-      !this.micMuted &&
-      !this.client.reconnecting &&
-      (this.client.setup.listening ||
-        (!this.client.setup.inline &&
-          !this.client.setup.busy &&
-          canSpeak(this.client.state, this.client.session?.playerId || null)))
+      setup.inline ||
+      setup.listening ||
+      setup.phase === "testing" ||
+      (setup.busy && setup.repair !== "camera")
     );
   }
-  syncMicrophone() {
-    // Keep the capture source alive across turn handoffs. Ownership gates PCM
-    // packets and the RTC sender; only the player's privacy switch mutes capture.
+  microphoneAllowed() {
+    return (
+      canConverse(this.privateCheck(), this.micMuted) &&
+      !this.client.reconnecting
+    );
+  }
+  private policy(): { purpose: CapturePurpose; inputEpoch: number } {
+    if (this.micMuted || this.client.reconnecting)
+      return { purpose: "health", inputEpoch: 0 };
+    if (this.client.setup.listening)
+      return { purpose: "private", inputEpoch: this.client.setup.inputEpoch };
+    if (this.privateCheck()) return { purpose: "health", inputEpoch: 0 };
+    const state = this.client.state;
+    if (
+      canSendJudgeInput(state, this.client.session?.playerId || null) &&
+      state?.turn?.inputEpoch !== this.closedEpoch
+    )
+      return { purpose: "gameplay", inputEpoch: state!.turn!.inputEpoch! };
+    return { purpose: "social", inputEpoch: 0 };
+  }
+  syncMicrophone(requestId?: string) {
     this.stream?.getAudioTracks().forEach((t) => (t.enabled = !this.micMuted));
-    this.client.peer.syncAudio();
+    void this.client.peer.syncAudio();
+    this.client.sound.syncPeerPrivacy();
+    if (
+      this.pendingDone &&
+      (this.client.state?.turn?.id !== this.pendingDone ||
+        this.client.state?.turn?.inputEpoch !== this.closedEpoch)
+    )
+      this.pendingDone = null;
+    const policy = this.policy();
+    const message = {
+      type: "gate",
+      ...policy,
+      mediaEpoch: this.client.state?.mediaEpoch || 0,
+      endsAt:
+        policy.purpose === "gameplay"
+          ? this.client.state?.turn?.deadline
+          : null,
+    };
+    const key = JSON.stringify(message);
+    if (key !== this.gateKey || requestId) {
+      this.gateKey = key;
+      this.clockSyncedAt = performance.now();
+      this.worklet?.port.postMessage({
+        ...message,
+        requestId,
+        serverAt: this.client.serverNow(),
+        contextAt: this.client.sound.context?.currentTime || 0,
+      });
+    }
+  }
+  async isolate() {
+    const id = crypto.randomUUID();
+    const capture = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.isolation.delete(id);
+        reject(new Error("Couldn’t isolate your mic. Try again."));
+      }, 2000);
+      this.isolation.set(id, {
+        complete: () => {
+          clearTimeout(timer);
+          this.isolation.delete(id);
+          resolve();
+        },
+        cancel: () => {
+          clearTimeout(timer);
+          reject(new Error("Setup cancelled."));
+        },
+      });
+    });
+    this.syncMicrophone(id);
+    await Promise.all([capture, this.client.peer.syncAudio()]);
+  }
+  finishTurn() {
+    const turn = this.client.state?.turn;
+    if (
+      !turn ||
+      this.pendingDone ||
+      !canSendJudgeInput(
+        this.client.state,
+        this.client.session?.playerId || null,
+      )
+    )
+      return;
+    this.pendingDone = turn.id;
+    this.doneAt = this.client.serverNow();
+    this.closedEpoch = turn.inputEpoch!;
+    this.worklet?.port.postMessage({
+      type: "done",
+      inputEpoch: turn.inputEpoch,
+      nextPurpose: "social",
+    });
+    this.client.notify({ media: true });
   }
   muteMic() {
     this.micMuted = !this.micMuted;

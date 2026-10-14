@@ -39,17 +39,17 @@ console.log(
   }),
 );
 const combined = Buffer.concat(chunks);
-const pcm = new Float32Array(
+const pcm = new Int16Array(
   combined.buffer,
   combined.byteOffset,
-  combined.length / 4,
+  combined.length / 2,
 );
 const output = Buffer.alloc(Math.floor((pcm.length * 16000) / 44100) * 2);
 for (let i = 0; i < output.length / 2; i++)
   output.writeInt16LE(
     Math.max(
       -32768,
-      Math.min(32767, Math.round(pcm[Math.floor((i * 44100) / 16000)] * 32767)),
+      Math.min(32767, Math.round(pcm[Math.floor((i * 44100) / 16000)])),
     ),
     i * 2,
   );

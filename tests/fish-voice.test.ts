@@ -7,7 +7,7 @@ test("Fish voice streams odd PCM chunks with the requested identity, prosody, an
     keyBefore = process.env.FISH_AUDIO_API_KEY;
   process.env.FISH_AUDIO_API_KEY = "test";
   let request: any, signal: AbortSignal | undefined;
-  const chunks: Float32Array[] = [];
+  const chunks: Int16Array[] = [];
   globalThis.fetch = async (_url, init) => {
     request = JSON.parse(init!.body as string);
     signal = init!.signal as AbortSignal;
@@ -15,7 +15,7 @@ test("Fish voice streams odd PCM chunks with the requested identity, prosody, an
       new ReadableStream({
         start(c) {
           c.enqueue(new Uint8Array([0, 64, 0]));
-          c.enqueue(new Uint8Array([128, 255, 127, 0]));
+          c.enqueue(new Uint8Array([128, 255, 127]));
           c.close();
         },
       }),
@@ -27,11 +27,7 @@ test("Fish voice streams odd PCM chunks with the requested identity, prosody, an
       "Sam, answer that argument.",
       (bytes) =>
         chunks.push(
-          new Float32Array(
-            bytes.buffer,
-            bytes.byteOffset,
-            bytes.byteLength / 4,
-          ),
+          new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2),
         ),
       () => false,
     );
@@ -43,7 +39,7 @@ test("Fish voice streams odd PCM chunks with the requested identity, prosody, an
     assert.equal(request.sample_rate, 44100);
     assert.deepEqual(
       chunks.flatMap((c) => Array.from(c)),
-      [0.5, -1, 32767 / 32768],
+      [16384, -32768, 32767],
     );
     assert(signal!.aborted);
   } finally {

@@ -17,7 +17,33 @@ export class RelayVideo {
   frameTimer: ReturnType<typeof setInterval> | null = null;
   cameraVideo: HTMLVideoElement | null = null;
   captureGeneration = 0;
+  private frameReader: FileReader | null = null;
+  cancelFrameRead() {
+    this.frameReader?.abort();
+  }
+  private readFrame(blob: Blob) {
+    // Unlike Blob.arrayBuffer(), this read can be stopped before a document
+    // loses access to its local Blob during navigation (notably in WebKit).
+    return new Promise<ArrayBuffer | null>((resolve) => {
+      const reader = new FileReader();
+      this.frameReader = reader;
+      const finish = (data: ArrayBuffer | null) => {
+        reader.onload = reader.onerror = reader.onabort = null;
+        if (this.frameReader === reader) this.frameReader = null;
+        resolve(data);
+      };
+      reader.onload = () =>
+        finish(reader.result instanceof ArrayBuffer ? reader.result : null);
+      reader.onerror = reader.onabort = () => finish(null);
+      try {
+        reader.readAsArrayBuffer(blob);
+      } catch {
+        finish(null);
+      }
+    });
+  }
   resetVideo() {
+    this.cancelFrameRead();
     this.videoGeneration++;
     this.pendingVideo = null;
     this.remoteFrameSeq = 0;
@@ -93,6 +119,7 @@ export class RelayVideo {
   }
   prepareVideo() {
     if (!this.client.capture.stream) return;
+    this.cancelFrameRead();
     const captureGeneration = ++this.captureGeneration;
     if (this.cameraVideo) this.cameraVideo.srcObject = null;
     this.localTime = -1;
@@ -163,18 +190,18 @@ export class RelayVideo {
       const capturedAt = this.client.serverNow();
       const mediaEpoch = this.client.state.mediaEpoch;
       const generation = this.videoGeneration;
+      const current = () =>
+        !document.hidden &&
+        this.client.state?.mediaEpoch === mediaEpoch &&
+        generation === this.videoGeneration &&
+        captureGeneration === this.captureGeneration;
       ctx.drawImage(this.cameraVideo, 0, 0, 256, 144);
       canvas.toBlob(
         async (blob) => {
           try {
-            if (!blob || document.hidden) return;
-            const data = await blob.arrayBuffer();
-            if (
-              this.client.state?.mediaEpoch !== mediaEpoch ||
-              generation !== this.videoGeneration ||
-              captureGeneration !== this.captureGeneration
-            )
-              return;
+            if (!blob || !current()) return;
+            const data = await this.readFrame(blob);
+            if (!data || !current()) return;
             const packet = encodeVideo(
               mediaEpoch,
               ++this.videoSeq,

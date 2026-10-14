@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { encodeMicrophone } from "../shared/media";
 import { RoomController, type Seat } from "../server/rooms/room";
-import { canSpeak, scoreShare, type Turn } from "../shared/domain";
+import { judgeIsListening, scoreShare, type Turn } from "../shared/domain";
 import { Client } from "../src/game/client";
-import { flush } from "./fixtures";
+import { flush, fakeSpeech } from "./fixtures";
 function setup() {
   const c = new RoomController("1234");
   const a = c.game.addPlayer("Sam"),
@@ -20,149 +21,71 @@ function setup() {
     deadline: Date.now() + 30000,
     pausedReason: null,
     sealing: false,
+    inputEpoch: 1,
+    inputState: "open",
     targets: { reasoning: 0, rebuttal: 0, impact: 0, wit: 0, clarity: 0 },
   };
   c.game.state.turn = turn;
   return { c, a, b, turn };
 }
-test("exclusive floor policy protects both transports and preserves manual mute", async () => {
-  const { c, a, b, turn } = setup();
-  const client = new Client();
+test("conversation survives floor and judge transitions; privacy still detaches RTC", async () => {
+  const { c, a, b, turn } = setup(),
+    client = new Client();
   client.state = c.game.state;
   client.session = { playerId: a.id } as any;
   const track = { enabled: true };
   client.capture.stream = { getAudioTracks: () => [track] } as any;
   let transmitted: unknown;
   client.peer.audioSender = {
-    replaceTrack: async (next: MediaStreamTrack | null) => {
+    replaceTrack: async (next: unknown) => {
       transmitted = next;
     },
-  } as RTCRtpSender;
-  client.capture.syncMicrophone();
-  await flush();
-  assert.equal(transmitted, track);
-  assert(canSpeak(c.game.state, a.id));
-  assert(!canSpeak(c.game.state, b.id));
+  } as any;
+  for (const floor of [a.id, b.id]) {
+    turn.playerId = floor;
+    for (const speaking of [false, true]) {
+      c.game.state.judge = speaking ? ({ status: "speaking" } as any) : null;
+      client.capture.syncMicrophone();
+      await flush();
+      assert.equal(transmitted, track);
+      assert(client.capture.microphoneAllowed());
+      assert.equal(
+        judgeIsListening(c.game.state, a.id),
+        floor === a.id && !speaking,
+      );
+    }
+  }
   client.capture.micMuted = true;
   client.capture.syncMicrophone();
   await flush();
-  assert(!track.enabled);
   assert.equal(transmitted, null);
+  assert.equal(track.enabled, false);
   client.capture.micMuted = false;
-  client.connection.phase = "connecting";
+  client.setup.busy = true;
   client.capture.syncMicrophone();
   await flush();
-  assert(!client.capture.microphoneAllowed());
-  assert.equal(transmitted, null, "recovery sends no RTC microphone audio");
-  client.connection.phase = "connected";
-
-  turn.playerId = b.id;
-  client.capture.syncMicrophone();
-  await flush();
-  assert(!client.capture.microphoneAllowed());
   assert.equal(transmitted, null);
-  turn.playerId = a.id;
-  client.capture.syncMicrophone();
-  await flush();
-  assert(track.enabled);
-  assert.equal(transmitted, track);
-  for (const mode of ["rtc", "wss"] as const) {
-    c.game.state.mediaMode = mode;
-    const pcm: Buffer[] = [],
-      forwarded: Buffer[] = [];
-    for (const id of [a.id, b.id]) {
-      c.seats.set(id, {
-        audioSeq: -1,
-        lastAudioAt: 0,
-        voiceAt: 0,
-        lastActivity: 0,
-        sockets: new Map(),
-      } as Seat);
-      c.transcription.ink.set(id, { send: (p: Buffer) => pcm.push(p) } as any);
-    }
-    c.media.forward = (_id, _channel, p) => {
-      forwarded.push(p);
-    };
-    const packet = (seq: number) => {
-      const p = Buffer.alloc(665);
-      p[0] = 1;
-      p.writeUInt32LE(c.game.state.mediaEpoch, 1);
-      p.writeUInt32LE(seq, 5);
-      p.writeUInt32LE(16000, 9);
-      p.writeUInt32LE(320, 13);
-      p.writeDoubleLE(Date.now(), 17);
-      p.writeInt16LE(8000, 25);
-      return p;
-    };
-    c.media.audio(b.id, packet(1));
-    assert(pcm.at(-1)!.every((x) => x === 0));
-    assert.equal(forwarded.length, 0);
-    c.media.audio(a.id, packet(1));
-    assert.equal(pcm.at(-1)!.readInt16LE(0), 8000);
-    assert.equal(forwarded.length, mode === "wss" ? 1 : 0);
-    c.game.state.judge = { status: "speaking" } as any;
-    c.media.audio(a.id, packet(2));
-    assert(pcm.at(-1)!.every((x) => x === 0));
-    c.game.state.judge = null;
-    turn.sealing = true;
-    c.transcription.sealedAudio.set(a.id, {
-      turnId: turn.id,
-      maxSeq: 4,
-      capturedBefore: Date.now(),
-      expiresAt: Date.now() + 500,
-    });
-    c.media.audio(a.id, packet(3));
-    assert.equal(
-      pcm.at(-1)!.readInt16LE(0),
-      8000,
-      "captured-before-seal frames drain into the original epoch",
-    );
-    c.media.audio(a.id, packet(5));
-    assert(pcm.at(-1)!.every((x) => x === 0));
-    turn.sealing = false;
-    c.transcription.sealedAudio.clear();
-  }
-  turn.sealing = true;
-  assert(!canSpeak(c.game.state, a.id));
-  turn.sealing = false;
-  c.game.state.phase = "RECOVERING";
-  assert(!canSpeak(c.game.state, a.id));
-  c.game.state.phase = "LOBBY";
-  assert(canSpeak(c.game.state, b.id));
-  c.game.state.phase = "MATCH_RESULT";
-  assert(canSpeak(c.game.state, b.id));
+  c.close();
 });
-test("floor is paused before publication and stale completion cannot unlock another turn", () => {
-  const { c, a, turn } = setup();
+test("floor assignment is held atomically; stale finish and cancellation cannot open input", () => {
+  const { c, turn } = setup();
   let published: any;
-  c.broadcast = (e) => {
-    published = e;
-  };
+  c.broadcast = (e) => (published = e);
   c.transcription.rotate = () => {};
   c.playback.say = async () => {};
   c.onEvent({ type: "floor_granted", snapshot: c.game.snapshot() } as any);
   assert.equal(published.snapshot.turn.deadline, null);
-  assert.equal(turn.pausedReason, "judge");
-  const speech = {
-    id: "speech",
-    epoch: 1,
-    ready: new Set<string>(),
-    duration: 0,
-    startedAt: null,
-    done: true,
-    timer: null,
-    maxSeconds: 4.5,
-    turnId: "old-turn",
-    matchId: "match",
-  };
+  assert.equal(turn.inputState, "preparing");
+  const speech = fakeSpeech(c, { turnId: "old-turn", matchId: "match" });
   c.playback.speech = speech;
   c.playback.finishSpeech(speech);
   assert.equal(turn.pausedReason, "judge");
   c.game.state.players.forEach((p) => (p.mediaReady = true));
-  c.playback.speech = { ...speech, turnId: turn.id };
+  c.playback.speech = fakeSpeech(c, { turnId: turn.id });
   c.playback.cancelSpeech();
-  assert.equal(turn.pausedReason, null);
-  assert(canSpeak(c.game.state, a.id));
+  assert.equal(turn.pausedReason, "judge");
+  assert(!judgeIsListening(c.game.state, turn.playerId));
+  c.close();
 });
 test("relay decode retains delayed frames, coalesces pending work and rejects old epochs", async () => {
   const { c } = setup();
@@ -256,4 +179,56 @@ test("automatic device restore and a simultaneous enable click share one capture
   release();
   await automatic;
   assert.equal(client.capture.deviceRequest, null);
+});
+
+test("private checks cancel any friend gain ramp before isolation and restore the latest mute choice", () => {
+  const client = new Client(),
+    calls: unknown[] = [];
+  client.sound.context = { currentTime: 1 } as AudioContext;
+  client.sound.peerGain = {
+    gain: {
+      cancelScheduledValues: (time: number) => calls.push(["cancel", time]),
+      setValueAtTime: (value: number, time: number) =>
+        calls.push(["set", value, time]),
+      setTargetAtTime: (value: number) => calls.push(["target", value]),
+    },
+  } as any;
+  client.sound.peerPlayback = {
+    port: { postMessage: (value: unknown) => calls.push(value) },
+  } as any;
+  client.setup.inline = true;
+  client.sound.syncPeerPrivacy();
+  assert.deepEqual(calls, [["cancel", 1], ["set", 0, 1], { type: "flush" }]);
+  client.sound.peerMuted = true;
+  client.setup.inline = false;
+  client.sound.syncPeerPrivacy();
+  assert.deepEqual(calls.at(-1), ["target", 0]);
+});
+
+test("server activity cannot overwrite local/RTC meters or imply audible muted relay speech", () => {
+  const { c, a, b } = setup(),
+    client = new Client();
+  client.state = c.game.state;
+  client.session = { playerId: a.id } as any;
+  client.sound.context = { state: "running" } as AudioContext;
+  const levels: number[] = [];
+  client.on((update) => {
+    if (update.activity) levels.push(update.activity.level);
+  });
+  const activity = (playerId: string) =>
+    client.message({ type: "activity", playerId, level: 0.8 });
+  client.state.mediaMode = "rtc";
+  activity(a.id);
+  activity(b.id);
+  assert.deepEqual(levels, []);
+  client.state.mediaMode = "wss";
+  activity(a.id);
+  activity(b.id);
+  client.sound.peerMuted = true;
+  activity(b.id);
+  client.sound.peerMuted = false;
+  client.setup.inline = true;
+  activity(b.id);
+  assert.deepEqual(levels, [0.8, 0, 0]);
+  c.close();
 });

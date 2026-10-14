@@ -20,7 +20,7 @@ import { fakeVoice, flush, roomFixture } from "./fixtures";
 test("codecs reject malformed lengths, timestamps, rates, and sample budgets before use", () => {
   const mic = encodeMicrophone(3, 1, 100000, new Uint8Array(640));
   assert.equal(decodeMicrophone(mic)?.samples, 320);
-  for (const size of [0, 1, 16, 24, 26, 664])
+  for (const size of [0, 1, 16, 24, 26, 670])
     assert.equal(decodeMicrophone(mic.slice(0, size)), null);
   const invalid = mic.slice();
   new DataView(invalid.buffer).setFloat64(17, NaN, true);
@@ -40,11 +40,11 @@ test("codecs reject malformed lengths, timestamps, rates, and sample budgets bef
     8,
     0,
     0,
-    new Uint8Array(new Float32Array([0.1, 0.2]).buffer),
+    new Uint8Array(new Int16Array([123, 456]).buffer),
   );
   assert.equal(decodeJudgeAudio(speech)?.pcm.length, 2);
   assert.equal(decodeJudgeAudio(Buffer.from(speech))?.pcm.length, 2);
-  new DataView(speech.buffer).setUint32(13, 44100 * 8, true);
+  new DataView(speech.buffer).setUint32(13, 44100 * 20, true);
   assert.equal(decodeJudgeAudio(speech), null);
 });
 test("shared schemas reject missing versions, nonfinite clocks, oversized signaling, and obsolete commands", () => {
@@ -91,9 +91,9 @@ test("missing audio recipient cancels shared speech instead of silently dropping
   const { room } = roomFixture({ streamVoice: fakeVoice });
   await flush();
   await room.playback.say("Those syrup pockets came prepared.", null, false);
-  assert.equal(room.playback.speech, null);
+  assert(room.playback.speech?.fallback);
   assert.equal(room.game.state.degraded.tts, true);
-  assert.equal(room.game.state.judge?.status, "silent");
+  assert.equal(room.game.state.judge?.status, "captions");
   room.close();
 });
 test("diagnostic samples stay bounded", () => {

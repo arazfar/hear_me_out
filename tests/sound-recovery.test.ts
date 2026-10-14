@@ -20,13 +20,21 @@ function soundFixture(t: TestContext) {
   const modules: ReturnType<typeof deferred<void>>[] = [];
   const playbackNodes: Playback[] = [];
   class Node {
-    gain = { value: 1, setTargetAtTime() {} };
+    gain = {
+      value: 1,
+      setTargetAtTime() {},
+      cancelScheduledValues() {},
+      setValueAtTime(value: number) {
+        this.value = value;
+      },
+    };
     connect() {
       return this;
     }
     disconnect() {}
   }
   class Playback extends Node {
+    port = { onmessage: null, postMessage() {} };
     disconnected = false;
     constructor() {
       super();
@@ -111,7 +119,7 @@ test("a failed audio module can retry using the same unlocked context", async (t
   await f.client.sound.unlock();
   assert(f.client.sound.peerPlayback);
   assert(f.client.sound.judgeGain);
-  assert.equal(f.requests(), 2);
+  assert.equal(f.requests(), 3);
   assert.equal(f.contexts(), 1);
 });
 
@@ -138,12 +146,13 @@ test("a stalled audio module times out, retries, and ignores obsolete completion
     0,
     "obsolete work cannot publish a node",
   );
+  f.holdModules(false);
   f.modules[1].resolve();
   await retry;
-  assert.equal(f.playbackNodes.length, 1);
+  assert.equal(f.playbackNodes.length, 2);
   assert.equal(f.contexts(), 1);
   await f.client.sound.unlock();
-  assert.equal(f.requests(), 2, "successful initialization is reused");
+  assert.equal(f.requests(), 3, "successful initialization is reused");
 });
 
 test("cancelling setup releases audio initialization while retaining healthy capture", async (t) => {
@@ -166,7 +175,7 @@ test("cancelling setup releases audio initialization while retaining healthy cap
   f.modules[0].resolve();
   await flush();
   assert.equal(f.client.sound.peerPlayback, playback);
-  assert.equal(f.playbackNodes.length, 1);
+  assert.equal(f.playbackNodes.length, 2);
   f.client.setup.cancel();
   assert.equal(f.playbackNodes[0].disconnected, false);
 });
@@ -202,7 +211,7 @@ test("failed audio-node initialization cleans staging and reuses the loaded modu
   const gain = f.client.sound.peerGain;
   f.failGraph(false);
   await f.client.sound.unlock();
-  assert.equal(f.requests(), 1);
+  assert.equal(f.requests(), 2);
   assert.equal(f.contexts(), 1);
   assert.equal(f.client.sound.peerGain, gain);
   assert.equal(f.playbackNodes[1].disconnected, false);
@@ -230,10 +239,6 @@ test("audio download timeout aborts its request and a late body cannot load a mo
   await f.client.sound.unlock();
   body.resolve("// Obsolete response");
   await flush();
-  assert.equal(
-    f.requests(),
-    1,
-    "only the replacement download reaches addModule",
-  );
-  assert.equal(f.playbackNodes.length, 1);
+  assert.equal(f.requests(), 2, "only replacement downloads reach addModule");
+  assert.equal(f.playbackNodes.length, 2);
 });

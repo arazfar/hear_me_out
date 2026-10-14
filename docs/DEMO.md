@@ -1,4 +1,4 @@
-Current update: exclusive server-authorized speaking turns replace overlap play. Relay frames are 256×144 at up to 15 fps, displayed on a persistent canvas without an age cutoff. Bonk makes shared, clock-paused handoffs between opportunities. Player yield controls sit outside their own cards, or underneath on narrow screens. Human verification and latency/FPS benchmarking remain deferred.
+Current update (protocol 4): friend conversation stays continuous across turns and Bonk speech. Only the floor holder’s capture-time grant reaches gameplay transcription. Both clients must render and drain Bonk’s entire line before input opens. The dated observations below describe earlier revisions; use the protocol 4 rehearsal and acceptance guide for current checks.
 
 # Demo and verification — October 7, 2026
 
@@ -27,7 +27,7 @@ Visual checks used 1280×800 Chrome. The under-player “I’m done” control a
 
 ## Rehearsal
 
-Keep the server/tunnel laptop awake. Check `/healthz`, then run a real two-network headphone match. Confirm both people hear each other before Ready. Speak after the floor badge appears. Use short complete arguments and “I'm done”; semantic handoff is also available. Verify the final name, scores, and round wins match on both screens, then both press Rematch.
+Keep the server/tunnel laptop awake. Check `/healthz`, then run a real two-network headphone match. Confirm both people hear each other before Ready. Speak after the floor badge appears. Use short complete arguments and “I'm done”; only that action or the deadline ends the turn. Verify the final name, scores, and round wins match on both screens, then both press Rematch.
 
 The intended 90-second script:
 
@@ -56,4 +56,8 @@ At 2:40 p.m. Pacific: freeze features. Check public HTTPS, persistent WS, permis
 
 ## Remaining risk
 
-Temporary hosting and missing TURN make relay necessary on restrictive networks. One demo match at a time keeps provider/resource use bounded. Credentials/quotas and the local network can still cause outages. Stable hosting, TURN, durable recovery, quota/abuse controls, retention review, and measured load/browser coverage are the specific remaining production tasks.
+Temporary hosting and unprovisioned TURN make relay necessary on restrictive networks. One demo match at a time keeps provider/resource use bounded. Credentials/quotas and the local network can still cause outages. Stable hosting, TURN, durable recovery, quota/abuse controls, retention review, and measured load/browser coverage are the specific remaining production tasks.
+
+## Protocol 4 rehearsal
+
+Deploy client and server together. Friends now chat through every phase; only the current capture grant enters gameplay transcription. Natural pauses never end a turn. Judge completion requires both clients’ render acknowledgments, not a duration estimate. TURN credential support is available but the TURN service still needs provisioning. Earlier timing and chunk counts above describe the old protocol and are not current acoustic results. Follow [audio acceptance](AUDIO_ACCEPTANCE.md) for the new measurement points, interruption matrix, and physical-device qualification. `verify:match` uses real providers but simulates playback acknowledgments; it does not listen to output.

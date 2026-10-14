@@ -1,65 +1,65 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { RoomController, type Seat } from "../server/rooms/room";
+import { encodeMicrophone } from "../shared/media";
+import { roomFixture, fakeTranscription } from "./fixtures";
 
-test("timestamped microphone packets retain attribution and reject replay or old media epochs", () => {
-  const c = new RoomController("0246");
-  const a = c.game.addPlayer("Sam"),
-    b = c.game.addPlayer("Alex");
-  c.game.state.mediaMode = "wss";
-  const forwarded: Buffer[] = [],
-    transcribed: Buffer[] = [];
-  const seat = (): Seat => ({
-    tokenHash: "test",
-    epoch: 1,
-    sockets: new Map(),
-    audioSeq: -1,
-    lastAudioAt: 0,
-    voiceAt: 0,
-    lastActivity: 0,
-    rtcReady: false,
-    acks: new Map(),
-  });
-  c.seats.set(a.id, seat());
-  c.seats.set(b.id, seat());
-  c.seats.get(b.id)!.sockets.set("audio", {
-    readyState: 1,
-    bufferedAmount: 0,
-    send: (raw: Buffer) => forwarded.push(raw),
-  } as any);
-  c.transcription.ink.set(a.id, {
-    send: (pcm: Buffer) => transcribed.push(pcm),
-  } as any);
-  const packet = Buffer.alloc(665);
-  packet[0] = 1;
-  packet.writeUInt32LE(c.game.state.mediaEpoch, 1);
-  packet.writeUInt32LE(1, 5);
-  packet.writeUInt32LE(16000, 9);
-  packet.writeUInt32LE(320, 13);
-  packet.writeDoubleLE(Date.now(), 17);
-  packet.writeInt16LE(1234, 25);
-  c.media.audio(a.id, packet);
-  assert.equal(transcribed.length, 1);
-  assert.equal(transcribed[0].length, 640);
-  assert.equal(transcribed[0].readInt16LE(0), 1234);
+test("capture-time ownership rejects replay, stale grants, private and off-turn speech while relay conversation continues", () => {
+  let now = 100000;
+  const { room, turn } = roomFixture({ now: () => now });
+  room.game.state.mediaMode = "wss";
+  const spoken: Buffer[] = [],
+    forwarded: Buffer[] = [];
+  room.transcription.ink.set(
+    turn.playerId,
+    fakeTranscription(turn.id, room.game.state.roundId!, (pcm) =>
+      spoken.push(pcm),
+    ),
+  );
+  room.media.forward = (_id, _channel, raw) => forwarded.push(raw);
+  const packet = (
+    seq: number,
+    inputEpoch = turn.inputEpoch!,
+    purpose: "gameplay" | "social" | "private" = "gameplay",
+    capturedAt = now,
+  ) =>
+    Buffer.from(
+      encodeMicrophone(
+        room.game.state.mediaEpoch,
+        seq,
+        capturedAt,
+        new Uint8Array(640).fill(1),
+        { purpose, inputEpoch },
+      ),
+    );
+  room.media.audio(turn.playerId, packet(1));
+  assert.equal(spoken.filter((p) => p.some((x) => x)).length, 1);
   assert.equal(forwarded.length, 1);
-  c.media.audio(a.id, packet);
-  assert.equal(transcribed.length, 1, "replayed sequence cannot enter STT");
-  packet.writeUInt32LE(2, 5);
-  packet.writeUInt32LE(99, 1);
-  c.media.audio(a.id, packet);
-  assert.equal(transcribed.length, 1);
-  packet.writeUInt32LE(c.game.state.mediaEpoch, 1);
-  packet.writeDoubleLE(Date.now() - 1000, 17);
-  c.media.audio(a.id, packet);
+  room.media.audio(turn.playerId, packet(1));
+  assert.equal(spoken.length, 1, "replays never reach STT");
+  room.media.audio(turn.playerId, packet(2, 999));
+  room.media.audio(turn.playerId, packet(3, 0, "social"));
+  room.media.audio(turn.playerId, packet(4, 2, "private"));
+  room.media.audio(room.game.other(turn.playerId).id, packet(1));
+  assert.equal(spoken.filter((p) => p.some((x) => x)).length, 1);
   assert.equal(
-    transcribed.length,
+    forwarded.length,
+    4,
+    "off-turn friends still converse; private packets never forward",
+  );
+  now += 1500;
+  room.media.audio(
+    turn.playerId,
+    packet(5, turn.inputEpoch, "gameplay", now - 1000),
+  );
+  assert.equal(
+    spoken.filter((p) => p.some((x) => x)).length,
     2,
-    "transport delay must not discard scoring evidence",
+    "late valid evidence is retained",
   );
   assert.equal(
     forwarded.length,
-    1,
-    "stale audio must not create playback backlog",
+    4,
+    "stale conversation cannot accumulate playback delay",
   );
+  room.close();
 });

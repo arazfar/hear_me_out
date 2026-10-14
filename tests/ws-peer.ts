@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { WebSocket } from "ws";
-import type { Snapshot } from "../shared/domain";
+import { canSendJudgeInput, type Snapshot } from "../shared/domain";
 import {
   PROTOCOL_VERSION,
   serverMessageSchema,
@@ -43,6 +43,11 @@ export class WsPeer {
   voice = new Map<number, string[]>();
   cancelled = new Set<number>();
   ready = new Set<number>();
+  ended = new Map<string, number>();
+  inputEpoch = 0;
+  eof = new Map<number, number>();
+  completing = new Set<number>();
+  timers = new Set<ReturnType<typeof setTimeout>>();
   acks = new Map<string, boolean>();
   constructor(
     readonly base: string,
@@ -50,6 +55,26 @@ export class WsPeer {
     public state: Snapshot,
   ) {}
   send(command: Command, id: string = crypto.randomUUID()) {
+    if (command.type === "done") {
+      if (!this.ended.has(command.turnId)) {
+        const seq = ++this.seq;
+        this.sockets.get("audio")?.send(
+          encodeMicrophone(
+            this.state.mediaEpoch,
+            seq,
+            Date.now(),
+            new Uint8Array(),
+            {
+              purpose: "gameplay",
+              inputEpoch: this.state.turn!.inputEpoch!,
+              end: true,
+            },
+          ),
+        );
+        this.ended.set(command.turnId, seq);
+      }
+      command = { ...command, lastAudioSeq: this.ended.get(command.turnId)! };
+    }
     this.control({
       commandId: id,
       connectionEpoch: this.session.connectionEpoch,
@@ -79,9 +104,35 @@ export class WsPeer {
       });
     }
   }
+  completeAudio() {
+    const judge = this.state.judge;
+    if (
+      !judge ||
+      judge.status !== "speaking" ||
+      !this.eof.has(judge.epoch) ||
+      this.completing.has(judge.epoch)
+    )
+      return;
+    this.completing.add(judge.epoch);
+    const samples = this.eof.get(judge.epoch)!;
+    const timer = setTimeout(
+      () => {
+        this.timers.delete(timer);
+        this.send({
+          type: "audio_playback",
+          utteranceId: judge.id,
+          speechEpoch: judge.epoch,
+          status: "complete",
+          samples,
+        });
+      },
+      Math.max(0, judge.startAt! + samples / 44.1 + 30 - Date.now()),
+    );
+    this.timers.add(timer);
+  }
   async connect() {
     this.seq = 0;
-    for (const channel of ["control", "audio", "video"]) {
+    for (const channel of ["control", "audio", "video", "judge"]) {
       const ws = new WebSocket(
         this.base.replace(/^http/, "ws") + "/socket/" + channel,
       );
@@ -98,13 +149,15 @@ export class WsPeer {
                 probe: frame.probe,
               });
           }
-          if (channel === "audio" && Buffer.isBuffer(raw)) {
+          if (channel === "judge" && Buffer.isBuffer(raw)) {
             const packet = decodeJudgeAudio(raw);
             if (packet) {
               const hashes = this.voice.get(packet.epoch) || [];
               hashes.push(createHash("sha256").update(raw).digest("hex"));
               this.voice.set(packet.epoch, hashes);
+              if (packet.end) this.eof.set(packet.epoch, packet.offset);
               this.ackAudio();
+              this.completeAudio();
             }
           }
           return;
@@ -120,8 +173,12 @@ export class WsPeer {
         if ("snapshot" in event) {
           this.state = event.snapshot;
           this.ackAudio();
+          this.completeAudio();
         }
         if ("seq" in event && "snapshot" in event) this.events.push(event);
+        if (event.type === "setup_result")
+          this.inputEpoch =
+            event.status === "listening" ? event.inputEpoch! : 0;
         if (event.type === "error") this.errors.push(event.error);
         if (event.type === "ack" && event.ok !== undefined) {
           this.acks.set(event.commandId, event.ok);
@@ -162,6 +219,15 @@ export class WsPeer {
               ?.readiness?.setup === "passed"
               ? this.pcm
               : new Uint8Array(640).fill(1),
+            this.inputEpoch
+              ? { purpose: "private", inputEpoch: this.inputEpoch }
+              : canSendJudgeInput(this.state, this.session.playerId) &&
+                  !this.ended.has(this.state.turn!.id)
+                ? {
+                    purpose: "gameplay",
+                    inputEpoch: this.state.turn!.inputEpoch!,
+                  }
+                : { purpose: "social", inputEpoch: 0 },
           ),
         );
       if (++count % 5 === 0) {
@@ -210,6 +276,8 @@ export class WsPeer {
   }
   close() {
     if (this.interval) clearInterval(this.interval);
+    for (const timer of this.timers) clearTimeout(timer);
+    this.timers.clear();
     for (const ws of this.sockets.values()) ws.close();
     this.sockets.clear();
   }

@@ -118,7 +118,7 @@ export class FeedbackController {
       ) {
         cue = { kind: "coin", id, playerId: null, at };
       } else if (
-        event.type === "floor_granted" &&
+        event.type === "floor_opened" &&
         state.turn?.id === event.payload.turnId
       ) {
         cue = { kind: "turn", id, playerId: event.payload.playerId, at };

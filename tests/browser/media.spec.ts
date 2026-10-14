@@ -270,7 +270,7 @@ test("frozen live cameras require replacement and never resume on cached frames"
       a.getByRole("button", { name: "Turn mic on", exact: true }),
     ).toBeVisible();
     await expect(a.locator('.app > [aria-live="polite"]')).toHaveText(
-      "Turn mic on",
+      "Mic off.",
     );
     await expect(
       a.getByRole("button", { name: "Connecting video…", exact: true }),

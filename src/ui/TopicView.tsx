@@ -3,6 +3,7 @@ import { SUGGESTIONS, type Player, type Snapshot } from "../../shared/domain";
 import { client } from "../game/client";
 import { Icon } from "./Icon";
 import { useServerNow } from "./hooks";
+import { topicPresentation } from "./presentation";
 
 function DecisionClock({ deadline }: { deadline: number | null }) {
   const now = useServerNow();
@@ -17,9 +18,11 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
   const [custom, setCustom] = useState(false),
     [topic, setTopic] = useState(""),
     [position, setPosition] = useState("");
-  const selecting = state.phase === "TOPIC_SELECT",
-    choosing = state.tailsId === me?.id;
-  const confirmed = !!me && !!state.topic?.confirmations.includes(me.id);
+  const selecting = state.phase === "TOPIC_SELECT";
+  const { choosing, confirmed, waiting, selectionLabel } = topicPresentation(
+    state,
+    me?.id,
+  );
   return (
     <section
       className="phase-panel topic-panel"
@@ -95,12 +98,8 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
           </>
         ) : (
           <>
-            <h2>
-              {state.players.find((p) => p.id === state.tailsId)?.name} is
-              choosing.
-            </h2>
-            <p>You go first.</p>
-            <span className="waiting-dots" aria-label="Waiting">
+            <h2>{selectionLabel}</h2>
+            <span className="waiting-dots" aria-hidden="true">
               <i />
               <i />
               <i />
@@ -109,8 +108,7 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
         )
       ) : (
         <>
-          <h2>{confirmed ? "You’re in!" : "Ready to defend your side?"}</h2>
-          <p>{confirmed ? "Waiting for your friend to confirm." : ""}</p>
+          {waiting && <p>{waiting}</p>}
           <button
             className="primary"
             disabled={confirmed || !me}
@@ -121,7 +119,7 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
               })
             }
           >
-            {confirmed ? "Confirmed" : "Confirm my side"}
+            Confirm my side
             <Icon name="check" />
           </button>
           <button

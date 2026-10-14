@@ -54,3 +54,19 @@ export function safeReaction(text: string): string | null {
 }
 export const voiceSettingsKey = () =>
   `${process.env.FISH_VOICE_ID || "29f4e37195264ebc86cf568ea6e36aff"}:${process.env.FISH_TTS_MODEL || "s2-pro"}:1.2:4:excited`;
+
+/** Omit optional sentences; never splice a sentence or synthesize partial copy. */
+export function completeSpeech(text: string, maxWords = 42): string {
+  const clean = text
+    .replace(/\[[^\]]*\]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const sentences = clean.match(/[^.!?]+[.!?]+(?:[”’"']|$)?/g) || [];
+  let result = "";
+  for (const sentence of sentences) {
+    const next = `${result} ${sentence.trim()}`.trim();
+    if (next.split(/\s+/).length > maxWords) break;
+    result = next;
+  }
+  return result || "Court is in session.";
+}

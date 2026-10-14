@@ -26,6 +26,9 @@ test("resume retries advance an epoch once; stale requests cannot replace curren
     },
   } as any;
   seat.sockets.set("control", socket);
+  // Settle the readiness change caused by installing this test socket before
+  // asserting that idempotent HTTP retries emit no additional game event.
+  room.readiness.tick();
   const epoch = room.game.state.mediaEpoch,
     sequence = room.game.state.seq;
   const repeats = await Promise.all([

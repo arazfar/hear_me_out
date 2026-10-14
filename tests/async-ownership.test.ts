@@ -1,3 +1,4 @@
+import { encodeMicrophone } from "../shared/media";
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Proposal } from "../server/providers/index";
@@ -121,7 +122,19 @@ test("a delayed transcription drain cannot mutate a disposed room", async () => 
       return drained.promise;
     },
   });
-  room.game.endTurn(turn.playerId, turn.id);
+  room.media.audio(
+    turn.playerId,
+    Buffer.from(
+      encodeMicrophone(
+        room.game.state.mediaEpoch,
+        1,
+        room.services.now(),
+        new Uint8Array(),
+        { purpose: "gameplay", inputEpoch: turn.inputEpoch!, end: true },
+      ),
+    ),
+  );
+  room.game.endTurn(turn.playerId, turn.id, 1);
   await started.promise;
   room.close();
   const before = structuredClone(room.game.state);

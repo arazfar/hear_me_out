@@ -1,18 +1,36 @@
-/** Version 3 binary protocol. Views preserve offsets for Node buffers and browser frames. */
+/** Protocol 4. Every capture frame carries its purpose at capture time. */
 const view = (bytes: Uint8Array) =>
   new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 const uint = (n: number) => Number.isInteger(n) && n >= 0 && n <= 0xffffffff;
+export type CapturePurpose = "social" | "gameplay" | "private" | "health";
+const purposes: CapturePurpose[] = ["social", "gameplay", "private", "health"];
+export type CaptureTag = {
+  purpose: CapturePurpose;
+  inputEpoch: number;
+  end?: boolean;
+};
+const MIC_HEADER = 31;
 export function decodeMicrophone(bytes: Uint8Array) {
-  if (bytes.length < 27 || bytes.length > 4096 || bytes[0] !== 1) return null;
+  if (
+    bytes.length < MIC_HEADER ||
+    bytes.length > MIC_HEADER + 3200 ||
+    bytes[0] !== 1
+  )
+    return null;
   const v = view(bytes),
     samples = v.getUint32(13, true),
     capturedAt = v.getFloat64(17, true);
+  const purpose = purposes[bytes[25]],
+    end = bytes[30] === 1;
   if (
     v.getUint32(9, true) !== 16000 ||
-    !samples ||
     samples > 1600 ||
-    bytes.length !== 25 + samples * 2 ||
-    !Number.isFinite(capturedAt)
+    (!samples && !end && purpose !== "health") ||
+    bytes.length !== MIC_HEADER + samples * 2 ||
+    !Number.isFinite(capturedAt) ||
+    !purpose ||
+    bytes[30] > 1 ||
+    (end && samples)
   )
     return null;
   return {
@@ -20,7 +38,10 @@ export function decodeMicrophone(bytes: Uint8Array) {
     seq: v.getUint32(5, true),
     samples,
     capturedAt,
-    pcm: bytes.subarray(25),
+    purpose,
+    inputEpoch: v.getUint32(26, true),
+    end,
+    pcm: bytes.subarray(MIC_HEADER),
   };
 }
 export function encodeMicrophone(
@@ -28,17 +49,21 @@ export function encodeMicrophone(
   seq: number,
   capturedAt: number,
   pcm: Uint8Array,
+  tag: CaptureTag = { purpose: "social", inputEpoch: 0 },
 ) {
   if (
     !uint(epoch) ||
     !uint(seq) ||
     !Number.isFinite(capturedAt) ||
-    !pcm.length ||
+    !uint(tag.inputEpoch) ||
+    !purposes.includes(tag.purpose) ||
     pcm.length % 2 ||
-    pcm.length > 3200
+    pcm.length > 3200 ||
+    (!pcm.length && !tag.end && tag.purpose !== "health") ||
+    (tag.end && pcm.length)
   )
     throw new Error("Invalid microphone frame");
-  const packet = new Uint8Array(25 + pcm.length),
+  const packet = new Uint8Array(MIC_HEADER + pcm.length),
     v = view(packet);
   v.setUint8(0, 1);
   v.setUint32(1, epoch, true);
@@ -46,7 +71,10 @@ export function encodeMicrophone(
   v.setUint32(9, 16000, true);
   v.setUint32(13, pcm.length / 2, true);
   v.setFloat64(17, capturedAt, true);
-  packet.set(pcm, 25);
+  v.setUint8(25, purposes.indexOf(tag.purpose));
+  v.setUint32(26, tag.inputEpoch, true);
+  v.setUint8(30, tag.end ? 1 : 0);
+  packet.set(pcm, MIC_HEADER);
   return packet;
 }
 export function decodeVideo(bytes: Uint8Array) {
@@ -97,26 +125,33 @@ export function encodeVideo(
   packet.set(jpeg, 21);
   return packet;
 }
+export const JUDGE_RATE = 44100;
+export const JUDGE_FRAME_SAMPLES = 882;
+export const JUDGE_MAX_SAMPLES = JUDGE_RATE * 20;
+/** Type 2: int16 PCM. Type 5: ordered EOF with final sample count, no payload. */
 export function decodeJudgeAudio(bytes: Uint8Array) {
   if (
-    bytes.length < 21 ||
-    bytes.length > 131072 ||
-    bytes[0] !== 2 ||
-    (bytes.length - 17) % 4
+    bytes.length < 17 ||
+    bytes.length > 17 + JUDGE_FRAME_SAMPLES * 2 ||
+    ![2, 5].includes(bytes[0])
   )
     return null;
   const v = view(bytes),
     offset = v.getUint32(13, true),
-    samples = (bytes.length - 17) / 4;
-  if (v.getUint32(9, true) !== 44100 || offset + samples > 44100 * 8)
+    end = bytes[0] === 5;
+  if (
+    v.getUint32(9, true) !== JUDGE_RATE ||
+    (bytes.length - 17) % 2 ||
+    (end ? bytes.length !== 17 : bytes.length === 17) ||
+    offset + (bytes.length - 17) / 2 > JUDGE_MAX_SAMPLES
+  )
     return null;
-  const pcm = new Float32Array(Uint8Array.from(bytes.subarray(17)).buffer);
-  if (pcm.some((sample) => !Number.isFinite(sample))) return null;
   return {
     epoch: v.getUint32(1, true),
     seq: v.getUint32(5, true),
     offset,
-    pcm,
+    end,
+    pcm: new Int16Array(Uint8Array.from(bytes.subarray(17)).buffer),
   };
 }
 export function encodeJudgeAudio(
@@ -124,22 +159,24 @@ export function encodeJudgeAudio(
   seq: number,
   offset: number,
   pcm: Uint8Array,
+  end = false,
 ) {
   if (
     !uint(epoch) ||
     !uint(seq) ||
     !uint(offset) ||
-    !pcm.length ||
-    pcm.length % 4 ||
-    offset + pcm.length / 4 > 44100 * 8
+    pcm.length % 2 ||
+    pcm.length > JUDGE_FRAME_SAMPLES * 2 ||
+    (end ? pcm.length !== 0 : !pcm.length) ||
+    offset + pcm.length / 2 > JUDGE_MAX_SAMPLES
   )
     throw new Error("Invalid judge frame");
   const packet = new Uint8Array(17 + pcm.length),
     v = view(packet);
-  v.setUint8(0, 2);
+  v.setUint8(0, end ? 5 : 2);
   v.setUint32(1, epoch, true);
   v.setUint32(5, seq, true);
-  v.setUint32(9, 44100, true);
+  v.setUint32(9, JUDGE_RATE, true);
   v.setUint32(13, offset, true);
   packet.set(pcm, 17);
   return packet;

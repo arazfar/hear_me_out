@@ -29,7 +29,7 @@ export function readinessPresentation(
   ) => ({ message, action: "check", label, repair }) as ReadinessPresentation;
   if (local.offline)
     return {
-      message: "Check your connection, then retry.",
+      message: "Connection lost. Check your network.",
       action: "connection",
       label: "Retry connection",
     };
@@ -42,7 +42,12 @@ export function readinessPresentation(
   if (!me.mediaReady) {
     if (local.micOff || local.cameraOff)
       return {
-        message: "",
+        message:
+          local.micOff && local.cameraOff
+            ? "Mic and camera off."
+            : local.micOff
+              ? "Mic off."
+              : "Camera off.",
         action: "privacy",
         label:
           local.micOff && local.cameraOff

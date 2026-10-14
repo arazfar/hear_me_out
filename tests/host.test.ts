@@ -1,5 +1,11 @@
 import { inkFixture } from "./ink-fixture";
-import { deferred, roomFixture, evidence, fakeVoice } from "./fixtures";
+import {
+  deferred,
+  roomFixture,
+  evidence,
+  fakeVoice,
+  fakeSpeech,
+} from "./fixtures";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Game } from "../server/game/game";
@@ -32,28 +38,27 @@ test("host phrases rotate within a match and reset on rematch; reactions stay sh
 test("leaving a room resets judge playback IDs so another room can reuse its epochs", () => {
   const client = new Client();
   let stopped = 0;
-  client.playback.nodes.add({
-    stop: () => {
-      stopped++;
-    },
-  } as unknown as AudioBufferSourceNode);
-  client.playback.judgeChunks.set(1, [
-    { offset: 0, pcm: new Float32Array([1]) },
-  ]);
+  client.sound.judgePlayback = {
+    port: { postMessage: () => stopped++ },
+  } as any;
+  client.playback.judgeChunks.set(1, {
+    seq: 1,
+    samples: 1,
+    end: true,
+    posted: 0,
+    chunks: [{ offset: 0, pcm: new Int16Array([1]) }],
+  });
   client.playback.cancelled.add(2);
   client.playback.readySent.add(1);
-  client.playback.played.add("1:0");
-  client.playback.judgeStartContext.set(1, 10);
+  client.playback.activeEpoch = 1;
   client.playback.resetJudgePlayback();
   assert.equal(stopped, 1);
-  assert.equal(client.playback.nodes.size, 0);
+  assert.equal(client.playback.activeEpoch, 0);
   assert.equal(client.playback.judgeChunks.size, 0);
   assert.equal(client.playback.cancelled.size, 0);
   assert.equal(client.playback.readySent.size, 0);
-  assert.equal(client.playback.played.size, 0);
-  assert.equal(client.playback.judgeStartContext.size, 0);
 });
-test("topic nudge is once per phase and pending phase speech is cancelled on advance", () => {
+test("topic nudge is once per phase; active speech survives navigation while queued cues expire", () => {
   const c = new RoomController("1234");
   c.game.addPlayer("Sam");
   c.game.addPlayer("Alex");
@@ -66,23 +71,12 @@ test("topic nudge is once per phase and pending phase speech is cancelled on adv
   c.playback.nudgeTopic(v);
   c.playback.nudgeTopic(v);
   assert.equal(lines.length, 2, "one invitation and one nudge");
-  c.playback.speech = {
-    id: "speech",
-    epoch: 1,
-    ready: new Set(),
-    duration: 1,
-    startedAt: null,
-    done: false,
-    timer: null,
-    maxSeconds: 3,
-    turnId: null,
-    matchId: c.game.state.matchId,
-  };
+  c.playback.speech = fakeSpeech(c);
   c.playback.hostCues = [
     { text: "obsolete", target: null, phaseVersion: v, phase: "TOPIC_SELECT" },
   ];
   c.game.setPhase("TOPIC_CONFIRM", 20000);
-  assert.equal(c.playback.speech, null);
+  assert.equal(c.playback.speech?.id, "speech");
   assert.equal(c.playback.hostCues.length, 0);
   c.playback.nudgeTopic(v);
   assert.equal(lines.length, 2);

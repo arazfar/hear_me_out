@@ -71,6 +71,9 @@ export const turnSchema = z.object({
   deadline: z.union([z.number().finite(), z.null()]),
   pausedReason: z.union([z.string(), z.null()]),
   sealing: z.boolean(),
+  inputEpoch: z.number().int().nonnegative().optional(),
+  inputState: z.enum(["preparing", "granted", "open", "sealing"]).optional(),
+  inputGrantedAt: z.number().finite().optional(),
   settlement: z
     .union([z.literal("draining"), z.literal("scoring"), z.literal("ready")])
     .optional(),
@@ -127,6 +130,7 @@ export const judgeStateSchema = z.object({
     z.literal("buffering"),
     z.literal("speaking"),
     z.literal("silent"),
+    z.literal("captions"),
   ]),
   startAt: z.union([z.number().finite(), z.null()]),
   expression: z.string(),
@@ -203,19 +207,36 @@ export const SUGGESTIONS = [
 ];
 export const points = (units: number) =>
   (units / 4).toFixed(2).replace(/\.00$/, "");
-export function canSpeak(
+/** Conversation never depends on the floor or Bonk. Privacy is local/seat owned. */
+export function canConverse(privateCheck: boolean, muted = false): boolean {
+  return !privateCheck && !muted;
+}
+/** Capture may open on a grant; the clock/visible listening cue waits for its first frame. */
+export function canSendJudgeInput(
   state: Snapshot | null,
   playerId: string | null,
 ): boolean {
-  if (!state) return true;
-  if (state.judge && state.judge.status !== "silent") return false;
-  if (state.phase === "LOBBY" || state.phase === "MATCH_RESULT") return true;
+  const turn = state?.turn;
   return (
+    !!state &&
     state.phase === "ROUND" &&
-    !!state.turn &&
-    state.turn.playerId === playerId &&
-    !state.turn.sealing &&
-    !state.turn.pausedReason
+    !!turn &&
+    !!turn.inputEpoch &&
+    turn.playerId === playerId &&
+    !turn.sealing &&
+    (!state.judge || state.judge.status === "silent") &&
+    (turn.inputState === "granted" ||
+      (!turn.pausedReason && turn.inputState === "open"))
+  );
+}
+export function judgeIsListening(
+  state: Snapshot | null,
+  playerId: string | null,
+): boolean {
+  return (
+    canSendJudgeInput(state, playerId) &&
+    !state!.turn!.pausedReason &&
+    state!.turn!.inputState !== "granted"
   );
 }
 export function scoreShare(

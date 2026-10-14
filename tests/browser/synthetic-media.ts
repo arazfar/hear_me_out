@@ -1,10 +1,13 @@
 import type { BrowserContext } from "@playwright/test";
 
-/** WebKit's mock microphone can become silent across reloads even in a bare
- * getUserMedia/Analyser page. Supply a continuous test tone, retaining its camera
- * and the game's capture worklet, sockets, private check, and provider adapter. */
-export async function stableWebKitAudio(context: BrowserContext) {
-  await context.addInitScript(() => {
+/** Distinct continuous test tones exercise actual capture and received output.
+ * This also avoids WebKit mock-microphone silence across reloads. The real camera
+ * fixture, game worklets, RTC/sockets, private checks, and provider adapter remain. */
+export async function syntheticMicrophone(
+  context: BrowserContext,
+  frequency = 330,
+) {
+  await context.addInitScript((frequency) => {
     const OriginalContext = AudioContext;
     let captureContext: AudioContext;
     window.AudioContext = class extends OriginalContext {
@@ -30,7 +33,7 @@ export async function stableWebKitAudio(context: BrowserContext) {
         const tone = audio.createOscillator(),
           gain = audio.createGain();
         const destination = audio.createMediaStreamDestination();
-        tone.frequency.value = 330;
+        tone.frequency.value = frequency;
         gain.gain.value = 0.12;
         tone.connect(gain).connect(destination);
         tone.start();
@@ -48,5 +51,5 @@ export async function stableWebKitAudio(context: BrowserContext) {
         throw error;
       }
     };
-  });
+  }, frequency);
 }

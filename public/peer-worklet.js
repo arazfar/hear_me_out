@@ -23,16 +23,18 @@ class PeerPlayback extends AudioWorkletProcessor {
         this.write = (this.write + 1) % 4096;
         this.count++;
       }
-      if (this.count > 1600) {
-        this.count = 640;
-        this.read = (this.write - 640 + 4096) % 4096;
+      if (this.count > 2560) {
+        this.count = 1280;
+        this.read = (this.write - 1280 + 4096) % 4096;
         this.phase = 0;
       }
     };
   }
   process(_inputs, outputs) {
     const output = outputs[0][0];
-    if (!this.started && this.count >= 640) this.started = true;
+    // 80 ms absorbs browser message-delivery jitter; late bursts stay bounded
+    // to 160 ms and recover to the same target instead of accumulating delay.
+    if (!this.started && this.count >= 1280) this.started = true;
     for (let i = 0; i < output.length; i++) {
       if (!this.started || this.count < 2) {
         this.started = false;

@@ -20,27 +20,29 @@ import { TitleView } from "./ui/TitleView";
 import { TopicView } from "./ui/TopicView";
 import { TurnPanel } from "./ui/TurnPanel";
 import { useMediaVersion, useReducedMotion, useServerNow } from "./ui/hooks";
-import { phaseTitle, turnStatus } from "./ui/presentation";
+import {
+  phaseAnnouncement,
+  phaseTitle,
+  rematchPresentation,
+} from "./ui/presentation";
 
 function Recovery({ state }: { state: Snapshot }) {
   const now = useServerNow(),
     disconnected = client.reconnecting,
     aborted = state.phase === "ABORTED" && !disconnected,
     departed = aborted && state.players.length < 2;
+  const me = state.players.find((p) => p.id === client.session?.playerId);
+  const other = state.players.find((p) => p.id !== me?.id);
+  const readiness = currentReadinessPresentation();
+  const rematch = rematchPresentation(state, me?.id, readiness);
   return (
     <section className="phase-panel recovery-panel">
       <Icon name={aborted ? "gavel" : "refresh"} />
-      <h2>
-        {client.connection.phase === "offline"
-          ? "Still offline"
-          : aborted
-            ? "Match interrupted"
-            : "Holding your place"}
-      </h2>
+      {aborted && <h2>Match interrupted</h2>}
       {disconnected ? (
-        <ConnectionCheck />
+        <ConnectionCheck heading />
       ) : !aborted ? (
-        <RecoveryCheck />
+        <RecoveryCheck heading />
       ) : (
         <p>{state.status}</p>
       )}
@@ -50,34 +52,30 @@ function Recovery({ state }: { state: Snapshot }) {
           <Icon name="arrow" />
         </button>
       )}
-      {aborted &&
-        !departed &&
-        !state.players.find((p) => p.id === client.session?.playerId)
-          ?.mediaReady && <RecoveryCheck />}
+      {aborted && !departed && !me?.mediaReady && <RecoveryCheck />}
       {state.recoveryDeadline && !aborted && !disconnected && (
         <p className="decision-clock">
           {Math.max(0, Math.ceil((state.recoveryDeadline - now) / 1000))}s to
           reconnect
         </p>
       )}
+      {aborted && !departed && me?.mediaReady && (
+        <button
+          className="primary"
+          disabled={!me.mediaReady || rematch.ready}
+          onClick={() => client.command({ type: "rematch", value: true })}
+        >
+          {rematch.actionLabel}
+          <Icon name="refresh" />
+        </button>
+      )}
       {aborted &&
         !departed &&
-        state.players.find((p) => p.id === client.session?.playerId)
-          ?.mediaReady && (
-          <button
-            className="primary"
-            disabled={
-              !state.players.find((p) => p.id === client.session?.playerId)
-                ?.mediaReady ||
-              state.rematchReady.includes(client.session?.playerId || "")
-            }
-            onClick={() => client.command({ type: "rematch", value: true })}
-          >
-            {state.rematchReady.includes(client.session?.playerId || "")
-              ? "Waiting for your friend"
-              : "Try a fresh match"}
-            <Icon name="refresh" />
-          </button>
+        me?.mediaReady &&
+        other &&
+        !other.mediaReady &&
+        readiness.message && (
+          <p className="support-copy">{readiness.message}</p>
         )}
     </section>
   );
@@ -164,16 +162,20 @@ export function App() {
       }
     });
     const visibility = () => {
+      if (document.hidden) client.video.cancelFrameRead();
       client.notify({ feedbackReset: true });
       void client.reportHealth();
     };
+    const pagehide = () => client.video.resetVideo();
     document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("pagehide", pagehide);
     void client.restore();
     return () => {
       unsub();
       clearTimeout(timer);
       clearTimeout(coinTimer);
       document.removeEventListener("visibilitychange", visibility);
+      window.removeEventListener("pagehide", pagehide);
     };
   }, []);
   useEffect(() => {
@@ -229,31 +231,15 @@ export function App() {
   const phase = client.reconnecting ? "RECOVERING" : state?.phase;
   const inRoom = !!state && !client.setup.inline;
   const readiness = currentReadinessPresentation();
-  const phaseLabel = !state
+  const phaseLabel = !inRoom
     ? ""
-    : phase === "ROUND"
-      ? "Round " + state.round + ". " + turnStatus(state, me?.id)
-      : phase === "ABORTED" && state.players.length < 2
-        ? state.status
-        : phase === "MATCH_RESULT" && !other?.connected
-          ? "Match complete. Your friend isn’t here."
-          : phase === "RECOVERING" ||
-              (["LOBBY", "MATCH_RESULT", "ABORTED"].includes(phase || "") &&
-                state.players.some((p) => !p.mediaReady))
-            ? readiness.message || readiness.label || "Checking devices…"
-            : phase === "LOBBY"
-              ? "Ready to argue"
-              : phase === "TOPIC_SELECT"
-                ? "Choose a topic"
-                : phase === "TOPIC_CONFIRM"
-                  ? "Confirm the proposition"
-                  : phase === "INTRO_COIN"
-                    ? "The coin has spoken"
-                    : phase === "ROUND_RESOLVE"
-                      ? "Round verdict"
-                      : phase === "MATCH_RESULT"
-                        ? "Match verdict"
-                        : state.status;
+    : phaseAnnouncement(state, me?.id, readiness, {
+        reconnecting: client.reconnecting,
+        pendingDone: client.capture.pendingDone,
+        finished: client.playback.finished,
+        rendering: client.playback.rendering,
+        privateCheck: client.capture.privateCheck(),
+      });
   return (
     <main
       className={
@@ -358,7 +344,6 @@ export function App() {
                     me={me}
                     other={other}
                     busy={busy}
-                    action={action}
                     copyInvite={copyInvite}
                   />
                 )}
@@ -439,6 +424,10 @@ export function App() {
                   round. Bonk pauses the clock while speaking.
                 </li>
               </ol>
+              <p className="support-copy">
+                Chat anytime. Bonk scores whoever has the floor. Pauses keep
+                your turn.
+              </p>
               <p className="support-copy">
                 Headphones help keep your friend’s voice out of your mic.
               </p>

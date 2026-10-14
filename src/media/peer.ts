@@ -2,14 +2,56 @@ import { type Signal } from "../../shared/protocol";
 import type { Client } from "../game/client";
 export class PeerMedia {
   constructor(readonly client: Client) {}
+  private ice: RTCIceServer[] | null = null;
+  private iceExpires = 0;
+  private iceOwner = "";
+  private iceLoading: Promise<void> | null = null;
+  refreshIce() {
+    if (this.iceLoading) return this.iceLoading;
+    const session = this.client.session;
+    if (!session) return Promise.resolve();
+    const owner = `${session.roomId}:${session.playerId}:${session.connectionEpoch}`;
+    this.iceLoading = (async () => {
+      try {
+        const response = await fetch("/api/ice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(session),
+          signal: AbortSignal.timeout(3000),
+        });
+        if (!response.ok) throw new Error("ICE unavailable");
+        const config = await response.json();
+        if (session !== this.client.session) return;
+        this.ice = config.iceServers;
+        this.iceOwner = owner;
+        this.iceExpires =
+          performance.now() +
+          Math.max(0, config.expiresAt - this.client.serverNow());
+      } catch {
+        if (session !== this.client.session) return;
+        this.ice = [{ urls: "stun:stun.l.google.com:19302" }];
+        this.iceOwner = owner;
+        this.iceExpires = performance.now() + 10000;
+      } finally {
+        this.iceLoading = null;
+      }
+      this.makePeer();
+    })();
+    return this.iceLoading;
+  }
   remote: MediaStream | null = null;
   audioSender: RTCRtpSender | null = null;
   private desiredAudio: MediaStreamTrack | null = null;
   private audioSync: Promise<void> = Promise.resolve();
   remoteFrames = 0;
   remoteAudio: MediaStreamAudioSourceNode | null = null;
+  private activityTimer: ReturnType<typeof setInterval> | undefined;
+  private activityAnalyser: AnalyserNode | null = null;
   private remoteAudioTrack: MediaStreamTrack | null = null;
   reset() {
+    clearInterval(this.activityTimer);
+    this.activityAnalyser?.disconnect();
+    this.activityAnalyser = null;
     this.remoteAudio?.disconnect();
     this.remoteAudio = null;
     this.remoteAudioTrack = null;
@@ -24,27 +66,25 @@ export class PeerMedia {
   }
   syncAudio() {
     const sender = this.audioSender;
-    if (!sender) return;
-    const desired =
-      this.client.capture.microphoneAllowed() &&
-      !this.client.setup.busy &&
-      !this.client.setup.inline
-        ? this.client.capture.stream?.getAudioTracks()[0] || null
-        : null;
-    if (desired === this.desiredAudio) return;
+    if (!sender) return this.audioSync;
+    const desired = this.client.capture.microphoneAllowed()
+      ? this.client.capture.stream?.getAudioTracks()[0] || null
+      : null;
+    if (desired === this.desiredAudio) return this.audioSync;
     this.desiredAudio = desired;
     // Detach the RTC sender during checks without changing the capture source.
     // A null sender keeps the private test off the peer connection.
     this.audioSync = this.audioSync.then(async () => {
       if (sender !== this.audioSender) return;
       try {
-        await sender.replaceTrack(this.desiredAudio);
+        await sender.replaceTrack(desired);
       } catch {
         if (sender !== this.audioSender) return;
         this.pc?.close();
         void this.client.reportHealth();
       }
     });
+    return this.audioSync;
   }
   private syncRemote(pc: RTCPeerConnection) {
     if (pc !== this.pc) return;
@@ -79,7 +119,37 @@ export class PeerMedia {
       this.remoteAudio = this.client.sound.context.createMediaStreamSource(
         new MediaStream([audio]),
       );
-      this.remoteAudio.connect(this.client.sound.peerGain);
+      clearInterval(this.activityTimer);
+      this.activityAnalyser?.disconnect();
+      const analyser = this.client.sound.context.createAnalyser();
+      analyser.fftSize = 256;
+      this.activityAnalyser = analyser;
+      this.remoteAudio.connect(analyser);
+      analyser.connect(this.client.sound.peerGain);
+      const samples = new Float32Array(analyser.fftSize);
+      this.activityTimer = setInterval(() => {
+        if (pc !== this.pc) return;
+        analyser.getFloatTimeDomainData(samples);
+        const rms = Math.sqrt(
+          samples.reduce((sum, value) => sum + value * value, 0) /
+            samples.length,
+        );
+        const friend = this.client.state?.players.find(
+          (p) => p.id !== this.client.session?.playerId,
+        );
+        if (friend)
+          this.client.notify({
+            activity: {
+              playerId: friend.id,
+              level:
+                this.client.sound.peerMuted ||
+                this.client.capture.privateCheck() ||
+                audio.muted
+                  ? 0
+                  : Math.min(1, rms * 8),
+            },
+          });
+      }, 80);
     }
   }
   async sample() {
@@ -122,21 +192,32 @@ export class PeerMedia {
       return;
     }
     if (this.pc && this.pcEpoch === this.client.state.mediaEpoch) return;
+    if (
+      !this.ice ||
+      this.iceOwner !==
+        `${this.client.session.roomId}:${this.client.session.playerId}:${this.client.session.connectionEpoch}` ||
+      this.iceExpires - performance.now() < 5000
+    ) {
+      void this.refreshIce();
+      return;
+    }
     this.reset();
     this.pcEpoch = this.client.state.mediaEpoch;
     this.pendingCandidates = [];
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: this.ice,
     });
     this.pc = pc;
     this.makingOffer = false;
     this.ignoreOffer = false;
     const current = () =>
       this.pc === pc && this.client.state?.mediaEpoch === this.pcEpoch;
-    this.audioSender = pc.addTransceiver("audio", {
-      direction: "sendrecv",
-      streams: [this.client.capture.stream],
-    }).sender;
+    // addTrack lets the answering peer associate its sender with the offered
+    // audio section. A pre-created addTransceiver can remain unassociated and
+    // produce a receive-only answer even though its sender has a live track.
+    const microphone = this.client.capture.stream.getAudioTracks()[0];
+    this.audioSender = pc.addTrack(microphone, this.client.capture.stream);
+    this.desiredAudio = microphone;
     this.syncAudio();
     this.client.capture.stream.getVideoTracks().forEach((track) => {
       const sender = pc.addTrack(track, this.client.capture.stream!);
@@ -178,6 +259,9 @@ export class PeerMedia {
         return;
       try {
         this.makingOffer = true;
+        // Private setup must finish detaching the sender before publishing SDP.
+        await this.audioSync;
+        if (!current()) return;
         await pc.setLocalDescription();
         if (!current()) return;
         this.client.send({
@@ -216,6 +300,8 @@ export class PeerMedia {
         if (!current()) return;
         this.pendingCandidates = [];
         if (data.description.type === "offer") {
+          await this.audioSync;
+          if (!current()) return;
           await pc.setLocalDescription();
           if (!current()) return;
           this.client.send({

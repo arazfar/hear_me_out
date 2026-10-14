@@ -9,6 +9,11 @@ type Purpose =
 export class Transcription {
   constructor(readonly room: RoomController) {}
   ink = new Map<string, TranscriptionStream>();
+  active = new Set<TranscriptionStream>();
+  private waiting = new Map<
+    string,
+    { requestedTurn?: string | null; force: boolean }
+  >();
   sealedAudio = new Map<
     string,
     {
@@ -85,9 +90,11 @@ export class Transcription {
     this.sealedAudio.delete(id);
     this.retries.delete(id);
     this.retryVersions.delete(id);
+    this.waiting.delete(id);
     void stream?.close();
   }
   stopCheck(id: string) {
+    this.waiting.delete(id);
     this.retryVersions.set(id, (this.retryVersions.get(id) || 0) + 1);
     const stream = this.ink.get(id);
     if (stream?.turnId === null) {
@@ -126,7 +133,19 @@ export class Transcription {
       old.roundId === (this.room.game.state.roundId || "")
     )
       return;
+    if (purpose.kind === "idle") {
+      this.ink.delete(id);
+      this.openedAt.delete(id);
+      void old?.close();
+      return;
+    }
+    if (this.active.size >= 4) {
+      this.waiting.set(id, { requestedTurn, force });
+      return;
+    }
+    this.waiting.delete(id);
     const matchId = this.room.game.state.matchId;
+    const roundId = this.room.game.state.roundId || "";
     const ownsSeat = () =>
       !this.room.closed && this.room.seats.get(id) === seat;
     const acceptsEvidence = () =>
@@ -135,69 +154,71 @@ export class Transcription {
       ["ROUND", "RECOVERING"].includes(this.room.game.state.phase);
     this.retryVersions.set(id, (this.retryVersions.get(id) || 0) + 1);
     if (purpose.kind === "check") this.room.readiness.disconnected(id);
-    const stream = this.room.services.createTranscription(
-      id,
-      this.room.game.state.roundId || "",
-      turnId,
-      {
-        caption: (text, final) => {
-          if (purpose.kind !== "turn") return;
-          if (!acceptsEvidence()) return;
-          // A draining old session must never overwrite the new epoch's captions.
-          if (
-            this.ink.get(id) !== stream &&
-            !(
-              turnId &&
-              this.room.game.state.turn?.id === turnId &&
-              this.room.game.state.turn.sealing &&
-              this.room.game.state.turn.settlement === "draining"
-            )
+    const stream = this.room.services.createTranscription(id, roundId, turnId, {
+      caption: (text, final) => {
+        if (purpose.kind !== "turn") return;
+        if (!acceptsEvidence()) return;
+        // A draining old session must never overwrite the new epoch's captions.
+        if (
+          this.ink.get(id) !== stream &&
+          !(
+            turnId &&
+            this.room.game.state.turn?.id === turnId &&
+            this.room.game.state.turn.sealing &&
+            this.room.game.state.turn.settlement === "draining"
           )
-            return;
-          this.room.game.caption(id, text, final);
-          this.room.game.emit("transcript", {
-            playerId: id,
-            text,
-            final,
-            turnId,
-          });
-        },
-        segment: (segment) => {
-          if (!ownsSeat()) return;
-          if (purpose.kind === "check") {
-            if (this.ink.get(id) === stream && this.ownsCheck(id, purpose))
-              this.room.readiness.transcript(id, segment.text);
-          } else if (purpose.kind === "turn" && acceptsEvidence())
-            this.room.judging.onSegment(segment);
-        },
-        start: () => {
-          if (turnId && acceptsEvidence() && this.ink.get(id) === stream) {
-            this.room.game.speechStarted(id);
-          }
-        },
-        end: () => {
-          if (turnId && acceptsEvidence() && this.ink.get(id) === stream)
-            this.room.game.thought(id);
-        },
-        error: () => {
-          if (ownsSeat() && this.ink.get(id) === stream)
-            this.sttFailure(id, turnId);
-        },
+        )
+          return;
+        this.room.game.caption(id, text, final);
+        this.room.game.emit("transcript", {
+          playerId: id,
+          text,
+          final,
+          turnId,
+        });
       },
-    );
+      segment: (segment) => {
+        if (!ownsSeat()) return;
+        if (purpose.kind === "check") {
+          if (this.ink.get(id) === stream && this.ownsCheck(id, purpose))
+            this.room.readiness.transcript(id, segment.text);
+        } else if (
+          purpose.kind === "turn" &&
+          acceptsEvidence() &&
+          segment.playerId === id &&
+          segment.roundId === roundId &&
+          segment.turnId === turnId
+        )
+          this.room.judging.onSegment(segment);
+      },
+      start: () => {
+        if (turnId && acceptsEvidence() && this.ink.get(id) === stream) {
+          this.room.game.speechStarted(id);
+        }
+      },
+      end: () => {
+        if (turnId && acceptsEvidence() && this.ink.get(id) === stream)
+          this.room.game.thought(id);
+      },
+      error: () => {
+        if (ownsSeat() && this.ink.get(id) === stream)
+          this.sttFailure(id, turnId);
+      },
+    });
+    this.active.add(stream);
+    const close = stream.close.bind(stream);
+    let closing: Promise<boolean> | undefined;
+    stream.close = () =>
+      (closing ||= close().finally(() => {
+        this.active.delete(stream);
+        const pending = [...this.waiting];
+        this.waiting.clear();
+        for (const [player, request] of pending)
+          this.rotate(player, request.requestedTurn, request.force);
+      }));
     this.purposes.set(stream, purpose);
     this.ink.set(id, stream);
-    this.room.game.setMediaReady(id, false);
-    this.room.readiness.get(id).healthySince = null;
-    if (
-      turnId &&
-      this.room.game.state.phase === "ROUND" &&
-      !this.room.game.state.turn?.sealing
-    ) {
-      this.room.game.pause("transcription");
-      if (this.room.game.state.turn?.pausedReason === "transcription")
-        this.room.game.pendingResume = "transcription";
-    }
+
     this.openedAt.set(id, this.room.services.now());
     old?.close();
   }

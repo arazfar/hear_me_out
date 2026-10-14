@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { RoomController } from "../server/rooms/room";
-import { seat, services, evidence } from "./fixtures";
+import { seat, services, evidence, flush } from "./fixtures";
 import { encodeMicrophone } from "../shared/media";
 import {
   commandSchema,
@@ -94,6 +94,7 @@ function fixture() {
           ++seq,
           now,
           new Uint8Array(640).fill(1),
+          { purpose: "private", inputEpoch: room.readiness.get(id).inputEpoch },
         ),
       ),
     );
@@ -469,7 +470,8 @@ test("replacement gameplay transcription must connect before recovery opens the 
   assert.equal(stream.turnId, f.room.game.state.turn!.id);
   assert(!stream.connected);
   f.refresh(1001);
-  assert.equal(f.room.game.state.phase, "RECOVERING");
+  assert.equal(f.room.game.state.turn!.deadline, null);
+  assert(f.room.game.state.turn!.pausedReason);
   assert.equal(f.room.game.remaining(), remaining);
   stream.connected = true;
   f.refresh();
@@ -479,7 +481,7 @@ test("replacement gameplay transcription must connect before recovery opens the 
   f.room.close();
 });
 
-test("a private check owns reconnect transcription; private callbacks never become turn evidence", () => {
+test("a private check owns reconnect transcription; private callbacks never become turn evidence", async () => {
   const f = fixture();
   f.round();
   const { room } = f,
@@ -525,6 +527,7 @@ test("a private check owns reconnect transcription; private callbacks never beco
   assert.deepEqual(room.game.state.ledger, frozen.ledger);
   assert.equal(room.game.remaining(), frozen.remaining);
   assert.equal(room.game.state.recoveryDeadline, frozen.recovery);
+  await flush();
   f.refresh(1001);
   f.refresh(1001);
   f.refresh(1001);

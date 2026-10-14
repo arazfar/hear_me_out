@@ -1,4 +1,3 @@
-import { canSpeak } from "../../shared/domain";
 import type { Client } from "../game/client";
 import { loadWorklet } from "./worklet";
 
@@ -18,6 +17,7 @@ export class AudioOutput {
   peerGain: GainNode | null = null;
   peerPlayback: AudioWorkletNode | null = null;
   judgeGain: GainNode | null = null;
+  judgePlayback: AudioWorkletNode | null = null;
   effectsGain: GainNode | null = null;
   effectNodes = new Set<AudioScheduledSourceNode>();
   private effectAt = -Infinity;
@@ -135,40 +135,48 @@ export class AudioOutput {
         throw soundLoadError();
       }
     }
-  }
-  play(
-    samples: Float32Array,
-    rate: number,
-    at: number,
-    gain: GainNode,
-    judge: boolean,
-  ) {
-    const buffer = this.context!.createBuffer(1, samples.length, rate);
-    buffer.copyToChannel(samples as Float32Array<ArrayBuffer>, 0);
-    const source = this.context!.createBufferSource();
-    source.buffer = buffer;
-    source.connect(gain);
-    source.start(at);
-    if (judge) {
-      this.client.playback.nodes.add(source);
-      source.onended = () => this.client.playback.nodes.delete(source);
+    if (!this.judgePlayback) {
+      await loadWorklet(
+        context,
+        "/judge-worklet.js",
+        attempt.controller.signal,
+      );
+      check();
+      const playback = new AudioWorkletNode(context, "judge-playback", {
+        numberOfInputs: 0,
+        outputChannelCount: [1],
+      });
+      attempt.playback = playback;
+      playback.connect(this.judgeGain!);
+      check();
+      this.judgePlayback = playback;
+      attempt.playback = undefined;
+      this.client.playback.bind(playback);
     }
+    this.syncPeerPrivacy();
+    if (this.judgeGain) this.judgeGain.gain.value = this.judgeMuted ? 0 : 1;
+  }
+  syncPeerPrivacy() {
+    if (this.peerGain && this.context) {
+      if (this.client.capture.privateCheck()) {
+        this.peerGain.gain.cancelScheduledValues(this.context.currentTime);
+        this.peerGain.gain.setValueAtTime(0, this.context.currentTime);
+      } else
+        this.peerGain.gain.setTargetAtTime(
+          this.peerMuted ? 0 : 1,
+          this.context.currentTime,
+          0.01,
+        );
+    }
+    if (this.client.capture.privateCheck())
+      this.peerPlayback?.port.postMessage({ type: "flush" });
   }
   mutePeer() {
     this.peerMuted = !this.peerMuted;
-    if (this.peerGain && this.context)
-      this.peerGain.gain.value =
-        this.peerMuted ||
-        !canSpeak(
-          this.client.state,
-          this.client.state?.players.find(
-            (p) => p.id !== this.client.session?.playerId,
-          )?.id || null,
-        )
-          ? 0
-          : 1;
+    this.syncPeerPrivacy();
     this.client.notify({ media: true });
   }
+
   muteJudge() {
     this.judgeMuted = !this.judgeMuted;
     if (this.judgeGain) this.judgeGain.gain.value = this.judgeMuted ? 0 : 1;

@@ -6,6 +6,7 @@ import { JudgePlayback } from "../judge/playback.js";
 import { RoomMedia } from "../transport/media.js";
 import { defaultServices, type RoomServices } from "./services.js";
 import { Readiness } from "./readiness.js";
+import { TurnCoordinator } from "./turn-coordinator.js";
 import { Transcription } from "./transcription.js";
 export type Seat = {
   tokenHash: string;
@@ -26,6 +27,12 @@ export class RoomController {
   playback = new JudgePlayback(this);
   media = new RoomMedia(this);
   game: Game;
+  turnCoordinator = new TurnCoordinator(this);
+  timeline: { stage: string; at: number; [key: string]: unknown }[] = [];
+  trace(stage: string, data: Record<string, unknown> = {}) {
+    this.timeline.push({ stage, at: this.services.now(), ...data });
+    if (this.timeline.length > 512) this.timeline.shift();
+  }
   seats = new Map<string, Seat>();
   closed = false;
   createdAt = Date.now();
@@ -34,7 +41,19 @@ export class RoomController {
     scoringMs: number[];
     speechGenerationMs: number[];
     playbackMs: number[];
-  } = { scoringMs: [], speechGenerationMs: [], playbackMs: [] };
+    cueToRenderMs: number[];
+    doneToRenderMs: number[];
+    grantToCaptureMs: number[];
+    captureToServerMs: number[];
+  } = {
+    scoringMs: [],
+    speechGenerationMs: [],
+    playbackMs: [],
+    cueToRenderMs: [],
+    doneToRenderMs: [],
+    grantToCaptureMs: [],
+    captureToServerMs: [],
+  };
   recordMetric(kind: keyof RoomController["metrics"], value: number) {
     if (!Number.isFinite(value)) return;
     const samples = this.metrics[kind];
@@ -51,6 +70,7 @@ export class RoomController {
   constructor(code: string, services: Partial<RoomServices> = {}) {
     this.services = { ...defaultServices, ...services };
     this.game = new Game(code, (e) => this.onEvent(e), this.services.now);
+    this.game.coordinateInput = true;
   }
   later(callback: () => void, ms: number) {
     const matchId = this.game.state.matchId;
@@ -75,7 +95,7 @@ export class RoomController {
   onEvent(event: GameEvent) {
     // Publish a paused floor atomically, before either client can open its mic.
     if (event.type === "floor_granted" && this.game.state.turn) {
-      this.game.holdFloorForJudge();
+      this.turnCoordinator.assigned();
       event.snapshot = this.game.snapshot();
     }
     if (event.type === "turn_sealed" && this.game.state.turn) {
@@ -91,7 +111,7 @@ export class RoomController {
       if (this.game.state.phase === "RECOVERING")
         this.judging.cancelJudgment(true);
       if (["LOBBY", "ABORTED", "INTRO_COIN"].includes(this.game.state.phase)) {
-        this.clearTimers();
+        if (this.game.state.phase !== "LOBBY") this.clearTimers();
         this.judging.cancelJudgment();
       }
       if (this.playback.topicNudge)
@@ -102,12 +122,15 @@ export class RoomController {
       if (["LOBBY", "RECOVERING", "ABORTED"].includes(this.game.state.phase))
         this.judging.invalidateCandidate();
     }
+    if (event.type === "score_committed")
+      this.trace("score_commit", {
+        turnId: event.payload.turnId,
+        segmentId: event.payload.segmentId,
+      });
     this.broadcast(event);
     if (
       event.type === "phase_changed" &&
-      ["TOPIC_CONFIRM", "ROUND", "LOBBY", "RECOVERING", "ABORTED"].includes(
-        this.game.state.phase,
-      )
+      ["RECOVERING", "ABORTED"].includes(this.game.state.phase)
     )
       this.playback.cancelSpeech();
     if (event.type === "coin_committed") {
@@ -126,27 +149,15 @@ export class RoomController {
       this.playback.lastSealedTurnId = null;
       this.playback.turnDoneAt.clear();
       this.judging.invalidateCandidate();
-      const reveal = `${this.game.player(this.game.state.headsId!).name} opens. ${this.game.player(this.game.state.tailsId!).name} picks the battlefield.`;
+      const reveal = `Court is in session! ${this.game.player(this.game.state.headsId!).name} opens. ${this.game.player(this.game.state.tailsId!).name} picks the battlefield.`;
       const phaseVersion = this.game.state.phaseVersion;
       this.playback.hostCues = [
-        {
-          text: this.playback.host.pick("welcome"),
-          target: null,
-          phase: "INTRO_COIN",
-          phaseVersion,
-        },
-        {
-          text: this.playback.host.pick("coin"),
-          target: null,
-          phase: "INTRO_COIN",
-          phaseVersion,
-        },
         {
           text: reveal,
           target: null,
           phase: "INTRO_COIN",
           phaseVersion,
-          source: this.services.prepareVoice(reveal, 3),
+          source: this.services.prepareVoice(reveal),
         },
       ];
       this.playback.startHostCue();
@@ -155,7 +166,6 @@ export class RoomController {
       event.type === "phase_changed" &&
       this.game.state.phase === "TOPIC_SELECT"
     ) {
-      this.playback.cancelSpeech();
       const phaseVersion = this.game.state.phaseVersion;
       this.playback.hostCues = [
         {
@@ -192,84 +202,52 @@ export class RoomController {
       this.playback.startHandoff();
     }
     if (event.type === "turn_sealed") {
-      const { playerId, lastAudioSeq } = event.payload as {
+      const { lastAudioSeq, capturedBefore } = event.payload as {
         playerId: string;
         lastAudioSeq: number;
+        capturedBefore: number;
       };
-      const matchId = this.game.state.matchId;
       const turnId = this.game.state.turn!.id;
       this.playback.lastSealedTurnId = turnId;
       this.playback.turnDoneAt.set(turnId, this.services.now());
-      this.transcription.sealedAudio.set(playerId, {
-        turnId,
-        maxSeq: lastAudioSeq >= 0 ? lastAudioSeq : Infinity,
-        capturedBefore: event.serverNowMs,
-        expiresAt: this.services.now() + 500,
-      });
-      const rotate = async () => {
-        if (
-          this.game.state.turn?.id !== turnId ||
-          !this.game.state.turn.sealing
-        )
-          return;
-        this.transcription.sealedAudio.delete(playerId);
-        const stream = this.transcription.ink.get(playerId);
-        this.transcription.ink.delete(playerId);
-        const drained = !stream || (await stream.close());
-        if (
-          this.closed ||
-          this.game.state.matchId !== matchId ||
-          this.game.state.turn?.id !== turnId
-        )
-          return;
-        if (!drained) {
-          this.game.abort(
-            "Bonk couldn’t finish that turn. Start a fresh match.",
-          );
-          return;
-        }
-        this.transcription.rotate(playerId, null);
-        this.game.setSettlement(
-          this.judging.busy || this.judging.queue.length ? "scoring" : "ready",
-        );
-        this.game.emit("turn_settlement");
-        this.judging.prepareHandoff();
-      };
-      // Drain frames captured before the handoff; they retain the old STT epoch.
-      this.later(rotate, 500);
+      this.turnCoordinator.sealed(lastAudioSeq, capturedBefore);
     }
+
     if (event.type === "reconnected") {
       const t = this.game.state.turn;
       if (t && !t.sealing) this.transcription.rotate(t.playerId, t.id);
       void this.judging.drain();
+      if (this.game.state.phase === "INTRO_COIN") this.playback.startHostCue();
+      if (this.game.state.phase === "ROUND_RESOLVE" && !this.playback.speech)
+        this.game.finishRoundPresentation();
     }
     if (event.type === "round_result") {
       this.playback.pendingHandoff = null;
       this.playback.hostCues = [];
-      this.playback.cancelSpeech();
       const r = this.game.state.results.at(-1)!;
-      void this.playback
-        .say(
-          `${this.judging.latestReaction() || ""} ${this.game.player(r.winnerId).name} takes it. ${r.reason}${this.game.player(r.winnerId).wins < 2 ? " " + this.playback.host.pick("round") : ""}`,
+      if (this.game.player(r.winnerId).wins >= 2) this.game.finishMatch();
+      else
+        void this.playback.say(
+          `${this.game.player(r.winnerId).name} takes it. ${r.reason} ${this.playback.host.pick("round")}`,
           r.winnerId,
           false,
-          8,
-        )
-        .catch(() => {});
+        );
     }
     if (event.type === "match_result") {
       this.playback.pendingHandoff = null;
       this.playback.hostCues = [];
-      this.playback.cancelSpeech();
-      void this.playback
-        .say(
-          `${this.game.player(this.game.state.winnerId!).name} wins the match. ${this.game.state.results.at(-1)?.reason || ""} Case closed.`,
-          this.game.state.winnerId,
-          false,
-          6,
-        )
-        .catch(() => {});
+      void this.playback.say(
+        `${this.game.player(this.game.state.winnerId!).name} wins the match. ${this.game.state.results.at(-1)?.reason || ""} Case closed.`,
+        this.game.state.winnerId,
+        false,
+      );
     }
+    if (
+      ["judge_idle", "turn_settlement", "media_status", "reconnected"].includes(
+        event.type,
+      )
+    )
+      this.turnCoordinator.advance();
     if (
       event.snapshot.phase === "ABORTED" ||
       event.snapshot.phase === "RECOVERING"
@@ -288,6 +266,10 @@ export class RoomController {
   leave(id: string) {
     const seat = this.seats.get(id);
     if (!seat) return;
+    this.playback.pendingHandoff = null;
+    for (const cue of this.playback.hostCues) cue.source?.cancel();
+    this.playback.hostCues = [];
+    this.playback.cancelSpeech();
     const { game } = this;
     if (!["LOBBY", "ABORTED", "MATCH_RESULT"].includes(game.state.phase))
       game.abort(
@@ -319,7 +301,7 @@ export class RoomController {
     }
     this.readiness.tick();
     this.media.selectMode();
-    this.game.tick();
+    this.turnCoordinator.advance();
   }
   close() {
     this.closed = true;
@@ -333,7 +315,8 @@ export class RoomController {
     this.judging.invalidateCandidate();
     this.playback.cancelSpeech();
     if (this.media.rtcTimer) this.services.clearTimeout(this.media.rtcTimer);
-    for (const s of this.transcription.ink.values()) s.close();
+    for (const s of this.transcription.active) void s.close();
+    for (const s of this.transcription.ink.values()) void s.close();
     this.transcription.ink.clear();
     for (const seat of this.seats.values())
       for (const ws of seat.sockets.values()) ws.close();

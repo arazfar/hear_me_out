@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  canSpeak,
+  judgeIsListening,
   points,
   type Player,
   type Snapshot,
@@ -49,8 +49,8 @@ export function PlayerCard({
   const version = useMediaVersion();
   const active =
     !client.reconnecting &&
-    state.turn?.playerId === player?.id &&
-    state.phase === "ROUND";
+    judgeIsListening(state, player?.id || null) &&
+    !(local && client.capture.pendingDone === state.turn?.id);
   const winner =
     state.phase === "MATCH_RESULT" && state.winnerId === player?.id;
   const offlineResult =
@@ -58,12 +58,12 @@ export function PlayerCard({
   const showScore = state.round > 0;
   const emptyStatus =
     state.phase === "ABORTED" ? "Left the court" : "Waiting for your friend";
-  const status = !player
-    ? emptyStatus
-    : offlineResult
-      ? "Offline"
-      : client.reconnecting
-        ? "Reconnecting"
+  const status =
+    local && client.capture.privateCheck()
+      ? "Private mic check"
+      : client.reconnecting ||
+          (local && client.capture.pendingDone === state.turn?.id)
+        ? ""
         : playerStatus(state, player, local, client.capture.micMuted);
   const camera =
     !offlineResult &&
@@ -215,7 +215,12 @@ export function PlayerCard({
             ))}
           </div>
         )}
-        <span className="activity" ref={activity} aria-hidden="true">
+        <span
+          className="activity"
+          ref={activity}
+          role="img"
+          aria-label="Voice activity"
+        >
           <i />
           <i />
           <i />
@@ -267,30 +272,29 @@ export function PlayerCard({
           </div>
         )}
       </div>
-      <span className="sr-only">{status}</span>
-      {player &&
-        ((!player.connected && !offlineResult) ||
-          (state.phase === "LOBBY" && player.ready) ||
-          (active && local && client.capture.micMuted)) && (
-          <div className="player-status">
+      <div
+        className={
+          "player-status-slot " +
+          (state.phase === "ROUND" ? "turn-status-slot" : "")
+        }
+      >
+        {status && (
+          <div className={"player-status " + (active ? "listening-badge" : "")}>
             <Icon
               name={
-                !player.connected
-                  ? "refresh"
-                  : player.ready && state.phase === "LOBBY"
+                active
+                  ? "ear"
+                  : status === "Ready" || status === "Confirmed"
                     ? "check"
-                    : "mic-off"
+                    : local && client.capture.micMuted
+                      ? "mic-off"
+                      : "mic"
               }
             />
-            <span>
-              {!player.connected
-                ? "Reconnecting"
-                : state.phase === "LOBBY"
-                  ? "Ready"
-                  : "Unmute to speak"}
-            </span>
+            <span>{active ? "Bonk is listening" : status}</span>
           </div>
         )}
+      </div>
       <div className="face-bottom">
         {state.topic?.positions[player?.id || ""] && (
           <p className="position">{state.topic.positions[player!.id]}</p>

@@ -1,6 +1,5 @@
 import { WebSocket } from "ws";
 import { decodeMicrophone } from "../../shared/media.js";
-import { canSpeak } from "../../shared/domain.js";
 import type { Command } from "../../shared/protocol.js";
 import type { RoomController } from "../rooms/room.js";
 export class RoomMedia {
@@ -23,28 +22,38 @@ export class RoomMedia {
     seat.audioSeq = seq;
     seat.lastAudioAt = this.room.services.now();
     if (this.room.readiness.testing(id)) {
-      this.room.transcription.checkAudio(id, packet.pcm);
+      const check = this.room.readiness.get(id);
+      if (
+        packet.purpose === "private" &&
+        packet.inputEpoch === check.inputEpoch &&
+        !packet.end
+      )
+        this.room.transcription.checkAudio(id, packet.pcm);
       return;
     }
-    const allowed = canSpeak(this.room.game.state, id);
-    const boundary = this.room.transcription.sealedAudio.get(id);
-    const draining =
-      !!boundary &&
-      this.room.game.state.phase === "ROUND" &&
-      this.room.game.state.turn?.id === boundary.turnId &&
-      this.room.game.state.turn.sealing &&
-      this.room.services.now() <= boundary.expiresAt &&
-      seq <= boundary.maxSeq &&
-      capturedAt <= boundary.capturedBefore;
-    const pcm =
-      allowed || draining
-        ? Buffer.from(packet.pcm)
-        : Buffer.alloc(packet.pcm.length);
-    this.room.transcription.ink.get(id)?.send(pcm);
-    if (!allowed) {
-      seat.voiceAt = 0;
-      return;
+    // Purpose is fixed at capture, never inferred from arrival-time turn ownership.
+    if (packet.purpose === "private") return;
+    const eligible = this.room.turnCoordinator.capture(id, packet);
+    const stream = this.room.transcription.ink.get(id);
+    if (eligible) {
+      const cutoff = this.room.turnCoordinator.captureCutoff();
+      const samples = Math.min(
+        packet.samples,
+        Math.max(0, Math.floor((cutoff - packet.capturedAt) * 16) + 1),
+      );
+      if (samples)
+        stream?.send(Buffer.from(packet.pcm.subarray(0, samples * 2)));
+      this.room.recordMetric(
+        "captureToServerMs",
+        Math.max(0, this.room.services.now() - packet.capturedAt),
+      );
+    } else if (!packet.end && stream?.connected && !stream.closing) {
+      // Provider turn detection needs time to pass even when gameplay input is closed.
+      // Off-turn/social PCM itself is never sent to STT.
+      stream.send(Buffer.alloc(packet.samples ? packet.samples * 2 : 640));
     }
+    if (packet.end || packet.purpose === "health") return;
+    const pcm = Buffer.from(packet.pcm);
     let rms = 0;
     for (let i = 0; i < pcm.length; i += 16)
       rms += (pcm.readInt16LE(i) / 32768) ** 2;
@@ -69,6 +78,7 @@ export class RoomMedia {
       const ws = seat.sockets.get(channel);
       if (
         otherId !== id &&
+        (channel !== "audio" || !this.room.readiness.testing(otherId)) &&
         ws?.readyState === WebSocket.OPEN &&
         ws.bufferedAmount < (channel === "video" ? 12000 : 8000)
       )

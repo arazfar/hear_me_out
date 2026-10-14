@@ -2,7 +2,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import type { Snapshot } from "../../shared/domain";
+import { judgeIsListening, type Snapshot } from "../../shared/domain";
 import { client } from "../game/client";
 
 type Vec = [number, number, number];
@@ -71,10 +71,18 @@ function Bonk({
   useFrame((_, delta) => {
     time.current += Math.min(delta, 0.05);
     const t = time.current;
-    const target = state?.judge?.targetPlayerId || state?.turn?.playerId;
+    const listening = judgeIsListening(state, state?.turn?.playerId || null);
+    const target = listening
+      ? state?.turn?.playerId
+      : state?.judge?.status === "speaking"
+        ? state.judge.targetPlayerId
+        : null;
     const index = state?.players.findIndex((p) => p.id === target);
     const look = index === 0 ? -0.2 : index === 1 ? 0.2 : 0;
-    const talking = state?.judge?.status === "speaking";
+    const talking =
+      state?.judge?.status === "speaking" &&
+      client.playback.rendering &&
+      !client.sound.judgeMuted;
     const amplitude = talking ? client.sound.judgeAmplitude() : 0;
     const since = t - strike.current;
     const bonk =
@@ -107,7 +115,7 @@ function Bonk({
     );
     brow.current.rotation.z = THREE.MathUtils.damp(
       brow.current.rotation.z,
-      state?.judgePending
+      state?.judge?.status === "buffering" || state?.judgePending
         ? -0.12
         : state?.judge?.expression === "smug"
           ? 0.1
@@ -117,7 +125,7 @@ function Bonk({
     );
     mouth.current.scale.y = THREE.MathUtils.damp(
       mouth.current.scale.y,
-      talking ? 0.035 + amplitude * 0.8 : 0.01,
+      talking ? 0.015 + amplitude * 0.8 : 0.01,
       18,
       delta,
     );

@@ -2,7 +2,7 @@ export async function streamVoice(
   text: string,
   onChunk: (pcm: Uint8Array) => void,
   isCancelled: () => boolean,
-  maxSeconds = 4.5,
+  maxSeconds = 20,
 ) {
   if (!process.env.FISH_AUDIO_API_KEY)
     throw new Error("Fish Audio key is missing");
@@ -11,7 +11,7 @@ export async function streamVoice(
     if (isCancelled()) abort.abort();
   }, 25);
   cancellation.unref();
-  const timeout = setTimeout(() => abort.abort(), 12000);
+  const timeout = setTimeout(() => abort.abort(), 20000);
   timeout.unref();
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined,
     count = 0,
@@ -44,17 +44,12 @@ export async function streamVoice(
       if (done) break;
       const bytes = Buffer.concat([carry, Buffer.from(value)]),
         available = bytes.length - (bytes.length % 2);
-      const samples = Math.min(
-        available / 2,
-        Math.max(0, Math.floor(maxSeconds * 44100) - count),
-      );
-      const floats = new Float32Array(samples);
-      for (let i = 0; i < samples; i++)
-        floats[i] = bytes.readInt16LE(i * 2) / 32768;
-      carry = Buffer.from(bytes.subarray(available));
+      const samples = available / 2;
       count += samples;
-      if (samples && !isCancelled()) onChunk(new Uint8Array(floats.buffer));
-      if (count >= Math.floor(maxSeconds * 44100)) break;
+      if (count > Math.floor(maxSeconds * 44100))
+        throw new Error("Voice exceeded the synthesis budget");
+      carry = Buffer.from(bytes.subarray(available));
+      if (available && !isCancelled()) onChunk(bytes.subarray(0, available));
     }
   } catch (error) {
     if (!isCancelled()) throw error;
@@ -66,5 +61,6 @@ export async function streamVoice(
       await reader?.cancel();
     } catch {}
   }
+  if (!isCancelled() && carry.length) throw new Error("Incomplete PCM sample");
   return count / 44100;
 }

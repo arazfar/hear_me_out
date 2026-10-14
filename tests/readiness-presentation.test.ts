@@ -31,7 +31,7 @@ test("readiness distinguishes privacy, stopped capture, speech and automatic con
       ...local,
       micOff: true,
     }),
-    { message: "", action: "privacy", label: "Turn mic on" },
+    { message: "Mic off.", action: "privacy", label: "Turn mic on" },
   );
   assert.deepEqual(
     readinessPresentation(player("Alex", ["camera"]), peer, local),
@@ -128,7 +128,7 @@ test("exhausted connection recovery offers one retry before any device or peer r
       { ...local, reconnecting: true, offline: true, micOff: true },
     ),
     {
-      message: "Check your connection, then retry.",
+      message: "Connection lost. Check your network.",
       action: "connection",
       label: "Retry connection",
     },

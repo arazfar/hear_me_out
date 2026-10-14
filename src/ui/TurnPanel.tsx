@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { canSpeak, type Snapshot } from "../../shared/domain";
+import { judgeIsListening, type Snapshot } from "../../shared/domain";
 import { client } from "../game/client";
 import { Icon } from "./Icon";
 import { useMediaVersion, useServerNow } from "./hooks";
-import { turnStatus } from "./presentation";
+import { speakingState } from "./presentation";
 
 export function TurnPanel({
   state,
@@ -26,12 +26,22 @@ export function TurnPanel({
   const turn = state.turn;
   if (!turn) return null;
   const mine = turn.playerId === playerId;
-  const paused = !!turn.pausedReason || turn.sealing;
+  const pending = client.capture.pendingDone === turn.id;
+  const paused = !!turn.pausedReason || turn.sealing || pending;
   const seconds = Math.max(
     0,
-    Math.ceil((turn.deadline ? turn.deadline - now : turn.remainingMs) / 1000),
+    Math.ceil(
+      (turn.deadline
+        ? turn.deadline - (pending ? client.capture.doneAt : now)
+        : turn.remainingMs) / 1000,
+    ),
   );
-  const status = turnStatus(state, playerId);
+  const presentation = speakingState(state, playerId, {
+    pendingDone: client.capture.pendingDone,
+    finished: client.playback.finished,
+    rendering: client.playback.rendering,
+    privateCheck: client.capture.privateCheck(),
+  });
   return (
     <section
       className={"turn-panel " + (seconds <= 5 && !paused ? "time-low" : "")}
@@ -46,19 +56,27 @@ export function TurnPanel({
       aria-label="Current turn"
     >
       <div key={handoff} className={"turn-label " + (handoff ? "handoff" : "")}>
-        <span className="turn-dot" />
-        {status}
+        <Icon
+          name={
+            presentation.kind === "judge" && client.playback.rendering
+              ? "volume"
+              : presentation.kind === "player"
+                ? "ear"
+                : "clock"
+          }
+        />
+        {presentation.label}
       </div>
       <div
         className="timer"
         aria-label={paused ? "Clock paused" : seconds + " seconds remaining"}
       >
-        {turn.sealing ? (
+        {turn.sealing || pending ? (
           <Icon name="gavel" />
         ) : (
           <>
             {seconds}
-            <small>sec</small>
+            <small>{paused ? "held" : "sec"}</small>
           </>
         )}
       </div>
@@ -73,20 +91,11 @@ export function TurnPanel({
       {mine && client.capture.micMuted && !paused && (
         <p className="turn-guidance">Your mic is off.</p>
       )}
-      {turn.pausedReason === "judge" && (
-        <p className="turn-guidance">Clock paused</p>
-      )}
       {mine && !turn.sealing && (
         <button
           className="primary yield-button"
-          disabled={!canSpeak(state, playerId || null)}
-          onClick={() =>
-            client.command({
-              type: "done",
-              turnId: turn.id,
-              lastAudioSeq: client.capture.audioSeq,
-            })
-          }
+          disabled={pending || !judgeIsListening(state, playerId || null)}
+          onClick={() => client.capture.finishTurn()}
         >
           I’m done
           <Icon name="arrow" />

@@ -33,11 +33,14 @@ test("background judging preserves ownership for every turn type", () => {
     assert.equal(turnStatus(state), `${speaker.name}’s ${kind}`);
   }
   turn.pausedReason = "judge";
-  assert.equal(turnStatus(state, speaker.id), "Bonk has the floor");
+  assert.equal(turnStatus(state, speaker.id), "Your turn next");
   turn.pausedReason = "recovery";
-  assert.equal(turnStatus(state, speaker.id), "Clock paused");
+  assert.equal(turnStatus(state, speaker.id), "Your turn next");
   turn.sealing = true;
-  assert.equal(turnStatus(state, speaker.id), "Bonk is scoring…");
+  assert.equal(
+    turnStatus(state, speaker.id),
+    `Finishing ${speaker.name}’s turn…`,
+  );
 });
 
 test("fourteen queued fractional notices keep their slots for the full lifetime", () => {

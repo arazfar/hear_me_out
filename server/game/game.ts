@@ -25,6 +25,8 @@ type StoredTurn = {
 };
 export class Game {
   state: Snapshot;
+  coordinateInput = false;
+  nextTurnId: string | null = null;
   turns = new Map<string, StoredTurn>();
   seenScores = new Set<string>();
   ledgerVersion = 0;
@@ -225,7 +227,8 @@ export class Game {
     this.emit("ready_changed");
     if (
       this.state.players.length === 2 &&
-      this.state.players.every((p) => p.connected && p.ready && p.mediaReady)
+      this.state.players.every((p) => p.connected && p.ready && p.mediaReady) &&
+      (!this.state.judge || this.state.judge.status === "silent")
     )
       this.startMatch();
   }
@@ -277,7 +280,7 @@ export class Game {
     this.ledgerVersion = 0;
     this.topicRejections = 0;
     this.state.status = "Heads opens. Tails picks the topic and their side.";
-    this.setPhase("INTRO_COIN", 8000);
+    this.setPhase("INTRO_COIN");
     this.emit("coin_committed");
   }
   selectTopic() {
@@ -333,12 +336,12 @@ export class Game {
   }
   lobby(status: string) {
     this.state.turn = null;
-    this.state.judge = null;
     this.state.players.forEach((p) => (p.ready = false));
     this.state.status = status;
     this.setPhase("LOBBY");
   }
   startRound() {
+    this.nextTurnId = null;
     this.state.round++;
     this.state.roundId = randomUUID();
     this.state.turnIndex = 0;
@@ -389,7 +392,7 @@ export class Game {
     const entry = this.order[this.state.turnIndex],
       duration = entry.kind === "closing" ? 15000 : 30000;
     const t: Turn = {
-      id: randomUUID(),
+      id: this.nextTurnId || randomUUID(),
       playerId: entry.playerId,
       kind: entry.kind,
       durationMs: duration,
@@ -403,6 +406,7 @@ export class Game {
       t.pausedReason = "judge";
       t.deadline = null;
     }
+    this.nextTurnId = null;
     this.state.turn = t;
     this.turns.set(t.id, {
       turn: t,
@@ -448,9 +452,48 @@ export class Game {
       return;
     }
     this.pendingResume = undefined;
-    t.pausedReason = null;
-    t.deadline = this.now() + t.remainingMs;
+    if (this.coordinateInput) {
+      t.pausedReason = "input";
+      t.inputState = "preparing";
+      t.deadline = null;
+    } else {
+      t.pausedReason = null;
+      t.deadline = this.now() + t.remainingMs;
+    }
     this.emit("clock_changed");
+  }
+  grantInput(epoch: number) {
+    const t = this.state.turn!;
+    t.inputEpoch = epoch;
+    t.inputState = "granted";
+    t.inputGrantedAt = this.now();
+    t.deadline = null;
+    t.pausedReason = "input";
+    this.pendingResume = undefined;
+    this.emit("input_granted", {
+      turnId: t.id,
+      playerId: t.playerId,
+      inputEpoch: epoch,
+    });
+  }
+  openInput(epoch: number, capturedAt: number) {
+    const t = this.state.turn;
+    if (
+      !t ||
+      t.inputEpoch !== epoch ||
+      t.inputState !== "granted" ||
+      t.sealing ||
+      this.state.phase !== "ROUND"
+    )
+      return;
+    t.inputState = "open";
+    t.pausedReason = null;
+    t.deadline = capturedAt + t.remainingMs;
+    this.emit("floor_opened", {
+      turnId: t.id,
+      playerId: t.playerId,
+      inputEpoch: epoch,
+    });
   }
   endTurn(id: string, turnId: string, lastAudioSeq = -1) {
     const t = this.state.turn;
@@ -462,14 +505,20 @@ export class Game {
       t.sealing
     )
       throw new RuleError("That speaking opportunity is no longer yours.");
+    const capturedBefore = Math.min(this.now(), t.deadline ?? this.now());
     t.remainingMs = this.remaining();
     t.deadline = null;
     t.pausedReason = "judging";
     t.sealing = true;
     t.settlement = "ready";
-    this.sealAt = this.now() + 500;
+    this.sealAt = this.now();
     this.turns.get(t.id)!.validUntil = this.sealAt + 15000;
-    this.emit("turn_sealed", { turnId: t.id, playerId: id, lastAudioSeq });
+    this.emit("turn_sealed", {
+      turnId: t.id,
+      playerId: id,
+      lastAudioSeq,
+      capturedBefore,
+    });
   }
   thought(id: string) {
     if (
@@ -678,7 +727,15 @@ export class Game {
       throw new RuleError("Check your mic and camera before the rematch.");
     if (value) this.state.rematchReady.push(id);
     this.emit("rematch_changed");
-    if (this.state.rematchReady.length === 2 && this.allMediaReady())
+    this.maybeRematch();
+  }
+  maybeRematch() {
+    if (
+      ["MATCH_RESULT", "ABORTED"].includes(this.state.phase) &&
+      this.state.rematchReady.length === 2 &&
+      this.allMediaReady() &&
+      (!this.state.judge || this.state.judge.status === "silent")
+    )
       this.startMatch();
   }
   recover(status: string) {
@@ -705,6 +762,7 @@ export class Game {
       t.deadline = null;
       this.recoveryPause = t.pausedReason;
       t.pausedReason = "connection";
+      if (this.coordinateInput) t.inputState = "preparing";
     }
     this.recoveryStarted = this.now();
     this.state.recoveryDeadline =
@@ -771,20 +829,14 @@ export class Game {
         t?.sealing &&
         now >= this.sealAt &&
         t.settlement !== "draining" &&
-        !s.judgePending
+        !s.judgePending &&
+        (!s.judge || s.judge.status === "silent")
       ) {
         this.turns.get(t.id)!.validUntil = now - 1;
         s.turnIndex++;
         this.openTurn();
       } else if (t && !t.pausedReason) {
-        const active = t.durationMs - this.remaining(t);
-        if (
-          this.remaining(t) <= 0 ||
-          (this.endOfThoughtAt &&
-            now - this.endOfThoughtAt >= 800 &&
-            active >= (t.kind === "closing" ? 4000 : 8000))
-        )
-          this.endTurn(t.playerId, t.id);
+        if (this.remaining(t) <= 0) this.endTurn(t.playerId, t.id);
       }
     }
     if (!s.phaseDeadline || now < s.phaseDeadline) return;

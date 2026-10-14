@@ -19,8 +19,9 @@ export function CoinView({
       >
         <Icon name={heads ? "coin" : "coin-tails"} />
       </div>
-      <h2>{heads ? "Heads. You go first." : "Tails. Your pick."}</h2>
-      {!heads && <p>Choose a topic and your side.</p>}
+      <h2>
+        {heads ? "Heads. You go first." : "Tails. Pick a topic and side."}
+      </h2>
     </section>
   );
 }

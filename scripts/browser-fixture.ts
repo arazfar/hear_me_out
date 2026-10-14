@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createApp } from "../server/app";
 import { CRITERIA, snapshotSchema } from "../shared/domain";
 import type { GameEvent } from "../shared/protocol";
+import { PreparedVoice } from "../server/judge/voice-cache";
 import { services } from "../tests/fixtures";
 
 const heldJudges = new Map<
@@ -129,6 +130,28 @@ const awardReplays = new Map<string, GameEvent[]>();
 runtime.app.post("/__test/state/:code", (req, res) => {
   const room = runtime.registry.rooms.get(req.params.code);
   res.json(room?.game.snapshot() || null);
+});
+runtime.app.post("/__test/timeline/:code", (req, res) => {
+  res.json(runtime.registry.rooms.get(req.params.code)?.timeline || []);
+});
+runtime.app.post("/__test/voice/:code", (req, res) => {
+  const room = runtime.registry.rooms.get(req.params.code);
+  if (!room || room.playback.speech) {
+    res.status(409).end();
+    return;
+  }
+  const samples = 44100 * 9 + 13;
+  const text = "Every last syllable gets its day in court. Case closed.";
+  const voice = new PreparedVoice(text, 20, async (_text, receive) => {
+    const pcm = new Int16Array(samples);
+    for (let i = 0; i < samples; i++)
+      pcm[i] = Math.round(Math.sin((i * 2 * Math.PI * 330) / 44100) * 3000);
+    pcm.fill(20000, samples - 13);
+    receive(new Uint8Array(pcm.buffer));
+    return samples / 44100;
+  });
+  void room.playback.say(text, null, false, 20, voice);
+  res.json({ epoch: room.playback.speech!.epoch, samples });
 });
 runtime.app.post("/__test/reset", (_req, res) => {
   for (const held of heldJudges.values()) held.release();
@@ -286,6 +309,12 @@ runtime.app.post("/__test/present/:code", (req, res) => {
   room.playback.cancelSpeech();
   room.game.roundStartedAt = Date.now();
   room.game.state = snapshotSchema.parse({ ...room.game.state, ...req.body });
+  // Injected open turns need the matching mock input owner too. Otherwise the
+  // normal readiness monitor replaces the intended capture with recovery before
+  // the screenshot settles. Real journey tests never use this route.
+  const turn = room.game.state.turn;
+  if (room.game.state.phase === "ROUND" && turn?.inputState === "open")
+    room.transcription.rotate(turn.playerId, turn.id);
   if (room.game.state.turn?.sealing) room.game.sealAt = Date.now();
   room.game.emit("media_status");
   res.json({ ok: true });

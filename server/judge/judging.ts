@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import { type Segment } from "../../shared/domain.js";
 import { type Proposal } from "../providers/index.js";
 import type { RoomController } from "../rooms/room.js";
-import { safeReaction, voiceSettingsKey } from "./personality.js";
+import {
+  completeSpeech,
+  safeReaction,
+  voiceSettingsKey,
+} from "./personality.js";
 import { PreparedVoice } from "./voice-cache.js";
 export class Judging {
   constructor(readonly room: RoomController) {}
@@ -45,6 +49,11 @@ export class Judging {
   activeBatch: Segment[] = [];
   onSegment(segment: Segment) {
     if (!this.room.game.registerSegment(segment)) return;
+    this.room.trace("transcript_final", {
+      playerId: segment.playerId,
+      turnId: segment.turnId,
+      segmentId: segment.id,
+    });
     this.recent.push(segment);
     if (this.recent.length > 12) this.recent.shift();
     this.argumentRevision.set(
@@ -194,7 +203,7 @@ export class Judging {
       this.judgeRequest = null;
       this.activeBatch = [];
       this.busy = false;
-      this.room.game.setJudgePending(false);
+      this.room.game.setJudgePending(this.queue.length > 0);
       if (
         this.room.game.state.turn?.sealing &&
         this.room.game.state.turn.settlement === "scoring" &&
@@ -331,7 +340,7 @@ export class Judging {
     }
     if (!next) return;
     const handoff = this.handoff(next.playerId, next.kind, turn.id);
-    const text = handoff.text.split(/\s+/).slice(0, 14).join(" ");
+    const text = completeSpeech(handoff.text, 27);
     const key = `${this.room.game.state.matchId}:${this.room.game.state.roundId}:${turn.id}:${this.argumentRevision.get(turn.id) || 0}:${next.playerId}:${next.kind}:${text}:${voiceSettingsKey()}`;
     if (this.candidate?.key === key) return;
     this.invalidateCandidate();

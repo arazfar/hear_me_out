@@ -1,4 +1,4 @@
-import { canSpeak, SUGGESTIONS } from "../../shared/domain.js";
+import { judgeIsListening, SUGGESTIONS } from "../../shared/domain.js";
 import { type CommandEnvelope } from "../../shared/protocol.js";
 import { RuleError } from "../game/game.js";
 import { RoomController } from "./room.js";
@@ -15,12 +15,18 @@ export async function command(
     seat = room.seats.get(id)!;
   if (data.connectionEpoch !== seat.epoch)
     throw new RuleError("This connection was replaced.");
+  if (c.type === "done" && data.matchId === game.state.matchId) {
+    const previous = game.turns.get(c.turnId)?.turn;
+    // Deadline and Done may cross on independent control/audio sockets.
+    if (previous?.playerId === id && previous.sealing) return;
+  }
   if (
     ![
       "media_status",
       "setup_start",
       "setup_cancel",
       "audio_ready",
+      "audio_playback",
       "leave",
     ].includes(c.type) &&
     (data.matchId !== game.state.matchId ||
@@ -97,12 +103,24 @@ export async function command(
   } else if (c.type === "confirm_topic") game.confirm(id, c.topicRevision);
   else if (c.type === "reject_topic") game.reject(id, c.topicRevision);
   else if (c.type === "done") {
-    if (!canSpeak(game.state, id))
+    if (!judgeIsListening(game.state, id))
       throw new RuleError("Wait for your speaking turn.");
-    if (c.lastAudioSeq > seat.audioSeq + 15)
+    if (
+      c.lastAudioSeq < 0 ||
+      c.lastAudioSeq > seat.audioSeq + 4096 ||
+      c.lastAudioSeq < seat.audioSeq - 4096
+    )
       throw new RuleError("Invalid audio boundary.");
     game.endTurn(id, c.turnId, c.lastAudioSeq);
   } else if (c.type === "audio_ready")
-    room.playback.audioReady(id, c.utteranceId, c.speechEpoch);
+    room.playback.audioReady(id, c.utteranceId, c.speechEpoch, c.rttMs);
+  else if (c.type === "audio_playback")
+    room.playback.audioPlayback(
+      id,
+      c.utteranceId,
+      c.speechEpoch,
+      c.status,
+      c.samples,
+    );
   else if (c.type === "leave") room.leave(id);
 }

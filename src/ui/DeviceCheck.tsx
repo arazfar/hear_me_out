@@ -51,8 +51,7 @@ export function DeviceCheck({
   if (client.reconnecting)
     return (
       <div className="device-check">
-        {client.connection.phase === "offline" && <h2>Still offline</h2>}
-        <ConnectionCheck />
+        <ConnectionCheck announce />
         <button
           type="button"
           className="text-button"
@@ -68,6 +67,12 @@ export function DeviceCheck({
       aria-label="Mic and camera setup"
     >
       {!compact && (
+        <span className="private-check-label">
+          <Icon name="mic" />
+          Private mic check
+        </span>
+      )}
+      {!compact && (
         <div className="setup-preview">
           <video
             ref={preview}
@@ -79,8 +84,8 @@ export function DeviceCheck({
           {!client.capture.stream && <Icon name="camera" />}
         </div>
       )}
-      {(!compact || setup.busy || setup.error) && (
-        <div className="setup-status" role="status" aria-live="polite">
+      {(setup.busy || setup.error) && (
+        <div className="setup-status" role={!compact ? "status" : undefined}>
           {deviceCheckStatus()}
         </div>
       )}
@@ -94,20 +99,16 @@ export function DeviceCheck({
           aria-label="Microphone input level"
         />
       )}
-      {setup.busy && setup.text && (
-        <p className="setup-heard">“{setup.text}”</p>
+      {!setup.busy && (
+        <button
+          type="button"
+          className="primary setup-action"
+          onClick={() => void setup.run(repair)}
+        >
+          <Icon name={repair === "camera" ? "camera" : "refresh"} />
+          {setup.error ? "Try again" : actionLabel}
+        </button>
       )}
-      <button
-        type="button"
-        className="primary setup-action"
-        disabled={setup.busy}
-        onClick={() => void setup.run(repair)}
-      >
-        <Icon
-          name={repair === "camera" ? "camera" : setup.busy ? "mic" : "refresh"}
-        />
-        {setup.busy ? "Checking…" : setup.error ? "Try again" : actionLabel}
-      </button>
       {(setup.error || !setup.busy) && (
         <details
           className="device-help"
@@ -198,18 +199,17 @@ export function currentReadinessPresentation() {
   return presentation;
 }
 
-export function RecoveryCheck() {
+export function RecoveryCheck({ heading = false }: { heading?: boolean }) {
   useMediaVersion();
   const presentation = currentReadinessPresentation();
   const showMessage =
     presentation.action !== "check" ||
     (!client.setup.busy && !client.setup.error);
+  const Message = heading ? "h2" : "p";
   return (
     <>
       {presentation.message && showMessage && (
-        <p className="recovery-reason" role="status" aria-live="polite">
-          {presentation.message}
-        </p>
+        <Message className="recovery-reason">{presentation.message}</Message>
       )}
       {presentation.action === "privacy" && (
         <button
@@ -234,13 +234,23 @@ export function RecoveryCheck() {
   );
 }
 
-export function ConnectionCheck() {
+export function ConnectionCheck({
+  heading = false,
+  announce = false,
+}: {
+  heading?: boolean;
+  announce?: boolean;
+}) {
   const presentation = currentReadinessPresentation();
+  const Message = heading ? "h2" : "p";
   return (
     <>
-      <p className="recovery-reason" role="status" aria-live="polite">
+      <Message
+        className="recovery-reason"
+        role={announce ? "status" : undefined}
+      >
         {presentation.message}
-      </p>
+      </Message>
       {presentation.action === "connection" && (
         <button
           className="primary"

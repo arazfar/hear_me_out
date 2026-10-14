@@ -163,6 +163,7 @@ test("authenticated audio reconnection preserves a private check and keeps its t
       0,
       Date.now(),
       new Uint8Array(640).fill(1),
+      { purpose: "private", inputEpoch: room.readiness.get(id).inputEpoch },
     ),
   );
   await waitFor(() => room.seats.get(id)!.audioSeq === 0);
@@ -180,6 +181,7 @@ test("authenticated audio reconnection preserves a private check and keeps its t
       1,
       Date.now(),
       new Uint8Array(640).fill(1),
+      { purpose: "private", inputEpoch: room.readiness.get(id).inputEpoch },
     ),
   );
   await waitFor(() => room.readiness.get(id).passed);

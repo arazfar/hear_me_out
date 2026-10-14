@@ -1,11 +1,20 @@
-import { encodeVideo, decodeVideo } from "../shared/media";
+import {
+  encodeVideo,
+  decodeVideo,
+  encodeMicrophone,
+  decodeJudgeAudio,
+} from "../shared/media";
 import { PROTOCOL_VERSION, type Session } from "../shared/protocol";
 import "dotenv/config";
 import { WebSocket } from "ws";
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { streamVoice } from "../server/providers/index";
-import { canSpeak, type Snapshot } from "../shared/domain";
+import {
+  canSendJudgeInput,
+  judgeIsListening,
+  type Snapshot,
+} from "../shared/domain";
 import { type Command } from "../shared/protocol";
 const base = process.env.TEST_URL || "http://127.0.0.1:3001",
   wsbase = base.replace(/^http/, "ws");
@@ -28,6 +37,11 @@ class Peer {
   seq = 0;
   videoSeq = 0;
   setup = false;
+  inputEpoch = 0;
+  ends = new Map<string, number>();
+  eof = new Map<number, number>();
+  completed = new Set<number>();
+  playbackTimers = new Set<ReturnType<typeof setTimeout>>();
   pcm: Buffer = Buffer.alloc(640);
   interval: ReturnType<typeof setInterval> | undefined;
   voiceHashes: string[] = [];
@@ -50,6 +64,25 @@ class Peer {
     this.state = state;
   }
   command(command: Command, id = crypto.randomUUID()) {
+    if (command.type === "done") {
+      if (!this.ends.has(command.turnId)) {
+        this.sockets.get("audio")!.send(
+          encodeMicrophone(
+            this.state.mediaEpoch,
+            ++this.seq,
+            Date.now(),
+            new Uint8Array(),
+            {
+              purpose: "gameplay",
+              inputEpoch: this.state.turn!.inputEpoch!,
+              end: true,
+            },
+          ),
+        );
+        this.ends.set(command.turnId, this.seq);
+      }
+      command = { ...command, lastAudioSeq: this.ends.get(command.turnId)! };
+    }
     this.sockets.get("control")!.send(
       JSON.stringify({
         commandId: id,
@@ -62,7 +95,7 @@ class Peer {
     return id;
   }
   async connect() {
-    for (const ch of ["control", "audio", "video"]) {
+    for (const ch of ["control", "audio", "video", "judge"]) {
       const s = new WebSocket(`${wsbase}/socket/${ch}`);
       this.sockets.set(ch, s);
       await new Promise<void>((r) =>
@@ -92,12 +125,16 @@ class Peer {
                 }),
               );
           }
-          if (ch === "audio" && Buffer.isBuffer(raw) && raw[0] === 2) {
+          if (ch === "judge" && Buffer.isBuffer(raw)) {
             this.voiceHashes.push(
               createHash("sha256")
                 .update(raw as Buffer)
                 .digest("hex"),
             );
+            const frame = decodeJudgeAudio(raw);
+            if (!frame) return;
+            if (frame.end) this.eof.set(frame.epoch, frame.offset);
+            this.finishAudio();
             const j = this.state.judge;
             if (j && !this.readyEpochs.has(j.epoch)) {
               this.readyEpochs.add(j.epoch);
@@ -112,6 +149,9 @@ class Peer {
         }
         const event = JSON.parse(raw.toString());
         if (event.snapshot) this.state = event.snapshot;
+        if (event.type === "setup_result")
+          this.inputEpoch = event.status === "listening" ? event.inputEpoch : 0;
+        this.finishAudio();
         if (
           event.type === "transcript" &&
           event.payload.final &&
@@ -145,27 +185,73 @@ class Peer {
     }
     this.interval = setInterval(() => this.audio(), 20);
   }
+  finishAudio() {
+    const judge = this.state.judge;
+    if (
+      !judge ||
+      judge.status !== "speaking" ||
+      !this.eof.has(judge.epoch) ||
+      this.completed.has(judge.epoch)
+    )
+      return;
+    this.completed.add(judge.epoch);
+    const samples = this.eof.get(judge.epoch)!;
+    const timer = setTimeout(
+      () => {
+        this.playbackTimers.delete(timer);
+        this.command({
+          type: "audio_playback",
+          utteranceId: judge.id,
+          speechEpoch: judge.epoch,
+          status: "complete",
+          samples,
+        });
+      },
+      Math.max(0, judge.startAt! + samples / 44.1 + 300 - Date.now()),
+    );
+    this.playbackTimers.add(timer);
+  }
   audio() {
-    const h = Buffer.alloc(25);
-    h[0] = 1;
-    h.writeUInt32LE(this.state.mediaEpoch, 1);
-    h.writeUInt32LE(++this.seq, 5);
-    h.writeUInt32LE(16000, 9);
-    h.writeUInt32LE(320, 13);
-    h.writeDoubleLE(Date.now(), 17);
+    const turn = this.state.turn;
+    const tag =
+      this.setup && this.inputEpoch
+        ? { purpose: "private" as const, inputEpoch: this.inputEpoch }
+        : canSendJudgeInput(this.state, this.session.playerId) &&
+            turn &&
+            !this.ends.has(turn.id)
+          ? { purpose: "gameplay" as const, inputEpoch: turn.inputEpoch! }
+          : { purpose: "social" as const, inputEpoch: 0 };
     this.sockets
       .get("audio")!
       .send(
-        Buffer.concat([
-          h,
-          this.setup || canSpeak(this.state, this.session.playerId)
-            ? this.pcm
-            : Buffer.alloc(640),
-        ]),
+        encodeMicrophone(
+          this.state.mediaEpoch,
+          ++this.seq,
+          Date.now(),
+          this.pcm,
+          tag,
+        ),
       );
+    // This operational client simulates output accounting; it never measures acoustic playback.
+    const judge = this.state.judge;
+    if (judge?.status === "speaking" && this.seq % 25 === 0) {
+      const samples = Math.max(
+        0,
+        Math.floor((Date.now() - judge.startAt!) * 44.1),
+      );
+      this.command({
+        type: "audio_playback",
+        utteranceId: judge.id,
+        speechEpoch: judge.epoch,
+        status: "progress",
+        samples: Math.min(this.eof.get(judge.epoch) ?? 882000, samples),
+      });
+    }
   }
   close() {
     clearInterval(this.interval);
+    for (const timer of this.playbackTimers) clearTimeout(timer);
+    this.playbackTimers.clear();
     for (const s of this.sockets.values()) s.close();
   }
 }
@@ -229,13 +315,13 @@ async function voice(text: string) {
     12,
   );
   const bytes = Buffer.concat(c),
-    f = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.length / 4),
+    f = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.length / 2),
     pcm = Buffer.alloc(Math.floor((f.length * 16000) / 44100) * 2);
   for (let i = 0; i < pcm.length / 2; i++)
     pcm.writeInt16LE(
       Math.max(
         -32768,
-        Math.min(32767, Math.round(f[Math.floor((i * 44100) / 16000)] * 32767)),
+        Math.min(32767, Math.round(f[Math.floor((i * 44100) / 16000)])),
       ),
       i * 2,
     );
@@ -315,7 +401,7 @@ while (true) {
         ? "I heard the syrup point, but I still prefer pancakes."
         : "Pancakes are my favorite breakfast.";
   const pcm = await voice(text);
-  await wait(() => canSpeak(pa.state, p.session.playerId));
+  await wait(() => judgeIsListening(pa.state, p.session.playerId));
   if (pa.state.turn?.id !== turn.id) continue;
   for (let at = 0; at < pcm.length; at += 640) {
     p.pcm = pcm.subarray(at, at + 640);

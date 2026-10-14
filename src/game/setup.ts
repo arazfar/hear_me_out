@@ -18,6 +18,7 @@ export class DeviceSetup {
   heardAt = 0;
   error = "";
   checkId = "";
+  inputEpoch = 0;
   commandId: string | undefined;
   repair: "camera" | undefined;
   abort: AbortController | null = null;
@@ -126,6 +127,8 @@ export class DeviceSetup {
           (p) => p.id === this.client.session?.playerId,
         );
       if (me()?.readiness?.setup !== "passed") {
+        await this.client.capture.isolate();
+        if (attempt.signal.aborted) return;
         this.checkId = crypto.randomUUID();
         this.phase = "testing";
         this.commandId = this.client.command({
@@ -172,6 +175,7 @@ export class DeviceSetup {
     if (data.status === "listening") {
       if (this.phase === "ready") return;
       this.phase = "testing";
+      this.inputEpoch = data.inputEpoch || 0;
       this.listening = true;
     }
     if (data.status === "passed") {

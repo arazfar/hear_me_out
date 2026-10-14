@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../server/app";
-import { CRITERIA, canSpeak } from "../shared/domain";
+import { CRITERIA, judgeIsListening } from "../shared/domain";
 import { services, flush } from "./fixtures";
 import { WsPeer, post, waitFor } from "./ws-peer";
 
@@ -180,7 +180,7 @@ test(
         () =>
           pa.state.phase === "MATCH_RESULT" ||
           (pa.state.phase === "ROUND" &&
-            canSpeak(pa.state, pa.state.turn!.playerId)),
+            judgeIsListening(pa.state, pa.state.turn!.playerId)),
       );
       if ((pa.state as typeof pa.state).phase === "MATCH_RESULT") break;
       const turn = pa.state.turn!,

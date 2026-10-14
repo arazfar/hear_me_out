@@ -457,7 +457,7 @@ test("connection recovery hides stale gameplay, retries a lost response, and off
       });
     await disconnect();
     await expect(speaker.locator(".recovery-panel h2")).toHaveText(
-      "Holding your place",
+      "Reconnecting…",
     );
     await expect(
       speaker.locator(".timer, .yield-button, .room-notice"),
@@ -498,7 +498,9 @@ test("connection recovery hides stale gameplay, retries a lost response, and off
     });
     await disconnect();
     await expect(
-      speaker.getByRole("heading", { name: "Still offline" }),
+      speaker.getByRole("heading", {
+        name: "Connection lost. Check your network.",
+      }),
     ).toBeVisible({ timeout: 65000 });
     await expect(
       speaker.getByRole("button", { name: "Retry connection" }),
@@ -876,7 +878,7 @@ test("device repair preserves privacy choices made during acquisition until expl
       ).toBe(false);
       await expect(a.locator(".setup-status")).toHaveCount(0);
       await expect(a.locator(".app > .sr-only")).toHaveText(
-        repair === "camera" ? "Turn mic on" : "Turn camera on",
+        repair === "camera" ? "Mic off." : "Camera off.",
       );
       await shot(
         a,

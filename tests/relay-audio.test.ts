@@ -25,15 +25,15 @@ test("relay playback limits late bursts, resamples in the audio thread, and flus
     output.every((x) => x === 0),
     "prebuffer must prevent a one-packet underrun",
   );
-  push(320, 0.2);
+  push(960, 0.2);
   p.process([], [[output]]);
   assert(output.every((x) => Math.abs(x - 0.2) < 0.001));
   assert(
-    p.count < 640 && p.count > 590,
+    p.count < 1280 && p.count > 1230,
     "16 kHz audio must resample to 48 kHz",
   );
   push(3200, 0.8);
-  assert.equal(p.count, 640, "late burst keeps only 40 ms of fresh audio");
+  assert.equal(p.count, 1280, "late burst keeps only 80 ms of fresh audio");
   p.process([], [[output]]);
   assert(output.every((x) => Math.abs(x - 0.8) < 0.001));
   p.port.onmessage({ data: { type: "flush" } });

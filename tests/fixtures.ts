@@ -23,8 +23,8 @@ export const fakeVoice: RoomServices["streamVoice"] = async (
   cancelled,
 ) => {
   if (!cancelled())
-    onChunk(new Uint8Array(new Float32Array(441).fill(0.1).buffer));
-  return 0.01;
+    onChunk(new Uint8Array(new Int16Array(15876).fill(3276).buffer));
+  return 0.36;
 };
 export function services(
   overrides: Partial<RoomServices> = {},
@@ -74,7 +74,11 @@ export function roomFixture(overrides: Partial<RoomServices> = {}) {
   const room = new RoomController("1234", services(overrides));
   const turn = startRound(room.game);
   room.playback.cancelSpeech();
+  room.playback.pendingHandoff = null;
+  room.playback.hostCues = [];
   room.game.state.players.forEach((p) => room.seats.set(p.id, seat()));
+  room.game.grantInput(1);
+  room.game.openInput(1, room.services.now());
   return { room, turn };
 }
 export function evidence(game: Game, id = "segment"): Segment {
@@ -103,5 +107,38 @@ export function fakeTranscription(
     failed: false,
     send,
     close: async () => true,
+  };
+}
+
+export function fakeSpeech(
+  room: RoomController,
+  overrides: Partial<NonNullable<RoomController["playback"]["speech"]>> = {},
+) {
+  return {
+    id: "speech",
+    epoch: 1,
+    text: "Bonk is speaking.",
+    target: null,
+    ready: new Set<string>(),
+    completed: new Set<string>(),
+    connections: new Map<string, number>(),
+    progress: new Map<string, { samples: number; at: number }>(),
+    rtt: 0,
+    duration: 1,
+    samples: 44100,
+    startedAt: null,
+    done: false,
+    timer: null,
+    began: room.services.now(),
+    generatedAt: room.services.now(),
+    frames: [],
+    sent: 0,
+    eofSent: false,
+    carry: new Uint8Array(),
+    turnId: null,
+    matchId: room.game.state.matchId,
+    attempt: 0,
+    fallback: false,
+    ...overrides,
   };
 }

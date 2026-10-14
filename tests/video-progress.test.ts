@@ -72,6 +72,34 @@ test("a delayed frame callback cannot count a cached decoder frame twice", (t) =
 test("failed or obsolete camera Blob reads are discarded and the encoder can retry", async (t) => {
   t.mock.timers.enable({ apis: ["setInterval"] });
   const saved = Object.getOwnPropertyDescriptor(globalThis, "document");
+  const savedReader = Object.getOwnPropertyDescriptor(globalThis, "FileReader");
+  class Reader {
+    result: ArrayBuffer | null = null;
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    onabort: (() => void) | null = null;
+    aborted = false;
+    readAsArrayBuffer(blob: Blob) {
+      void blob.arrayBuffer().then(
+        (data) => {
+          if (this.aborted) return;
+          this.result = data;
+          this.onload?.();
+        },
+        () => {
+          if (!this.aborted) this.onerror?.();
+        },
+      );
+    }
+    abort() {
+      this.aborted = true;
+      this.onabort?.();
+    }
+  }
+  Object.defineProperty(globalThis, "FileReader", {
+    configurable: true,
+    value: Reader,
+  });
   const callbacks: ((blob: Blob) => Promise<void>)[] = [];
   const doc = {
     hidden: false,
@@ -95,6 +123,9 @@ test("failed or obsolete camera Blob reads are discarded and the encoder can ret
   t.after(() => {
     if (saved) Object.defineProperty(globalThis, "document", saved);
     else Reflect.deleteProperty(globalThis, "document");
+    if (savedReader)
+      Object.defineProperty(globalThis, "FileReader", savedReader);
+    else Reflect.deleteProperty(globalThis, "FileReader");
   });
   const client = new Client();
   let sent = 0;
@@ -141,4 +172,38 @@ test("failed or obsolete camera Blob reads are discarded and the encoder can ret
     1,
     "a failed frame must release the encoder for the next one",
   );
+  t.mock.timers.tick(100);
+  let finishRead!: (data: ArrayBuffer) => void;
+  const pending = callbacks.shift()!(
+    Object.assign(new Blob(), {
+      arrayBuffer: () =>
+        new Promise<ArrayBuffer>((resolve) => {
+          finishRead = resolve;
+        }),
+    }),
+  );
+  client.video.resetVideo();
+  await pending;
+  finishRead(new ArrayBuffer(3));
+  await Promise.resolve();
+  assert.equal(sent, 1, "a reset cancels an in-flight read without sending it");
+  t.mock.timers.tick(100);
+  client.video.resetVideo();
+  read = false;
+  await callbacks.shift()!(
+    Object.assign(new Blob(), {
+      arrayBuffer: async () => {
+        read = true;
+        return new ArrayBuffer(3);
+      },
+    }),
+  );
+  assert.equal(
+    read,
+    false,
+    "obsolete encode callbacks cannot begin Blob reads",
+  );
+  t.mock.timers.tick(100);
+  await callbacks.shift()!(new Blob([new Uint8Array([1, 2, 3])]));
+  assert.equal(sent, 2, "capture can continue after foreground restoration");
 });

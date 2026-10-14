@@ -1,3 +1,4 @@
+import { decodeMicrophone } from "../../shared/media";
 import {
   test,
   expect,
@@ -6,7 +7,7 @@ import {
 } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { points, type Snapshot } from "../../shared/domain";
-import { stableWebKitAudio } from "./synthetic-media";
+import { syntheticMicrophone } from "./synthetic-media";
 const root = "output/playwright/ready-together/after";
 async function snapshot(
   request: APIRequestContext,
@@ -62,6 +63,14 @@ async function noOverlap(page: Page) {
           (caption && intersection(r, caption)) ||
           (panel && intersection(r, panel)),
       ) ||
+      [...document.querySelectorAll(".score-burst")].some((node) => {
+        if (Number(getComputedStyle(node).opacity) <= 0.01) return false;
+        const r = node.getBoundingClientRect();
+        return (
+          (panel && intersection(r, panel)) ||
+          (caption && intersection(r, caption))
+        );
+      }) ||
       document.documentElement.scrollWidth > innerWidth ||
       [...document.querySelectorAll("button, .phase-content, .stage")].some(
         (n) => {
@@ -99,7 +108,7 @@ test("two players complete a scored match, recover media, and rematch", async ({
   baseURL,
   request,
 }, info) => {
-  const phone = info.project.name === "phone" || info.project.name === "webkit";
+  const phone = /^(phone|webkit)/.test(info.project.name);
   const viewport = phone
     ? { width: 360, height: 640 }
     : { width: 1280, height: 720 };
@@ -111,18 +120,17 @@ test("two players complete a scored match, recover media, and rematch", async ({
     viewport,
   });
   // WebKit's mock capture devices are process-wide; model the second phone separately.
-  const secondBrowser =
-    info.project.name === "webkit"
-      ? await browser.browserType().launch({ headless: true })
-      : null;
+  const secondBrowser = info.project.name.startsWith("webkit")
+    ? await browser.browserType().launch({ headless: true })
+    : null;
   const cb = await (secondBrowser || browser).newContext({
     isMobile: phone,
     hasTouch: phone,
     permissions: ["camera", "microphone"],
     viewport,
   });
-  if (info.project.name === "webkit")
-    await Promise.all([stableWebKitAudio(ca), stableWebKitAudio(cb)]);
+  if (info.project.name.startsWith("webkit"))
+    await Promise.all([syntheticMicrophone(ca), syntheticMicrophone(cb)]);
   const a = await ca.newPage(),
     b = await cb.newPage();
   const errors: string[] = [];
@@ -130,7 +138,7 @@ test("two players complete a scored match, recover media, and rematch", async ({
   const observations = new Map<Page, unknown>();
   const microphonePackets = new Map<
     Page,
-    { packets: number; audible: number }
+    { packets: number; audible: number; gameplay: number }
   >();
   for (const p of [a, b]) {
     p.on("pageerror", (e) => errors.push(e.message));
@@ -141,9 +149,13 @@ test("two players complete a scored match, recover media, and rematch", async ({
             const counts = microphonePackets.get(p) || {
               packets: 0,
               audible: 0,
+              gameplay: 0,
             };
             counts.packets++;
-            if (payload.subarray(25).some((x) => x !== 0)) counts.audible++;
+            const frame = decodeMicrophone(payload);
+            if (frame?.pcm.some((x) => x !== 0)) counts.audible++;
+            if (frame?.purpose === "gameplay" && frame.samples)
+              counts.gameplay++;
             microphonePackets.set(p, counts);
           }
           return;
@@ -162,7 +174,7 @@ test("two players complete a scored match, recover media, and rematch", async ({
   const code = await enter(a, b, baseURL!);
   await expect
     .poll(async () => (await snapshot(request, code)).mediaMode)
-    .toBe(info.project.name === "relay" ? "wss" : "rtc");
+    .toBe(info.project.name.endsWith("relay") ? "wss" : "rtc");
   for (const p of [a, b])
     await expect
       .poll(() =>
@@ -178,7 +190,7 @@ test("two players complete a scored match, recover media, and rematch", async ({
         remote.evaluate((face, relay) => {
           if (relay) return face.querySelector("canvas")!.width;
           return face.querySelector("video")!.videoWidth;
-        }, info.project.name === "relay"),
+        }, info.project.name.endsWith("relay")),
       )
       .toBeGreaterThan(0);
   }
@@ -194,7 +206,11 @@ test("two players complete a scored match, recover media, and rematch", async ({
     a.getByRole("button", { name: "Camera on", exact: true }),
   ).toBeVisible();
   await shot(a, "live-lobby-" + info.project.name);
+  await expect(a.locator(".player-status")).toHaveCount(0);
   await a.getByRole("button", { name: "Ready to argue" }).click();
+  await expect(
+    a.locator('.face[aria-label="Alex, you"] .player-status'),
+  ).toHaveText("Ready");
   await b.getByRole("button", { name: "Ready to argue" }).click();
   await expect
     .poll(async () => (await snapshot(request, code)).phase)
@@ -248,7 +264,9 @@ test("two players complete a scored match, recover media, and rematch", async ({
     await expect
       .poll(() => microphonePackets.get(listener)?.packets || 0)
       .toBeGreaterThan(5);
-    expect(microphonePackets.get(listener)?.audible).toBe(0);
+    expect(microphonePackets.get(listener)?.gameplay).toBe(0);
+    if (s.mediaMode === "rtc")
+      expect(microphonePackets.get(listener)?.audible).toBe(0);
     if (opportunities === 0) {
       await speaker
         .getByRole("button", { name: "Mic on", exact: true })
@@ -291,6 +309,15 @@ test("two players complete a scored match, recover media, and rematch", async ({
       for (const page of [speaker, listener]) {
         const label = `${page === speaker ? "Your" : name + "’s"} ${s.turn!.kind}`;
         await expect(page.locator(".turn-label")).toHaveText(label);
+        await expect(page.locator(".listening-badge")).toHaveText(
+          "Bonk is listening",
+        );
+        await expect(
+          page.locator(".turn-label[aria-live], .turn-label[role=status]"),
+        ).toHaveCount(0);
+        await expect(
+          page.locator(".player-status").filter({ hasText: "Chat is on" }),
+        ).toHaveCount(0);
         await expect(page.locator('.app > [aria-live="polite"]')).toHaveText(
           `Round ${s.round}. ${label}`,
         );
@@ -519,7 +546,13 @@ test("two players complete a scored match, recover media, and rematch", async ({
     await a.setViewportSize({ width: 360, height: 640 });
   }
   await a.getByRole("button", { name: "Rematch" }).click();
-  await expect(a.getByRole("button", { name: "Rematch ready" })).toBeDisabled();
+  await expect(
+    a.getByRole("button", { name: "Waiting for Sam", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    a.locator('.face[aria-label="Alex, you"] .player-status'),
+  ).toHaveText("Ready");
+  await expect(a.locator(".result-panel .support-copy")).toHaveCount(0);
   for (const page of [a, b]) await controlsInViewport(page);
   await shot(a, "live-rematch-ready-" + info.project.name);
   await b.getByRole("button", { name: "Rematch" }).click();
@@ -627,6 +660,9 @@ test("visual matrix, accessibility, error and fallback states", async ({
   };
   const turn = (kind: "case" | "rebuttal" | "closing" = "case") => ({
     id: "visual-turn",
+    inputEpoch: 1,
+    inputState: "open" as const,
+    inputGrantedAt: Date.now(),
     playerId: p0.id,
     kind,
     durationMs: kind === "closing" ? 15000 : 30000,
@@ -692,7 +728,13 @@ test("visual matrix, accessibility, error and fallback states", async ({
     await noOverlap(a);
     if (width >= 1280) await controlsInViewport(a);
     await shot(a, "round-" + width);
+    await expect(a.locator(".turn-label")).toHaveText("Your rebuttal");
   }
+  const grayscale = await a.addStyleTag({
+    content: "html { filter: grayscale(1); }",
+  });
+  await shot(a, "round-grayscale-390");
+  await grayscale.evaluate((node) => node.parentNode?.removeChild(node));
   await a.setViewportSize({ width: 1280, height: 720 });
   await present({
     phase: "ROUND",
@@ -708,25 +750,26 @@ test("visual matrix, accessibility, error and fallback states", async ({
     },
     degraded: { tts: true },
   });
+  await expect(a.locator(".caption-status")).toHaveCount(0);
   await shot(a, "judge-1280");
-  await expect(a.locator(".turn-label")).toContainText("Bonk has the floor");
+  await expect(a.locator(".turn-label")).toContainText("Bonk’s getting ready…");
   await expect(a.locator('.app > [aria-live="polite"]')).toHaveText(
-    "Round 1. Bonk has the floor",
+    "Round 1. Bonk’s getting ready…",
   );
   await present({
     phase: "ROUND",
     turn: { ...turn(), deadline: null, pausedReason: "judging", sealing: true },
     judgePending: true,
   });
-  await expect(a.locator(".turn-label")).toHaveText("Bonk is scoring…");
+  await expect(a.locator(".turn-label")).toHaveText("Finishing Alex’s turn…");
   await expect(a.locator('.app > [aria-live="polite"]')).toHaveText(
-    "Round 1. Bonk is scoring…",
+    "Round 1. Finishing Alex’s turn…",
   );
   await expect(
     a.getByRole("button", { name: "I’m done", exact: true }),
   ).toHaveCount(0);
   await shot(a, "sealing-1280");
-  await expect(a.locator(".turn-label")).toHaveText("Bonk is scoring…");
+  await expect(a.locator(".turn-label")).toHaveText("Finishing Alex’s turn…");
   expect((await snapshot(request, code)).phase).toBe("ROUND");
 
   const results = [
@@ -794,7 +837,7 @@ test("visual matrix, accessibility, error and fallback states", async ({
       rematchReady: [p0.id],
     });
     await expect(
-      a.getByRole("button", { name: "Rematch ready" }),
+      a.getByRole("button", { name: "Waiting for Sam", exact: true }),
     ).toBeDisabled();
     await controlsInViewport(a);
     await shot(a, `rematch-ready-${width}`);
@@ -881,6 +924,225 @@ test("visual matrix, accessibility, error and fallback states", async ({
   await cb.close();
 });
 
+test("phone layouts preserve full captions, user wording and a single status owner", async ({
+  browser,
+  baseURL,
+  request,
+}, info) => {
+  const webkit = info.project.name.startsWith("webkit");
+  const secondBrowser = webkit
+    ? await browser.browserType().launch({ headless: true })
+    : null;
+  const ca = await browser.newContext({
+    permissions: ["camera", "microphone"],
+  });
+  const cb = await (secondBrowser || browser).newContext({
+    permissions: ["camera", "microphone"],
+  });
+  if (webkit)
+    await Promise.all([syntheticMicrophone(ca), syntheticMicrophone(cb)]);
+  const a = await ca.newPage(),
+    b = await cb.newPage();
+  try {
+    await a.goto(baseURL!);
+    await expect(
+      a.getByLabel("Your name", { exact: true }),
+    ).not.toHaveAttribute("placeholder");
+    await a.getByRole("button", { name: "How to play" }).focus();
+    await a.keyboard.press("Enter");
+    await expect(a.getByRole("dialog")).toContainText(
+      "Chat anytime. Bonk scores whoever has the floor.",
+    );
+    await a.keyboard.press("Escape");
+    await expect(a.getByRole("button", { name: "How to play" })).toBeFocused();
+    const code = await enter(a, b, baseURL!);
+    const base = await snapshot(request, code),
+      [p0, p1] = base.players;
+    const topic = {
+      proposition: 'My take: "Soup = a drink?!" <ask me why>',
+      positions: {
+        [p0.id]: "YES!!! (even with a spoon)",
+        [p1.id]: "Nope... soup stays soup.",
+      },
+      revision: 1,
+      confirmations: [],
+    };
+    const turn = {
+      id: "copy-turn",
+      inputEpoch: 1,
+      inputState: "open" as const,
+      inputGrantedAt: Date.now(),
+      playerId: p0.id,
+      kind: "rebuttal" as const,
+      durationMs: 30000,
+      remainingMs: 30000,
+      deadline: Date.now() + 30000,
+      pausedReason: null,
+      sealing: false,
+      targets: { reasoning: 0, rebuttal: 0, impact: 0, wit: 0, clarity: 0 },
+    };
+    const present = async (patch: Partial<Snapshot>) => {
+      const response = await request.post("/__test/present/" + code, {
+        data: {
+          topic,
+          headsId: p0.id,
+          tailsId: p1.id,
+          round: 1,
+          roundId: "copy-round",
+          turn: null,
+          judge: null,
+          judgePending: false,
+          captions: {},
+          results: [],
+          ledger: [],
+          winnerId: null,
+          rematchReady: [],
+          recoveryDeadline: null,
+          phaseDeadline: Date.now() + 60000,
+          ...patch,
+        },
+      });
+      expect(response.ok()).toBe(true);
+      await expect(a.locator(".app")).toHaveClass(
+        new RegExp("phase-" + patch.phase!.toLowerCase()),
+      );
+    };
+    await present({ phase: "TOPIC_CONFIRM", round: 0 });
+    await expect(a.locator(".arena-heading h1")).toHaveText(topic.proposition);
+    await expect(a.locator(".position")).toHaveText(
+      Object.values(topic.positions),
+    );
+    await expect(
+      a.locator(".topic-panel h2, .topic-panel > p:not(.decision-clock)"),
+    ).toHaveCount(0);
+    await expect(
+      a.getByRole("button", { name: "Confirm my side" }),
+    ).toBeEnabled();
+    await shot(a, "simple-confirm-" + info.project.name);
+    await present({
+      phase: "TOPIC_CONFIRM",
+      round: 0,
+      topic: { ...topic, confirmations: [p0.id] },
+    });
+    await expect(a.locator(".topic-panel > p:not(.decision-clock)")).toHaveText(
+      "Waiting for Sam to confirm.",
+    );
+    await expect(a.locator(".player-status")).toHaveText("Confirmed");
+    await expect(
+      a.getByRole("button", { name: "Confirm my side" }),
+    ).toBeDisabled();
+    await shot(a, "simple-confirmed-" + info.project.name);
+    const transcript =
+      'FIRST WORDS: I said "soup?!", not SOUP.\n' +
+      "A spoon does not settle this. I drink soup from a mug; Sam uses a bowl. ".repeat(
+        9,
+      ) +
+      "\nLAST WORDS: <please keep every word>.";
+    for (const [width, height] of [
+      [1280, 720],
+      [360, 640],
+      [390, 844],
+      [844, 390],
+    ]) {
+      await a.setViewportSize({ width, height });
+      await present({
+        phase: "ROUND",
+        turn: { ...turn, deadline: Date.now() + 30000 },
+        captions: {
+          [p0.id]: { text: transcript, final: true, at: Date.now() },
+        },
+      });
+      // Exact textContent catches deletion, trimming, normalization and inserted copy.
+      expect(await a.locator(".player-caption p").textContent()).toBe(
+        transcript,
+      );
+      await expect(a.locator(".turn-label")).toHaveText("Your rebuttal");
+      await expect(b.locator(".turn-label")).toHaveText("Alex’s rebuttal");
+      await expect(a.locator(".player-status")).toHaveText("Bonk is listening");
+      await expect(
+        a.locator(".turn-label[aria-live], .turn-label[role=status]"),
+      ).toHaveCount(0);
+      await noOverlap(a);
+      const unclipped = await a
+        .locator(".player-caption p")
+        .evaluate(
+          (p) =>
+            p.scrollHeight <= p.clientHeight + 1 &&
+            getComputedStyle(p).webkitLineClamp === "none",
+        );
+      expect(unclipped).toBe(true);
+      await shot(a, `full-caption-${width}-${info.project.name}`);
+      expect(await a.locator(".player-caption p").textContent()).toBe(
+        transcript,
+      );
+    }
+    await a.setViewportSize({ width: 390, height: 844 });
+    const line =
+      'My ruling: "soup remains suspicious." Every last word stays here.';
+    const judge = {
+      id: "copy-speech",
+      epoch: 300,
+      text: line,
+      status: "buffering" as const,
+      expression: "smug" as const,
+      targetPlayerId: p1.id,
+      startAt: null,
+    };
+    await present({
+      phase: "ROUND",
+      turn: { ...turn, deadline: null, pausedReason: "judge" },
+      judge,
+    });
+    await expect(a.locator(".turn-label")).toHaveText("Bonk’s getting ready…");
+    await expect(a.locator(".caption-status, .listening-badge")).toHaveCount(0);
+    expect(await a.locator(".judge-caption p").textContent()).toBe(line);
+    const faceTops = await a
+      .locator(".face-picture")
+      .evaluateAll((nodes) =>
+        nodes.map((n) => n.getBoundingClientRect().top + window.scrollY),
+      );
+    await shot(a, "simple-buffering-" + info.project.name);
+    await present({
+      phase: "ROUND",
+      turn: { ...turn, deadline: null, pausedReason: "judge" },
+      judge: { ...judge, status: "captions" },
+    });
+    await expect(a.locator(".turn-label")).toHaveText("Bonk · captions only");
+    await a.emulateMedia({ reducedMotion: "reduce" });
+    await expect(a.locator(".app")).toHaveClass(/reduced-motion/);
+    await expect(a.locator(".turn-label")).toHaveCSS("animation-name", "none");
+    await noOverlap(a);
+    await shot(a, "simple-captions-only-" + info.project.name);
+    await present({
+      phase: "ROUND",
+      turn: { ...turn, deadline: Date.now() + 30000 },
+    });
+    await expect(a.locator(".turn-label")).toHaveText("Your rebuttal");
+    expect(
+      await a
+        .locator(".face-picture")
+        .evaluateAll((nodes) =>
+          nodes.map((n) => n.getBoundingClientRect().top + window.scrollY),
+        ),
+    ).toEqual(faceTops);
+    await expect(a.getByRole("button", { name: "I’m done" })).toBeEnabled();
+    await present({
+      phase: "INTRO_COIN",
+      round: 0,
+      topic: null,
+      judge: { ...judge, status: "captions" },
+    });
+    await expect(a.locator(".caption-heading .caption-status")).toHaveText(
+      "Captions only",
+    );
+    await expect(a.locator(".player-status")).toHaveCount(0);
+  } finally {
+    await ca.close();
+    await cb.close();
+    await secondBrowser?.close();
+  }
+});
+
 test("mandatory device setup, retries, cancellation, clipboard failure and missing scene", async ({
   browser,
   baseURL,
@@ -933,6 +1195,17 @@ test("mandatory device setup, retries, cancellation, clipboard failure and missi
   await expect(page.locator(".courtroom")).toHaveCount(0);
   let seat = await page.evaluate(() => sessionStorage.getItem("hmo-seat"));
   await shot(page, "permissions-denied");
+  const help = page.locator(".device-help summary");
+  await help.focus();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel(/^Microphone/)).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByLabel(/^Camera/)).toBeFocused();
+  await help.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel(/^Microphone/)).toBeHidden();
+  await expect(help).toBeFocused();
   await page.evaluate(() => {
     (window as unknown as { deviceMode: string }).deviceMode = "missing";
   });
@@ -984,10 +1257,22 @@ test("mandatory device setup, retries, cancellation, clipboard failure and missi
         .evaluate((v: HTMLVideoElement) => v.videoWidth),
     )
     .toBeGreaterThan(0);
+  await expect(page.locator(".private-check-label")).toHaveText(
+    "Private mic check",
+  );
+  await expect(
+    page.getByRole("button", { name: "Checking…", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Back", exact: true }),
+  ).toBeEnabled();
   await shot(page, "inline-setup");
   await expect(
+    page.getByRole("heading", { name: "Invite your friend" }),
+  ).toBeVisible();
+  await expect(
     page.getByRole("button", { name: "Waiting for your friend", exact: true }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   expect(await page.evaluate(() => sessionStorage.getItem("hmo-seat"))).toBe(
     seat,
   );
@@ -1332,4 +1617,577 @@ test("busy scoring queues every notice without collisions in either motion setti
   await ca.close();
   await cb.close();
   await video?.saveAs(`${root}/award-queue-${info.project.name}.webm`);
+});
+
+test("two players receive decision feedback while a rematch waits for complete playback", async ({
+  browser,
+  baseURL,
+  request,
+}, info) => {
+  const phone = /^(phone|webkit)/.test(info.project.name);
+  const viewport = phone
+    ? { width: 360, height: 640 }
+    : { width: 1280, height: 720 };
+  const second = info.project.name.startsWith("webkit")
+    ? await browser.browserType().launch({ headless: true })
+    : null;
+  const ca = await browser.newContext({
+    viewport,
+    permissions: ["camera", "microphone"],
+    recordVideo: { dir: root + "/video", size: viewport },
+  });
+  const cb = await (second || browser).newContext({
+    viewport,
+    permissions: ["camera", "microphone"],
+    reducedMotion: "reduce",
+  });
+  if (second)
+    await Promise.all([syntheticMicrophone(ca), syntheticMicrophone(cb)]);
+  for (const context of [ca, cb])
+    await context.addInitScript(() => {
+      const Original = AudioWorkletNode;
+      (window as any).__decisionAudio = [];
+      window.AudioWorkletNode = class extends Original {
+        constructor(...args: ConstructorParameters<typeof AudioWorkletNode>) {
+          super(...args);
+          if (args[1] === "judge-playback")
+            this.port.addEventListener("message", (event) => {
+              if (event.data.type === "drained")
+                (window as any).__decisionAudio.push(event.data);
+            });
+        }
+      };
+    });
+  const a = await ca.newPage(),
+    b = await cb.newPage();
+  const coins = new Map([
+    [a, [] as string[]],
+    [b, [] as string[]],
+  ]);
+  for (const page of [a, b])
+    page.on("websocket", (socket) => {
+      if (!socket.url().includes("/socket/control")) return;
+      socket.on("framereceived", ({ payload }) => {
+        const data = JSON.parse(payload.toString());
+        if (data.type === "coin_committed") coins.get(page)!.push(data.matchId);
+      });
+    });
+  const announcement = (page: Page) =>
+    page.locator('.app > [aria-live="polite"]');
+  try {
+    const code = await enter(a, b, baseURL!);
+    await a.getByRole("button", { name: "Ready to argue" }).click();
+    await expect(announcement(a)).toHaveText("Ready. Waiting for Sam.");
+    await expect(announcement(b)).toHaveText("Alex is ready. Ready to argue.");
+    await a.getByRole("button", { name: "Ready · undo" }).click();
+    await expect(announcement(b)).toHaveText("Ready to argue");
+    await a.getByRole("button", { name: "Ready to argue" }).click();
+    await b.getByRole("button", { name: "Ready to argue" }).click();
+    await expect
+      .poll(async () => (await snapshot(request, code)).phase)
+      .toBe("TOPIC_SELECT");
+    const selected = await snapshot(request, code);
+    const chooser = selected.players.find((p) => p.id === selected.tailsId)!;
+    const tails = chooser.name === "Alex" ? a : b;
+    await expect(announcement(tails)).toHaveText("Choose a topic");
+    await expect(announcement(tails === a ? b : a)).toHaveText(
+      `${chooser.name} is choosing.`,
+    );
+    await tails
+      .getByRole("button", { name: "Is a hot dog a sandwich?" })
+      .click();
+    await expect(announcement(a)).toHaveText("Confirm your side.");
+    await expect(announcement(b)).toHaveText("Confirm your side.");
+    for (const page of [a, b])
+      await page.evaluate(() => {
+        const node = document.querySelector('.app > [aria-live="polite"]')!;
+        (window as any).__decisionAnnouncements = [];
+        new MutationObserver(() =>
+          (window as any).__decisionAnnouncements.push(node.textContent),
+        ).observe(node, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+        });
+      });
+    await a.getByRole("button", { name: "Confirm my side" }).focus();
+    await a.keyboard.press("Enter");
+    await expect(announcement(a)).toHaveText(
+      "Confirmed. Waiting for Sam to confirm.",
+    );
+    await expect(announcement(b)).toHaveText(
+      "Alex confirmed. Confirm your side.",
+    );
+    await expect(
+      a.getByRole("button", { name: "Confirm my side" }),
+    ).toBeDisabled();
+    // macOS WebKit's default Tab mode skips buttons, including enabled ones.
+    // Option-Tab follows all controls without changing the app's focus behavior.
+    await a.keyboard.press(
+      second && process.platform === "darwin" ? "Alt+Tab" : "Tab",
+    );
+    await expect(
+      a.getByRole("button", { name: "Choose another topic" }),
+    ).toBeFocused();
+    const clock = await a.locator(".decision-clock").textContent();
+    await request.post("/__test/replay/" + code);
+    await request.post("/__test/replay/" + code);
+    await expect(a.locator(".decision-clock")).not.toHaveText(clock!);
+    expect(
+      await a.evaluate(() => (window as any).__decisionAnnouncements),
+    ).toEqual(["Confirmed. Waiting for Sam to confirm."]);
+    expect(
+      await b.evaluate(() => (window as any).__decisionAnnouncements),
+    ).toEqual(["Alex confirmed. Confirm your side."]);
+    await shot(a, "decision-confirmed-" + info.project.name);
+
+    // Jump only to the finished match. Votes, device health, voice delivery and
+    // the next match's start then use real commands and server coordination.
+    const result = await snapshot(request, code);
+    const [p0] = result.players;
+    const finished: Partial<Snapshot> = {
+      phase: "MATCH_RESULT",
+      round: 2,
+      turn: null,
+      judge: null,
+      phaseDeadline: null,
+      winnerId: p0.id,
+      rematchReady: [],
+      players: result.players.map((p, i) => ({ ...p, wins: i ? 0 : 2 })),
+      status: "The bread hinge makes your case.",
+    };
+    expect(
+      (await request.post("/__test/present/" + code, { data: finished })).ok(),
+    ).toBe(true);
+    await a.getByRole("button", { name: "Rematch", exact: true }).click();
+    await expect(
+      a.getByRole("button", { name: "Waiting for Sam", exact: true }),
+    ).toBeDisabled();
+    await expect(announcement(b)).toHaveText("Alex is ready for a rematch.");
+    await b.getByRole("button", { name: "Mic on", exact: true }).click();
+    await expect(
+      a.getByRole("button", { name: "Rematch queued", exact: true }),
+    ).toBeDisabled();
+    await expect(a.locator(".result-panel .support-copy")).toHaveText(
+      "Waiting for Sam’s mic.",
+    );
+    await expect(announcement(a)).toHaveText("Waiting for Sam’s mic.");
+    await b.getByRole("button", { name: "Turn mic on", exact: true }).click();
+    await expect
+      .poll(async () =>
+        (await snapshot(request, code)).players.every((p) => p.mediaReady),
+      )
+      .toBe(true);
+    await expect(
+      a.getByRole("button", { name: "Waiting for Sam", exact: true }),
+    ).toBeDisabled();
+
+    await a.getByRole("button", { name: "Audio", exact: true }).click();
+    await a.getByRole("button", { name: /Bonk/ }).click();
+    await a.keyboard.press("Escape");
+    const voice = await request.post("/__test/voice/" + code);
+    expect(voice.ok()).toBe(true);
+    const { epoch, samples } = await voice.json();
+    await expect(a.locator(".caption-status")).toHaveText("Speaking");
+    for (const page of [a, b]) {
+      coins.get(page)!.length = 0;
+      await page.evaluate(() => ((window as any).__decisionAnnouncements = []));
+    }
+    await b.getByRole("button", { name: "Rematch", exact: true }).click();
+    for (const page of [a, b]) {
+      await expect(
+        page.getByRole("button", { name: "Rematch queued", exact: true }),
+      ).toBeDisabled();
+      await expect(announcement(page)).toHaveText(
+        "Both ready. Rematch queued.",
+      );
+      await expect(page.locator(".player-status")).toHaveText([
+        "Ready",
+        "Ready",
+      ]);
+      await noOverlap(page);
+    }
+    await request.post("/__test/replay/" + code);
+    await shot(a, "decision-queued-" + info.project.name);
+    expect((await snapshot(request, code)).phase).toBe("MATCH_RESULT");
+    for (const page of [a, b]) {
+      expect(coins.get(page)).toEqual([]);
+      expect(
+        await page.evaluate(() => (window as any).__decisionAnnouncements),
+      ).toEqual(["Both ready. Rematch queued."]);
+    }
+    await expect
+      .poll(async () => (await snapshot(request, code)).matchId, {
+        timeout: 20000,
+      })
+      .not.toBe(result.matchId);
+    const next = await snapshot(request, code);
+    for (const page of [a, b]) {
+      await expect.poll(() => coins.get(page)).toEqual([next.matchId]);
+      const rendered = await page.evaluate(
+        (epoch) =>
+          (window as any).__decisionAudio
+            .filter((e: any) => e.epoch === epoch)
+            .map((e: any) => e.samples),
+        epoch,
+      );
+      expect(rendered).toEqual([samples]);
+    }
+    const timeline = await (
+      await request.post("/__test/timeline/" + code)
+    ).json();
+    const complete = timeline.filter(
+      (e: any) => e.stage === "render_complete" && e.speechEpoch === epoch,
+    );
+    expect(complete).toHaveLength(2);
+    expect(complete.every((e: any) => e.samples === samples)).toBe(true);
+    await info.attach("rematch-playback-timeline", {
+      body: Buffer.from(JSON.stringify(timeline)),
+      contentType: "application/json",
+    });
+    await expect
+      .poll(async () => (await snapshot(request, code)).phase)
+      .toBe("TOPIC_SELECT");
+    for (const page of [a, b]) expect(coins.get(page)).toEqual([next.matchId]);
+    expect(
+      (await request.post("/__test/present/" + code, { data: finished })).ok(),
+    ).toBe(true);
+    await a.getByRole("button", { name: "Rematch", exact: true }).click();
+    await b.getByRole("button", { name: "Leave", exact: true }).click();
+    await expect(a.getByRole("button", { name: "Back to menu" })).toBeVisible();
+    await expect(announcement(a)).toHaveText(
+      "Match complete. Your friend isn’t here.",
+    );
+    await expect(a.locator(".result-panel h2")).toContainText("Alex");
+  } finally {
+    const video = a.video();
+    await ca.close();
+    await cb.close();
+    await second?.close();
+    await video?.saveAs(`${root}/decision-feedback-${info.project.name}.webm`);
+  }
+});
+
+test("two players render a long judge line completely through asymmetric delivery and explicit mute", async ({
+  browser,
+  baseURL,
+  request,
+}, info) => {
+  const phone = /^(phone|webkit)/.test(info.project.name);
+  const aContext = await browser.newContext({
+    viewport: phone
+      ? { width: 390, height: 844 }
+      : { width: 1280, height: 720 },
+    permissions: ["camera", "microphone"],
+  });
+  const second = info.project.name.startsWith("webkit")
+    ? await browser.browserType().launch({ headless: true })
+    : null;
+  const bContext = await (second || browser).newContext({
+    viewport: phone
+      ? { width: 390, height: 844 }
+      : { width: 1280, height: 720 },
+    permissions: ["camera", "microphone"],
+  });
+  await Promise.all([
+    syntheticMicrophone(aContext, 330),
+    syntheticMicrophone(bContext, 550),
+  ]);
+  for (const context of [aContext, bContext])
+    await context.addInitScript(() => {
+      const Socket = WebSocket;
+      (window as any).__judgeSockets = [];
+      const inspectPCM = (raw: unknown) => {
+        if (
+          !(raw instanceof ArrayBuffer) ||
+          raw.byteLength < 31 ||
+          new Uint8Array(raw)[0] !== 1
+        )
+          return;
+        const view = new DataView(raw),
+          count = view.getUint32(13, true);
+        let squares = 0;
+        for (let i = 0; i < count; i++)
+          squares += (view.getInt16(31 + i * 2, true) / 32768) ** 2;
+        return {
+          count,
+          rms: Math.sqrt(squares / Math.max(1, count)),
+          age: Date.now() - view.getFloat64(17, true),
+          purpose: view.getUint8(25),
+        };
+      };
+      (window as any).__micFrames = [];
+      (window as any).__receivedFrames = [];
+      const Peer = RTCPeerConnection;
+      (window as any).__peers = [];
+      window.RTCPeerConnection = class extends Peer {
+        constructor(config?: RTCConfiguration) {
+          super(config);
+          (window as any).__peers.push(this);
+        }
+      };
+      window.WebSocket = class extends Socket {
+        constructor(...args: ConstructorParameters<typeof WebSocket>) {
+          super(...args);
+          if (String(args[0]).includes("/socket/judge"))
+            (window as any).__judgeSockets.push(this);
+          this.addEventListener("message", (event) => {
+            const sample = inspectPCM(event.data);
+            if (sample) {
+              const frames = (window as any).__receivedFrames;
+              frames.push(sample);
+              if (frames.length > 30) frames.shift();
+            }
+          });
+        }
+        send(data: Parameters<WebSocket["send"]>[0]) {
+          const raw = ArrayBuffer.isView(data)
+            ? data.buffer.slice(
+                data.byteOffset,
+                data.byteOffset + data.byteLength,
+              )
+            : data;
+          const sample = inspectPCM(raw);
+          if (sample) {
+            const frames = (window as any).__micFrames;
+            frames.push(sample);
+            if (frames.length > 30) frames.shift();
+          }
+          super.send(data);
+        }
+      };
+      const createGain = AudioContext.prototype.createGain;
+      const gains = new WeakMap<AudioContext, number>();
+      AudioContext.prototype.createGain = function () {
+        const gain = createGain.call(this),
+          index = gains.get(this) || 0;
+        gains.set(this, index + 1);
+        if (index === 0) {
+          const analyser = this.createAnalyser();
+          // A ~170 ms speech-energy window spans native Opus concealment at
+          // packet boundaries. Sustained mute/routing loss still fails; judge
+          // completion is checked separately at exact sample granularity.
+          analyser.fftSize = 8192;
+          analyser.smoothingTimeConstant = 0;
+          gain.connect(analyser);
+          const sink = createGain.call(this);
+          sink.gain.value = 0;
+          analyser.connect(sink).connect(this.destination);
+          (window as any).__friendOutput = { analyser, gain, context: this };
+        }
+        return gain;
+      };
+      (window as any).__conversation = [];
+      (window as any).__judgeActive = false;
+      setInterval(() => {
+        const output = (window as any).__friendOutput;
+        if (!output || !(window as any).__judgeActive) return;
+        const pcm = new Float32Array(output.analyser.fftSize);
+        output.analyser.getFloatTimeDomainData(pcm);
+        let squares = 0;
+        for (let i = 0; i < pcm.length; i++) {
+          squares += pcm[i] * pcm[i];
+        }
+        // A short jitter-concealment edge changes zero crossings. The dominant
+        // spectral bin identifies the source without assuming phase continuity.
+        const spectrum = new Float32Array(output.analyser.frequencyBinCount);
+        output.analyser.getFloatFrequencyData(spectrum);
+        let peak = 1;
+        for (let i = 2; i < spectrum.length; i++)
+          if (spectrum[i] > spectrum[peak]) peak = i;
+        (window as any).__conversation.push({
+          rms: Math.sqrt(squares / pcm.length),
+          frequency: (peak * output.context.sampleRate) / pcm.length,
+        });
+      }, 100);
+      const Original = window.AudioWorkletNode;
+      (window as any).__judgeRender = [];
+      window.AudioWorkletNode = class extends Original {
+        constructor(
+          context: BaseAudioContext,
+          name: string,
+          options?: AudioWorkletNodeOptions,
+        ) {
+          super(context, name, options);
+          if (name === "judge-playback")
+            this.port.addEventListener("message", (event) => {
+              if (event.data.type === "rendering")
+                (window as any).__judgeActive = true;
+              if (event.data.type === "drained")
+                (window as any).__judgeActive = false;
+              if (
+                ["ready", "buffering", "rendering", "drained"].includes(
+                  event.data.type,
+                )
+              )
+                (window as any).__judgeRender.push(event.data);
+            });
+        }
+      };
+    });
+  const a = await aContext.newPage(),
+    b = await bContext.newPage();
+  let held = false,
+    released = false;
+  // Delay an ordered middle burst for one second, preserving message order.
+  await b.routeWebSocket("**/socket/judge", (ws) => {
+    const server = ws.connectToServer();
+    const queue: (string | Buffer)[] = [];
+    server.onMessage((message) => {
+      const pcm = typeof message !== "string" && message[0] === 2;
+      if (!released && pcm && message.readUInt32LE(5) >= 45) {
+        queue.push(message);
+        if (!held) {
+          held = true;
+          setTimeout(() => {
+            released = true;
+            for (const packet of queue) ws.send(packet);
+            queue.length = 0;
+          }, 1000);
+        }
+      } else if (held && !released) queue.push(message);
+      else ws.send(message);
+    });
+  });
+  try {
+    const code = await enter(a, b, baseURL!);
+    const response = await request.post("/__test/voice/" + code);
+    expect(response.ok()).toBe(true);
+    const { epoch, samples } = await response.json();
+    await expect(
+      a.getByText("Every last syllable gets its day in court. Case closed."),
+    ).toBeVisible();
+    await expect
+      .poll(async () => (await snapshot(request, code)).judge?.status)
+      .toBe("speaking");
+    await expect(
+      a.getByRole("button", { name: "Mic on", exact: true }),
+    ).toBeEnabled();
+    await expect(
+      b.getByRole("button", { name: "Mic on", exact: true }),
+    ).toBeEnabled();
+    await expect(a.locator(".caption-heading .caption-status")).toHaveText(
+      "Speaking",
+    );
+    await expect(a.locator(".turn-label")).toHaveCount(0);
+    await a.getByRole("button", { name: "Audio", exact: true }).click();
+    // Bonk mute is gain-only: completion must still account for the full utterance.
+    const bonkControl = a.getByRole("button", { name: /Bonk/ });
+    await expect(bonkControl).toBeVisible();
+    await bonkControl.click();
+    await a.keyboard.press("Escape");
+    await expect
+      .poll(async () => (await snapshot(request, code)).judge?.status, {
+        timeout: 20000,
+      })
+      .toBe("silent");
+    for (const page of [a, b]) {
+      const events = await page.evaluate(() => (window as any).__judgeRender);
+      expect(
+        events
+          .filter((e: any) => e.epoch === epoch && e.type === "drained")
+          .map((e: any) => e.samples),
+      ).toEqual([samples]);
+    }
+    const timeline = await (
+      await request.post("/__test/timeline/" + code)
+    ).json();
+    const complete = timeline.filter(
+      (e: any) => e.stage === "render_complete" && e.speechEpoch === epoch,
+    );
+    expect(complete).toHaveLength(2);
+    expect(complete.every((e: any) => e.samples === samples)).toBe(true);
+    expect((await snapshot(request, code)).degraded.tts).toBe(false);
+    expect(
+      await b.evaluate(() =>
+        (window as any).__judgeRender.some((e: any) => e.type === "buffering"),
+      ),
+    ).toBe(true);
+    await info.attach("audio-timeline", {
+      body: Buffer.from(JSON.stringify(timeline)),
+      contentType: "application/json",
+    });
+    // A separate judge channel repairs without pausing friends or restarting devices.
+    const next = await (await request.post("/__test/voice/" + code)).json();
+    await expect
+      .poll(async () => (await snapshot(request, code)).judge?.status)
+      .toBe("speaking");
+    await b.waitForTimeout(500);
+    await b.evaluate(() => (window as any).__judgeSockets.at(-1).close());
+    await expect
+      .poll(async () => (await snapshot(request, code)).judge?.epoch)
+      .toBeGreaterThan(next.epoch);
+    expect((await snapshot(request, code)).phase).toBe("LOBBY");
+    await expect
+      .poll(async () => (await snapshot(request, code)).judge?.status, {
+        timeout: 20000,
+      })
+      .toBe("silent");
+    expect((await snapshot(request, code)).degraded.tts).toBe(false);
+    const repaired = await (
+      await request.post("/__test/timeline/" + code)
+    ).json();
+    const completed = repaired.filter(
+      (e: any) => e.stage === "render_complete" && e.speechEpoch > next.epoch,
+    );
+    expect(completed).toHaveLength(2);
+    expect(completed.every((e: any) => e.samples === next.samples)).toBe(true);
+    for (const [page, expectedFrequency] of [
+      [a, 550],
+      [b, 330],
+    ] as const) {
+      const conversation = await page.evaluate(
+        () => (window as any).__conversation,
+      );
+      const diagnostics = await page.evaluate(async () => ({
+        microphone: (window as any).__micFrames,
+        received: (window as any).__receivedFrames,
+        gain: (window as any).__friendOutput.gain.gain.value,
+        context: (window as any).__friendOutput.context.state,
+        peers: await Promise.all(
+          (window as any).__peers.map(async (pc: RTCPeerConnection) => ({
+            state: pc.connectionState,
+            transceivers: pc.getTransceivers().map((t) => ({
+              kind: t.receiver.track.kind,
+              mid: t.mid,
+              direction: t.currentDirection,
+              sending: !!t.sender.track,
+            })),
+            senders: pc.getSenders().map((s) => ({
+              kind: s.track?.kind,
+              enabled: s.track?.enabled,
+              muted: s.track?.muted,
+            })),
+            stats: [...(await pc.getStats()).values()].filter(
+              (s) => s.kind === "audio",
+            ),
+          })),
+        ),
+      }));
+      await info.attach(`friend-output-${expectedFrequency}`, {
+        body: Buffer.from(JSON.stringify({ conversation, diagnostics })),
+        contentType: "application/json",
+      });
+      expect(conversation.length).toBeGreaterThan(150);
+      expect(
+        conversation.every((sample: any) => sample.rms > 0.01),
+        JSON.stringify({
+          zero: conversation.filter((s: any) => s.rms <= 0.01).length,
+          samples: conversation.length,
+          min: Math.min(...conversation.map((s: any) => s.rms)),
+          max: Math.max(...conversation.map((s: any) => s.rms)),
+          diagnostics,
+        }),
+      ).toBe(true);
+      expect(
+        conversation.every(
+          (sample: any) => Math.abs(sample.frequency - expectedFrequency) < 45,
+        ),
+      ).toBe(true);
+    }
+  } finally {
+    await aContext.close();
+    await bContext.close();
+    await second?.close();
+  }
 });

@@ -16,6 +16,12 @@ function setup() {
   g.ready(b.id, true);
   time += 8001;
   g.tick();
+  assert.equal(
+    g.state.phase,
+    "INTRO_COIN",
+    "intro waits for playback ownership",
+  );
+  g.selectTopic();
   g.proposeTopic(
     g.state.tailsId!,
     "Waffles are better than pancakes.",
@@ -146,7 +152,7 @@ test("six equal opportunities, alternating opener, reset score, first to two and
   assert.notEqual(g.state.matchId, old);
   assert.equal(g.state.ledger.length, 0);
 });
-test("judge pauses preserve time; resumed speech cancels protected handoff", () => {
+test("judge pauses preserve time; natural pauses never surrender the floor", () => {
   const { g, advance } = setup();
   const t = g.state.turn!;
   advance(4000);
@@ -162,6 +168,8 @@ test("judge pauses preserve time; resumed speech cancels protected handoff", () 
   assert(!t.sealing);
   g.thought(t.playerId);
   advance(8000);
+  assert(!t.sealing);
+  advance(30000);
   assert(t.sealing);
 });
 test("topic requires both confirmations and connection recovery cannot invent winner", () => {
@@ -177,7 +185,7 @@ test("topic requires both confirmations and connection recovery cannot invent wi
   g.ready(a.id, true);
   g.ready(b.id, true);
   time = 8001;
-  g.tick();
+  g.selectTopic();
   time += 45001;
   g.tick();
   assert.equal(g.state.phase, "TOPIC_CONFIRM");
@@ -221,6 +229,8 @@ test("reconnect during judge pause restores clock and timed intro resumes", () =
   advance(5000);
   g.resumeRecovery();
   advance(6001);
+  assert.equal(g.state.phase, "INTRO_COIN");
+  g.selectTopic();
   assert.equal(g.state.phase, "TOPIC_SELECT");
 });
 test("complete score JSON objects stream atomically despite braces and escaped quotes in reasons", async () => {
@@ -230,7 +240,7 @@ test("complete score JSON objects stream atomically despite braces and escaped q
   assert.equal(completeScoreObjects(text).length, 1);
   assert.equal(completeScoreObjects('{"jobId":"job"').length, 0);
 });
-test("floor granted during judge speech starts paused and resumes full remaining time", () => {
+test("settlement cannot advance a floor until judge playback finishes", () => {
   const { g, advance } = setup();
   const t = g.state.turn!;
   g.state.judge = {
@@ -244,9 +254,11 @@ test("floor granted during judge speech starts paused and resumes full remaining
   };
   g.endTurn(t.playerId, t.id);
   advance(3001);
-  assert.equal(g.state.turn!.pausedReason, "judge");
+  assert.equal(g.state.turn!.id, t.id);
+  assert(t.sealing);
   advance(2000);
-  assert.equal(g.remaining(), 30000);
-  g.resume("judge");
+  g.silenceJudge(1);
+  g.tick();
+  assert.notEqual(g.state.turn!.id, t.id);
   assert.equal(g.remaining(), 30000);
 });

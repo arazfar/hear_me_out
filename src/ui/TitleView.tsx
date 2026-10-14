@@ -58,7 +58,6 @@ export function TitleView({
               autoComplete="nickname"
               value={name}
               maxLength={20}
-              placeholder="What’s your name?"
               onChange={(e) => setName(e.target.value)}
               required
             />
@@ -89,7 +88,13 @@ export function TitleView({
               className="primary"
               disabled={busy || !name.trim() || (joining && code.length !== 4)}
             >
-              {busy ? "Opening court…" : joining ? "Join room" : "Create room"}
+              {busy
+                ? joining
+                  ? "Joining room…"
+                  : "Creating room…"
+                : joining
+                  ? "Join room"
+                  : "Create room"}
               <Icon name="arrow" />
             </button>
             <button

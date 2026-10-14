@@ -1,14 +1,10 @@
-import {
-  decodeJudgeAudio,
-  decodeMicrophone,
-  decodeVideo,
-} from "../../shared/media";
+import { decodeMicrophone, decodeVideo } from "../../shared/media";
 import {
   PROTOCOL_VERSION,
   serverMessageSchema,
   type Session,
 } from "../../shared/protocol";
-import { canSpeak, type Snapshot } from "../../shared/domain";
+import { type Snapshot } from "../../shared/domain";
 import { type Command, type GameEvent } from "../../shared/protocol";
 import { Connection } from "./connection";
 import { DeviceSetup } from "./setup";
@@ -54,7 +50,9 @@ export class Client {
   get reconnecting() {
     return this.connection.blocked;
   }
+  private judgeRetry: ReturnType<typeof setTimeout> | undefined;
   closeTransport() {
+    clearTimeout(this.judgeRetry);
     const sockets = [...this.sockets.values()];
     this.sockets.clear();
     for (const socket of sockets) socket.close();
@@ -221,6 +219,7 @@ export class Client {
       };
       ws.onerror = () => {};
     }
+    this.connectJudge();
     if (this.pingTimer) clearInterval(this.pingTimer);
     this.pingTimer = setInterval(
       () => this.send({ type: "ping", clientTime: performance.now() }),
@@ -228,6 +227,61 @@ export class Client {
     );
     if (this.statusTimer) clearInterval(this.statusTimer);
     this.statusTimer = setInterval(() => void this.reportHealth(), 1000);
+  }
+  private connectJudge(attempt = 0) {
+    const session = this.session;
+    if (!session || this.sockets.has("judge")) return;
+    const ws = new WebSocket(
+      `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/socket/judge`,
+    );
+    ws.binaryType = "arraybuffer";
+    this.sockets.set("judge", ws);
+    const current = () =>
+      this.session === session && this.sockets.get("judge") === ws;
+    const deadline = setTimeout(() => {
+      if (current()) ws.close();
+    }, 10000);
+    let received = false;
+    ws.onopen = () => {
+      clearTimeout(deadline);
+      if (!current()) return ws.close();
+      ws.send(
+        JSON.stringify({
+          type: "auth",
+          protocolVersion: PROTOCOL_VERSION,
+          ...session,
+          code: undefined,
+        }),
+      );
+      this.playback.resetJudgePlayback();
+    };
+    ws.onmessage = (event) => {
+      if (!current()) return;
+      if (typeof event.data === "string") this.message(JSON.parse(event.data));
+      else {
+        received = true;
+        this.playback.receive(event.data);
+      }
+    };
+    ws.onclose = (event) => {
+      clearTimeout(deadline);
+      if (!current()) return;
+      this.sockets.delete("judge");
+      this.playback.stopJudge();
+      if (event.code === 4406) {
+        this.notify({
+          error: "The game was updated. Refresh this page to continue.",
+        });
+        return;
+      }
+      // Repair this channel alone. Healthy microphones, cameras and friend chat stay mounted.
+      const retry = received ? 0 : attempt;
+      this.judgeRetry = setTimeout(
+        () => this.connectJudge(retry + 1),
+        retry < 3 ? 250 * 2 ** retry : 10000,
+      );
+    };
+    ws.onerror = () => {};
   }
   reporting = false;
   async reportHealth() {
@@ -344,7 +398,23 @@ export class Client {
       return;
     }
     if (data.type === "activity") {
-      this.notify({ activity: data });
+      // Local capture and RTC receiving own their meters. A delayed server
+      // observation must not overwrite them or light up explicitly muted audio.
+      if (
+        data.playerId !== this.session?.playerId &&
+        this.state?.mediaMode !== "rtc"
+      )
+        this.notify({
+          activity: {
+            ...data,
+            level:
+              this.sound.peerMuted ||
+              this.capture.privateCheck() ||
+              this.sound.context?.state !== "running"
+                ? 0
+                : data.level,
+          },
+        });
       return;
     }
     if (data.type === "signal") {
@@ -393,11 +463,6 @@ export class Client {
         this.video.videoInFlight.clear();
         this.peer.remote = null;
       }
-      const wasPeerAllowed = canSpeak(
-        this.state,
-        this.state?.players.find((p) => p.id !== this.session?.playerId)?.id ||
-          null,
-      );
       const previousMode = this.state?.mediaMode;
       this.state = data.snapshot;
       this.connection.observe(data.snapshot);
@@ -410,27 +475,7 @@ export class Client {
       this.peer.makePeer();
       this.capture.syncMicrophone();
       this.playback.updateSpeech();
-      this.sound.peerGain?.gain.setTargetAtTime(
-        this.sound.peerMuted ||
-          !canSpeak(
-            this.state,
-            this.state?.players.find((p) => p.id !== this.session?.playerId)
-              ?.id || null,
-          )
-          ? 0
-          : 1,
-        this.sound.context!.currentTime,
-        0.01,
-      );
-      if (
-        wasPeerAllowed !==
-        canSpeak(
-          this.state,
-          this.state?.players.find((p) => p.id !== this.session?.playerId)
-            ?.id || null,
-        )
-      )
-        this.sound.peerPlayback?.port.postMessage({ type: "flush" });
+      this.sound.syncPeerPrivacy();
       this.notify({
         state: data.snapshot,
         event: "seq" in data ? data : undefined,
@@ -452,11 +497,10 @@ export class Client {
       if (
         !packet ||
         packet.epoch !== this.state?.mediaEpoch ||
-        !canSpeak(
-          this.state,
-          this.state?.players.find((p) => p.id !== this.session?.playerId)
-            ?.id || null,
-        ) ||
+        this.capture.privateCheck() ||
+        packet.purpose === "private" ||
+        packet.purpose === "health" ||
+        packet.end ||
         this.serverNow() - packet.capturedAt > 250
       )
         return;
@@ -466,35 +510,9 @@ export class Client {
       this.sound.peerPlayback?.port.postMessage({ pcm: floats.buffer }, [
         floats.buffer,
       ]);
-    } else if (bytes[0] === 2) {
-      const packet = decodeJudgeAudio(bytes),
-        judge = this.state?.judge;
-      if (
-        !packet ||
-        (judge &&
-          (packet.epoch < judge.epoch ||
-            packet.epoch > judge.epoch + 4 ||
-            (packet.epoch === judge.epoch && judge.status === "silent"))) ||
-        this.playback.cancelled.has(packet.epoch)
-      )
-        return;
-      if (
-        !this.playback.judgeChunks.has(packet.epoch) &&
-        this.playback.judgeChunks.size >= 2
-      )
-        return;
-      const chunks = this.playback.judgeChunks.get(packet.epoch) || [];
-      if (
-        chunks.some((c) => c.offset === packet.offset) ||
-        chunks.reduce((n, c) => n + c.pcm.length, 0) + packet.pcm.length >
-          44100 * 8
-      )
-        return;
-      chunks.push({ offset: packet.offset, pcm: packet.pcm });
-      this.playback.judgeChunks.set(packet.epoch, chunks);
-      this.playback.updateSpeech();
     }
   }
+
   leave() {
     const departure = this.connection.departure();
     this.setup.cancel();

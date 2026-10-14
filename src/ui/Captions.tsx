@@ -1,10 +1,18 @@
 import type { Snapshot } from "../../shared/domain";
+import { client } from "../game/client";
+import { useMediaVersion } from "./hooks";
 import { Icon } from "./Icon";
+import { speakingState } from "./presentation";
 export function Captions({ state }: { state: Snapshot }) {
+  useMediaVersion();
   const judge =
     state.judge && state.judge.status !== "silent" ? state.judge : null;
   const speaker = state.players.find((p) => p.id === state.turn?.playerId);
   const caption = speaker && state.captions[speaker.id];
+  const status = speakingState(state, client.session?.playerId, {
+    finished: client.playback.finished,
+    rendering: client.playback.rendering,
+  });
   return (
     <section
       className={"caption-zone " + (judge ? "judge-speaking" : "")}
@@ -12,14 +20,24 @@ export function Captions({ state }: { state: Snapshot }) {
     >
       {judge ? (
         <div className="judge-caption">
-          <span className="caption-speaker">
-            <Icon name="gavel" />
-            Bonk
-          </span>
+          <div className="caption-heading">
+            <span className="caption-speaker">
+              <Icon name="gavel" />
+              Bonk
+            </span>
+            {state.phase !== "ROUND" && (
+              <span className="caption-status">
+                {status.kind === "captions"
+                  ? "Captions only"
+                  : client.playback.finished
+                    ? "Finishing line…"
+                    : status.kind === "judge" && client.playback.rendering
+                      ? "Speaking"
+                      : "Getting ready…"}
+              </span>
+            )}
+          </div>
           <p aria-live="polite">{judge.text}</p>
-          {state.degraded.tts && (
-            <span className="caption-status">Captions only</span>
-          )}
         </div>
       ) : state.phase === "ROUND" && caption?.text ? (
         <div className="player-caption">
@@ -30,9 +48,7 @@ export function Captions({ state }: { state: Snapshot }) {
           >
             {speaker?.name}
           </span>
-          <p aria-live={caption.final ? "polite" : "off"}>
-            {caption.text.slice(-400)}
-          </p>
+          <p aria-live={caption.final ? "polite" : "off"}>{caption.text}</p>
         </div>
       ) : null}
     </section>

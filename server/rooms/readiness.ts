@@ -18,6 +18,7 @@ type Health = {
   passed: boolean;
   setup: "needed" | "checking" | "passed" | "failed";
   checkId: string;
+  inputEpoch: number;
   checkDeadline: number;
   listened: boolean;
   result?: Extract<ServerMessage, { type: "setup_result" }>;
@@ -47,6 +48,7 @@ export class Readiness {
         passed: false,
         setup: "needed",
         checkId: "",
+        inputEpoch: 0,
         checkDeadline: 0,
         listened: false,
         listening: false,
@@ -178,6 +180,7 @@ export class Readiness {
     this.cancel(id);
     r.attempts.push(now);
     r.checkId = checkId;
+    r.inputEpoch = this.room.turnCoordinator.nextEpoch();
     r.setup = "checking";
     r.passed = false;
     r.heard = r.listening = r.listened = false;
@@ -213,6 +216,7 @@ export class Readiness {
     r.result = {
       type: "setup_result",
       checkId: r.checkId,
+      inputEpoch: r.inputEpoch,
       status,
       text: text.slice(0, 300),
     };
@@ -259,6 +263,7 @@ export class Readiness {
     this.room.transcription.retries.delete(id);
     r.checkDeadline = 0;
     this.result(id, "passed", text.trim());
+    this.room.transcription.stopCheck(id);
     this.tick();
   }
   failed(
@@ -311,7 +316,13 @@ export class Readiness {
       if (!mic) blockers.push("microphone");
       if (!camera) blockers.push("camera");
       if (!r.passed) blockers.push("speech_check");
-      if (!provider && !sealing) blockers.push("transcription");
+      if (
+        !provider &&
+        !sealing &&
+        game.state.turn?.playerId === p.id &&
+        game.state.turn.inputState === "open"
+      )
+        blockers.push("transcription");
       if (now - r.probeAt >= 3000) blockers.push("camera_delivery");
       if (game.state.mediaMode === "rtc" && o?.rtcFailed)
         blockers.push("peer_video");
@@ -376,7 +387,6 @@ export class Readiness {
       ) {
         // Connect the replacement gameplay session before publishing an open floor.
         this.room.transcription.rotate(turn.playerId, turn.id);
-        return;
       }
       if (game.state.phase === "RECOVERING") game.resumeRecovery();
       else if (game.pendingResume) game.resume(game.pendingResume);

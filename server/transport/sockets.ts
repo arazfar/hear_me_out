@@ -206,12 +206,36 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
             return;
           }
           if (data.type === "playback_metric") {
+            const speech = room.playback.speech;
+            if (
+              !speech ||
+              speech.id !== data.utteranceId ||
+              speech.epoch !== data.speechEpoch ||
+              speech.connections.get(id) !== seat.epoch
+            )
+              return;
+            room.trace("first_render_metric", {
+              playerId: id,
+              speechEpoch: data.speechEpoch,
+              connectionEpoch: seat.epoch,
+              mediaMode: room.game.state.mediaMode,
+              prepared:
+                room.playback.speechCues.get(data.speechEpoch)?.prepared ||
+                false,
+              latencyMs: data.latencyMs,
+              cueToRenderMs: data.cueToPlaybackMs,
+              doneToRenderMs: data.turnDoneToPlaybackMs,
+            });
             if (
               typeof data.latencyMs === "number" &&
               data.latencyMs >= 0 &&
               data.latencyMs < 30000
             )
               room.recordMetric("playbackMs", data.latencyMs);
+            if (data.cueToPlaybackMs !== undefined)
+              room.recordMetric("cueToRenderMs", data.cueToPlaybackMs);
+            if (data.turnDoneToPlaybackMs !== undefined)
+              room.recordMetric("doneToRenderMs", data.turnDoneToPlaybackMs);
             return;
           }
           return;
@@ -221,7 +245,7 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
           ws.send(JSON.stringify(seat.acks.get(envelope.commandId)));
           return;
         }
-        if (!rate(`control:${id}`, 10, 1000))
+        if (!rate(`control:${id}`, 24, 1000))
           throw new RuleError("Slow down a little.");
         const pending = {
           type: "ack",
@@ -270,6 +294,7 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
       const seat = room.seats.get(id)!;
       if (seat.epoch !== epoch || seat.sockets.get(channel) !== ws) return;
       seat.sockets.delete(channel);
+      if (channel === "judge") room.playback.voiceFailure(true);
       if (channel === "control" || channel === "audio" || channel === "video")
         room.disconnect(id);
     });

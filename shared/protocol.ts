@@ -4,7 +4,7 @@ import {
   scoreEventSchema,
   snapshotSchema,
 } from "./domain.js";
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 4;
 export const commandEnvelopeSchema = z
   .object({
     commandId: z.string().max(80),
@@ -75,6 +75,16 @@ export const commandEnvelopeSchema = z
           type: z.literal("audio_ready"),
           utteranceId: z.string(),
           speechEpoch: z.number().int(),
+          rttMs: z.number().min(0).max(2000).optional(),
+        })
+        .strict(),
+      z
+        .object({
+          type: z.literal("audio_playback"),
+          utteranceId: z.string().max(100),
+          speechEpoch: z.number().int().nonnegative(),
+          status: z.enum(["progress", "complete", "failed"]),
+          samples: z.number().int().min(0).max(882000),
         })
         .strict(),
       z.object({ type: z.literal("rematch"), value: z.boolean() }).strict(),
@@ -139,6 +149,8 @@ export const auxiliarySchema = z.union([
   z
     .object({
       type: z.literal("playback_metric"),
+      utteranceId: z.string().min(1).max(80),
+      speechEpoch: z.number().int().nonnegative(),
       latencyMs: z.number().min(0).max(30000),
       cueToPlaybackMs: z.number().min(0).max(60000).optional(),
       turnDoneToPlaybackMs: z.number().min(0).max(60000).optional(),
@@ -166,11 +178,14 @@ export const eventPayloads = {
   match_result: z.null(),
   rematch_changed: z.null(),
   reconnected: z.null(),
+  input_granted: z.object({ turnId: id, playerId: id, inputEpoch: uint }),
+  floor_opened: z.object({ turnId: id, playerId: id, inputEpoch: uint }),
   floor_granted: z.object({ turnId: id, playerId: id }),
   turn_sealed: z.object({
     turnId: id,
     playerId: id,
     lastAudioSeq: z.number().int().min(-1),
+    capturedBefore: z.number().finite(),
   }),
   comeback_window: z.object({ playerId: id, deficitUnits: uint }),
   score_committed: scoreEventSchema,
@@ -231,6 +246,8 @@ export const gameEventSchema = z.union([
   event("rematch_changed"),
   event("reconnected"),
   event("floor_granted"),
+  event("input_granted"),
+  event("floor_opened"),
   event("turn_sealed"),
   event("comeback_window"),
   event("score_committed"),
@@ -247,6 +264,7 @@ export const serverMessageSchema = z.union([
     type: z.literal("setup_result"),
     checkId: id,
     status: z.enum(["listening", "passed", "failed"]),
+    inputEpoch: uint.optional(),
     text: z.string().max(300),
   }),
   gameEventSchema,

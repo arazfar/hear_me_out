@@ -100,9 +100,9 @@ export class Connection {
     if (
       attempt.authenticated &&
       this.client.clock.synced &&
-      this.client.sockets.size === 3 &&
-      [...this.client.sockets.values()].every(
-        (s) => s.readyState === WebSocket.OPEN,
+      ["control", "audio", "video"].every(
+        (channel) =>
+          this.client.sockets.get(channel)?.readyState === WebSocket.OPEN,
       )
     )
       attempt.ready?.();

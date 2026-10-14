@@ -9,16 +9,13 @@ await streamVoice(
   12,
 );
 const bytes = Buffer.concat(chunks),
-  floats = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.length / 4),
+  floats = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.length / 2),
   pcm = Buffer.alloc(Math.floor((floats.length * 16000) / 44100) * 2);
 for (let i = 0; i < pcm.length / 2; i++)
   pcm.writeInt16LE(
     Math.max(
       -32768,
-      Math.min(
-        32767,
-        Math.round(floats[Math.floor((i * 44100) / 16000)] * 32767),
-      ),
+      Math.min(32767, Math.round(floats[Math.floor((i * 44100) / 16000)])),
     ),
     i * 2,
   );

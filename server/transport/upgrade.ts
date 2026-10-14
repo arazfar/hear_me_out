@@ -8,9 +8,12 @@ export function acceptUpgrade(
     if (!host || !url?.startsWith("/")) return false;
     const parsed = new URL(url, "http://localhost");
     if (
-      !["/socket/control", "/socket/audio", "/socket/video"].includes(
-        parsed.pathname,
-      ) ||
+      ![
+        "/socket/control",
+        "/socket/audio",
+        "/socket/video",
+        "/socket/judge",
+      ].includes(parsed.pathname) ||
       parsed.search
     )
       return false;

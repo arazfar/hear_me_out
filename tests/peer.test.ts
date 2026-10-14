@@ -7,7 +7,6 @@ test("RTC detaches private test audio without muting or stopping its capture sou
   const client = new Client();
   const source = { enabled: true, readyState: "live" } as MediaStreamTrack;
   client.capture.stream = { getAudioTracks: () => [source] } as MediaStream;
-  client.capture.microphoneAllowed = () => true;
   const sent: (MediaStreamTrack | null)[] = [];
   client.peer.audioSender = {
     replaceTrack: async (track: MediaStreamTrack | null) => {
@@ -47,6 +46,12 @@ test("remote video and audio follow live receivers after an offer rollback", asy
     let connects = 0,
       disconnects = 0;
     client.sound.context = {
+      createAnalyser: () => ({
+        fftSize: 256,
+        connect: () => connects++,
+        disconnect: () => {},
+        getFloatTimeDomainData: () => {},
+      }),
       createMediaStreamSource: () => ({
         connect: () => connects++,
         disconnect: () => disconnects++,
@@ -73,7 +78,7 @@ test("remote video and audio follow live receivers after an offer rollback", asy
     await client.peer.sample();
     assert.equal(
       connects,
-      1,
+      2,
       "health sampling must not reconnect healthy audio",
     );
     Object.assign(current[0], { muted: true });

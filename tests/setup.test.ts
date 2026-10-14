@@ -46,7 +46,17 @@ function captureFixture(t: TestContext) {
     }
   }
   class Node {
-    port = { onmessage: null };
+    port = {
+      onmessage: null as ((event: any) => void) | null,
+      postMessage: (data: any) => {
+        if (data.requestId)
+          queueMicrotask(() =>
+            this.port.onmessage?.({
+              data: { type: "isolated", requestId: data.requestId },
+            }),
+          );
+      },
+    };
     gain = { value: 0 };
     connect() {
       return this;
@@ -68,6 +78,7 @@ function captureFixture(t: TestContext) {
   client.sound.unlock = async () => {};
   client.sound.context = Object.assign(new EventTarget(), {
     state: "running",
+    currentTime: 0,
     resume: async () => {},
     audioWorklet: {
       addModule: () => {
@@ -448,11 +459,20 @@ test("commit uses the latest privacy intent after worklet loading", async (t) =>
     send: (data: Uint8Array) => sent.push(data),
   } as unknown as WebSocket);
   f.client.capture.worklet!.port.onmessage!({
-    data: { pcm: new Int16Array([1234, 5678]).buffer, level: 1 },
+    data: {
+      type: "pcm",
+      mediaEpoch: 0,
+      purpose: "private",
+      inputEpoch: 1,
+      capturedAt: Date.now(),
+      pcm: new Int16Array([1234, 5678]).buffer,
+      level: 1,
+    },
   } as MessageEvent);
   assert.equal(sent.length, 1);
   const { decodeMicrophone } = await import("../shared/media");
   assert(decodeMicrophone(sent[0])!.pcm.every((byte) => byte === 0));
+  f.client.setup.listening = false;
   const rtc: (MediaStreamTrack | null)[] = [];
   f.client.peer.audioSender = {
     replaceTrack: async (track: MediaStreamTrack | null) => {

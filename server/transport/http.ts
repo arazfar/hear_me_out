@@ -1,4 +1,5 @@
 import express from "express";
+import { iceConfiguration } from "./ice.js";
 import { randomInt } from "node:crypto";
 import { z } from "zod";
 import { PROTOCOL_VERSION } from "../../shared/protocol.js";
@@ -38,6 +39,37 @@ export function registerHttp(app: express.Express, registry: RoomRegistry) {
       })),
     }),
   );
+  app.post("/api/ice", (req, res) => {
+    try {
+      const { roomId, playerId, token, connectionEpoch } = req.body;
+      const { seat } = authenticate(roomId, playerId, token);
+      if (seat.epoch !== connectionEpoch || !rate(`ice:${playerId}`, 12, 60000))
+        throw new RuleError("ICE request expired.");
+      res.setHeader("Cache-Control", "no-store");
+      res.json(iceConfiguration(`${roomId}:${playerId}:${connectionEpoch}`));
+    } catch {
+      res.status(401).json({ error: "This seat is no longer active." });
+    }
+  });
+  app.post("/api/diagnostics", (req, res) => {
+    try {
+      const { roomId, playerId, token, connectionEpoch } = req.body;
+      const { room, seat } = authenticate(roomId, playerId, token);
+      if (
+        seat.epoch !== connectionEpoch ||
+        !rate(`diagnostics:${playerId}`, 12, 60000)
+      )
+        throw new RuleError("Diagnostic request expired.");
+      res.setHeader("Cache-Control", "no-store");
+      res.json({
+        protocolVersion: PROTOCOL_VERSION,
+        metrics: room.metrics,
+        timeline: room.timeline,
+      });
+    } catch {
+      res.status(401).json({ error: "This seat is no longer active." });
+    }
+  });
   app.post("/api/rooms", (req, res) => {
     try {
       if (!rate(`create:${req.ip}`, 3, 60000)) {

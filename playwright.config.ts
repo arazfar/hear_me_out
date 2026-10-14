@@ -38,12 +38,27 @@ export default defineConfig({
       use: { channel: "chrome", baseURL: "http://127.0.0.1:3102" },
     },
     {
+      name: "phone-relay",
+      grep: /two players|phone layouts/,
+      use: { channel: "chrome", baseURL: "http://127.0.0.1:3103" },
+    },
+    {
       name: "webkit",
       grep: /two players|phone layouts/,
       use: {
         browserName: "webkit",
         channel: undefined,
         baseURL: "http://127.0.0.1:3102",
+        launchOptions: { args: [] },
+      },
+    },
+    {
+      name: "webkit-relay",
+      grep: /two players|phone layouts/,
+      use: {
+        browserName: "webkit",
+        channel: undefined,
+        baseURL: "http://127.0.0.1:3103",
         launchOptions: { args: [] },
       },
     },
