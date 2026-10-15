@@ -219,6 +219,9 @@ test("two players complete a scored match, recover media, and rematch", async ({
   const tails =
     state.players.find((p) => p.id === state.tailsId)?.name === "Alex" ? a : b;
   await tails.getByRole("button", { name: "Is a hot dog a sandwich?" }).click();
+  await tails
+    .getByRole("button", { name: "It is a sandwich", exact: true })
+    .click();
   await expect(
     a.getByRole("button", { name: "Confirm my side" }),
   ).toBeVisible();
@@ -309,9 +312,7 @@ test("two players complete a scored match, recover media, and rematch", async ({
       for (const page of [speaker, listener]) {
         const label = `${page === speaker ? "Your" : name + "’s"} ${s.turn!.kind}`;
         await expect(page.locator(".turn-label")).toHaveText(label);
-        await expect(page.locator(".listening-badge")).toHaveText(
-          "Bonk is listening",
-        );
+        await expect(page.locator(".listening-badge")).toHaveText("Listening");
         await expect(
           page.locator(".turn-label[aria-live], .turn-label[role=status]"),
         ).toHaveCount(0);
@@ -761,15 +762,15 @@ test("visual matrix, accessibility, error and fallback states", async ({
     turn: { ...turn(), deadline: null, pausedReason: "judging", sealing: true },
     judgePending: true,
   });
-  await expect(a.locator(".turn-label")).toHaveText("Finishing Alex’s turn…");
+  await expect(a.locator(".turn-label")).toHaveText("Finishing Alex’s words…");
   await expect(a.locator('.app > [aria-live="polite"]')).toHaveText(
-    "Round 1. Finishing Alex’s turn…",
+    "Round 1. Finishing Alex’s words…",
   );
   await expect(
     a.getByRole("button", { name: "I’m done", exact: true }),
   ).toHaveCount(0);
   await shot(a, "sealing-1280");
-  await expect(a.locator(".turn-label")).toHaveText("Finishing Alex’s turn…");
+  await expect(a.locator(".turn-label")).toHaveText("Finishing Alex’s words…");
   expect((await snapshot(request, code)).phase).toBe("ROUND");
 
   const results = [
@@ -1028,9 +1029,7 @@ test("phone layouts preserve full captions, user wording and a single status own
       "Waiting for Sam to confirm.",
     );
     await expect(a.locator(".player-status")).toHaveText("Confirmed");
-    await expect(
-      a.getByRole("button", { name: "Confirm my side" }),
-    ).toBeDisabled();
+    await expect(a.getByRole("button", { name: "Confirmed" })).toBeDisabled();
     await shot(a, "simple-confirmed-" + info.project.name);
     const transcript =
       'FIRST WORDS: I said "soup?!", not SOUP.\n' +
@@ -1058,7 +1057,7 @@ test("phone layouts preserve full captions, user wording and a single status own
       );
       await expect(a.locator(".turn-label")).toHaveText("Your rebuttal");
       await expect(b.locator(".turn-label")).toHaveText("Alex’s rebuttal");
-      await expect(a.locator(".player-status")).toHaveText("Bonk is listening");
+      await expect(a.locator(".player-status")).toHaveText("Listening");
       await expect(
         a.locator(".turn-label[aria-live], .turn-label[role=status]"),
       ).toHaveCount(0);
@@ -1311,15 +1310,21 @@ test("fresh awards animate once, restore silently, and honor reduced motion", as
     await page.addInitScript(() => {
       const w = window as unknown as { awards: string[] };
       w.awards = [];
-      const seen = new Set<Element>();
+      const seen = new Set<string>();
       new MutationObserver(() => {
         document.querySelectorAll("[data-award-id]").forEach((node) => {
-          if (!seen.has(node)) {
-            seen.add(node);
-            w.awards.push(node.getAttribute("data-award-id")!);
-          }
+          for (const id of node.getAttribute("data-award-ids")!.split(" "))
+            if (!seen.has(id)) {
+              seen.add(id);
+              w.awards.push(id);
+            }
         });
-      }).observe(document, { childList: true, subtree: true });
+      }).observe(document, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["data-award-ids"],
+      });
     });
   const ids = (page: Page) =>
     page.evaluate(() => (window as unknown as { awards: string[] }).awards);
@@ -1334,6 +1339,9 @@ test("fresh awards animate once, restore silently, and honor reduced motion", as
     state.players.find((p) => p.id === state.tailsId)?.name === "Alex" ? a : b;
   await chooser
     .getByRole("button", { name: "Is a hot dog a sandwich?" })
+    .click();
+  await chooser
+    .getByRole("button", { name: "It is a sandwich", exact: true })
     .click();
   for (const page of [a, b])
     await page.getByRole("button", { name: "Confirm my side" }).click();
@@ -1419,7 +1427,7 @@ test("fresh awards animate once, restore silently, and honor reduced motion", as
   await cb.close();
 });
 
-test("busy scoring queues every notice without collisions in either motion setting", async ({
+test("busy scoring combines gains without collisions in either motion setting", async ({
   browser,
   baseURL,
   request,
@@ -1447,6 +1455,9 @@ test("busy scoring queues every notice without collisions in either motion setti
     state.players.find((p) => p.id === state.tailsId)?.name === "Alex" ? a : b;
   await chooser
     .getByRole("button", { name: "Is a hot dog a sandwich?" })
+    .click();
+  await chooser
+    .getByRole("button", { name: "It is a sandwich", exact: true })
     .click();
   for (const page of [a, b])
     await page.getByRole("button", { name: "Confirm my side" }).click();
@@ -1523,7 +1534,7 @@ test("busy scoring queues every notice without collisions in either motion setti
                 visible[j].dataset.awardId!,
               ]);
           }
-        if (audit.mounts.length === 14 && nodes.length === 0)
+        if (audit.mounts.length && nodes.length === 0)
           audit.firstEmpty ??= performance.now();
         requestAnimationFrame(sample);
       };
@@ -1556,7 +1567,7 @@ test("busy scoring queues every notice without collisions in either motion setti
     ),
   );
   for (const page of [a, b]) {
-    // The 400ms tally must finish while decorative notices still have work queued.
+    // The total settles while the single combined award remains visible.
     await expect
       .poll(() => page.locator(".score-numbers").allTextContents())
       .toEqual(final.players.map((p) => points(p.scoreUnits)));
@@ -1581,15 +1592,16 @@ test("busy scoring queues every notice without collisions in either motion setti
     const audit = await page.evaluate(
       () => (window as unknown as { awardAudit: Audit }).awardAudit,
     );
-    expect(audit.mounts).toEqual(ids);
-    expect(audit.lifetimes).toHaveLength(14);
-    expect(Math.min(...audit.lifetimes)).toBeGreaterThan(820);
-    expect(audit.maxVisible).toBeGreaterThan(1);
-    expect(audit.maxVisible).toBeLessThanOrEqual(5);
-    expect(audit.visibleFrames).toBeGreaterThan(30);
+    expect(audit.mounts).toEqual([ids[0]]);
+    expect(audit.lifetimes).toHaveLength(1);
+    expect(Math.min(...audit.lifetimes)).toBeGreaterThan(700);
+    expect(audit.maxVisible).toBe(1);
+    expect(audit.visibleFrames).toBeGreaterThan(10);
     expect(audit.collisions).toEqual([]);
-    for (const entry of final.ledger)
-      expect(audit.labels[entry.id]).toBe("+" + points(entry.deltaUnits));
+    expect(audit.labels[ids[0]]).toBe(
+      "+" +
+        points(final.ledger.reduce((sum, entry) => sum + entry.deltaUnits, 0)),
+    );
     expect(
       await page
         .locator(".face")
@@ -1611,7 +1623,7 @@ test("busy scoring queues every notice without collisions in either motion setti
           () => (window as unknown as { awardAudit: Audit }).awardAudit,
         )
       ).mounts,
-    ).toEqual(ids);
+    ).toEqual([ids[0]]);
   }
   const video = a.video();
   await ca.close();
@@ -1696,6 +1708,9 @@ test("two players receive decision feedback while a rematch waits for complete p
     await tails
       .getByRole("button", { name: "Is a hot dog a sandwich?" })
       .click();
+    await tails
+      .getByRole("button", { name: "It is a sandwich", exact: true })
+      .click();
     await expect(announcement(a)).toHaveText("Confirm your side.");
     await expect(announcement(b)).toHaveText("Confirm your side.");
     for (const page of [a, b])
@@ -1718,9 +1733,7 @@ test("two players receive decision feedback while a rematch waits for complete p
     await expect(announcement(b)).toHaveText(
       "Alex confirmed. Confirm your side.",
     );
-    await expect(
-      a.getByRole("button", { name: "Confirm my side" }),
-    ).toBeDisabled();
+    await expect(a.getByRole("button", { name: "Confirmed" })).toBeDisabled();
     // macOS WebKit's default Tab mode skips buttons, including enabled ones.
     // Option-Tab follows all controls without changing the app's focus behavior.
     await a.keyboard.press(
@@ -1788,7 +1801,7 @@ test("two players receive decision feedback while a rematch waits for complete p
     const voice = await request.post("/__test/voice/" + code);
     expect(voice.ok()).toBe(true);
     const { epoch, samples } = await voice.json();
-    await expect(a.locator(".caption-status")).toHaveText("Speaking");
+    await expect(a.locator(".caption-status")).toHaveText("Sound off");
     for (const page of [a, b]) {
       coins.get(page)!.length = 0;
       await page.evaluate(() => ((window as any).__decisionAnnouncements = []));

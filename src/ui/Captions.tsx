@@ -25,15 +25,17 @@ export function Captions({ state }: { state: Snapshot }) {
               <Icon name="gavel" />
               Bonk
             </span>
-            {state.phase !== "ROUND" && (
+            {(state.phase !== "ROUND" || client.sound.judgeMuted) && (
               <span className="caption-status">
                 {status.kind === "captions"
                   ? "Captions only"
-                  : client.playback.finished
-                    ? "Finishing line…"
-                    : status.kind === "judge" && client.playback.rendering
-                      ? "Speaking"
-                      : "Getting ready…"}
+                  : client.sound.judgeMuted
+                    ? "Sound off"
+                    : client.playback.finished
+                      ? "Finishing line…"
+                      : status.kind === "judge" && client.playback.rendering
+                        ? "Speaking"
+                        : "Getting ready…"}
               </span>
             )}
           </div>

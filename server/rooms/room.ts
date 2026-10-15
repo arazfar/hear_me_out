@@ -128,6 +128,8 @@ export class RoomController {
         segmentId: event.payload.segmentId,
       });
     this.broadcast(event);
+    if (event.type === "phase_changed")
+      this.playback.discardSupersededHostCue();
     if (
       event.type === "phase_changed" &&
       ["RECOVERING", "ABORTED"].includes(this.game.state.phase)

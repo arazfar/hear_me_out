@@ -7,14 +7,11 @@ import {
 } from "../../shared/domain";
 import { client } from "../game/client";
 import { AnimatedScore } from "./AnimatedScore";
+import { ScoreBurst } from "./ScoreBurst";
 import { Icon } from "./Icon";
 import { useMediaVersion } from "./hooks";
 import { playerStatus } from "./presentation";
-import {
-  AwardQueue,
-  awardCapacity,
-  type AwardNotice,
-} from "../game/award-queue";
+import { AwardQueue, type AwardNotice } from "../game/award-queue";
 
 export function PlayerCard({
   player,
@@ -32,20 +29,9 @@ export function PlayerCard({
   const video = useRef<HTMLVideoElement>(null),
     relayCanvas = useRef<HTMLCanvasElement>(null),
     activity = useRef<HTMLSpanElement>(null);
-  const [presentation, setPresentation] = useState<{
-    notices: AwardNotice[];
-    slots: number;
-    fontSize: number;
-  }>({ notices: [], slots: 1, fontSize: 23 });
+  const [award, setAward] = useState<AwardNotice | null>(null);
   const [winPulse, setWinPulse] = useState(false);
   const [announcement, setAnnouncement] = useState("");
-  const scoreWrap = useRef<HTMLDivElement>(null),
-    awardLayer = useRef<HTMLDivElement>(null),
-    quiet = useRef(reduced);
-  quiet.current = reduced;
-  useEffect(() => {
-    if (reduced) scoreWrap.current?.getAnimations().forEach((a) => a.cancel());
-  }, [reduced]);
   const version = useMediaVersion();
   const active =
     !client.reconnecting &&
@@ -98,22 +84,17 @@ export function PlayerCard({
   useEffect(() => {
     const timers = new Set<ReturnType<typeof setTimeout>>();
     const queue = new AwardQueue();
-    let displayTimer: ReturnType<typeof setTimeout> | undefined,
-      pulse: Animation | undefined;
+    let displayTimer: ReturnType<typeof setTimeout> | undefined;
     const display = () => {
       clearTimeout(displayTimer);
       const now = performance.now();
-      const width = awardLayer.current?.clientWidth || 96;
-      const { notices, slots, nextAt } = queue.advance(
-        now,
-        awardCapacity(width),
-      );
-      setPresentation({
-        notices,
-        slots,
-        // Keep occupied slots legible and separate if the window shrinks mid-cue.
-        fontSize: Math.min(23, width / slots / 4.5),
-      });
+      const { notice, started, completed, nextAt } = queue.advance(now);
+      setAward(notice);
+      if (started && !document.hidden) client.sound.effect("score");
+      if (completed)
+        setAnnouncement(
+          `+${points(completed.deltaUnits)}. ${points(completed.totalUnits)} points.`,
+        );
       if (Number.isFinite(nextAt))
         displayTimer = setTimeout(display, Math.max(1, nextAt - now));
     };
@@ -122,14 +103,11 @@ export function PlayerCard({
       timers.clear();
       clearTimeout(displayTimer);
       queue.clear();
-      pulse?.cancel();
-      setPresentation((previous) => ({ ...previous, notices: [] }));
+      setAward(null);
       setWinPulse(false);
       setAnnouncement("");
     };
     clear();
-    const resize = new ResizeObserver(display);
-    if (awardLayer.current) resize.observe(awardLayer.current);
     const later = (fn: () => void, ms: number) => {
       const timer = setTimeout(() => {
         timers.delete(timer);
@@ -149,23 +127,6 @@ export function PlayerCard({
       if (cue.kind === "score") {
         queue.enqueue(cue);
         display();
-        setAnnouncement(
-          `+${points(cue.deltaUnits)}. ${points(cue.totalUnits)} points.`,
-        );
-        if (!quiet.current) {
-          pulse?.cancel();
-          pulse = scoreWrap.current?.animate(
-            [
-              { transform: "scale(1)" },
-              {
-                transform: `scale(${cue.deltaUnits >= 8 ? 1.12 : 1.07})`,
-                offset: 0.3,
-              },
-              { transform: "scale(1)" },
-            ],
-            { duration: 240, easing: "cubic-bezier(.16,1,.3,1)" },
-          );
-        }
       }
       if (cue.kind === "round" || cue.kind === "match") {
         setWinPulse(true);
@@ -174,7 +135,6 @@ export function PlayerCard({
     });
     return () => {
       unsub();
-      resize.disconnect();
       clear();
     };
   }, [player?.id, state.matchId, state.roundId]);
@@ -183,6 +143,7 @@ export function PlayerCard({
       className={
         "face face-" +
         index +
+        (showScore ? " scored" : "") +
         (active ? " has-floor" : "") +
         (winner ? " winner" : "")
       }
@@ -193,28 +154,6 @@ export function PlayerCard({
           {player?.name || "Your friend"}
           {local && <span className="you-label">you</span>}
         </h2>
-        {showScore && (
-          <div
-            className={"round-pips " + (winPulse ? "win-pulse" : "")}
-            role="img"
-            aria-label={(player?.wins || 0) + " of 2 round wins"}
-            title={(player?.wins || 0) + " of 2 round wins"}
-          >
-            {[0, 1].map((n) => (
-              <span
-                key={n}
-                className={
-                  (player?.wins || 0) > n
-                    ? "won" +
-                      (n === (player?.wins || 0) - 1 ? " latest-win" : "")
-                    : ""
-                }
-              >
-                {(player?.wins || 0) > n && <Icon name="check" />}
-              </span>
-            ))}
-          </div>
-        )}
         <span
           className="activity"
           ref={activity}
@@ -225,6 +164,49 @@ export function PlayerCard({
           <i />
           <i />
         </span>
+        <div className="face-meta">
+          {showScore && (
+            <div
+              className={"round-pips " + (winPulse ? "win-pulse" : "")}
+              role="img"
+              aria-label={(player?.wins || 0) + " of 2 round wins"}
+              title={(player?.wins || 0) + " of 2 round wins"}
+            >
+              <small>Rounds</small>
+              {[0, 1].map((n) => (
+                <span
+                  key={n}
+                  className={
+                    (player?.wins || 0) > n
+                      ? "won" +
+                        (n === (player?.wins || 0) - 1 ? " latest-win" : "")
+                      : ""
+                  }
+                >
+                  {(player?.wins || 0) > n && <Icon name="check" />}
+                </span>
+              ))}
+            </div>
+          )}
+          {status && (
+            <div
+              className={"player-status " + (active ? "listening-badge" : "")}
+            >
+              <Icon
+                name={
+                  active
+                    ? "ear"
+                    : status === "Ready" || status === "Confirmed"
+                      ? "check"
+                      : local && client.capture.micMuted
+                        ? "mic-off"
+                        : "mic"
+                }
+              />
+              <span>{active ? "Listening" : status}</span>
+            </div>
+          )}
+        </div>
       </div>
       <div className="face-picture">
         <video
@@ -272,35 +254,12 @@ export function PlayerCard({
           </div>
         )}
       </div>
-      <div
-        className={
-          "player-status-slot " +
-          (state.phase === "ROUND" ? "turn-status-slot" : "")
-        }
-      >
-        {status && (
-          <div className={"player-status " + (active ? "listening-badge" : "")}>
-            <Icon
-              name={
-                active
-                  ? "ear"
-                  : status === "Ready" || status === "Confirmed"
-                    ? "check"
-                    : local && client.capture.micMuted
-                      ? "mic-off"
-                      : "mic"
-              }
-            />
-            <span>{active ? "Bonk is listening" : status}</span>
-          </div>
-        )}
-      </div>
       <div className="face-bottom">
         {state.topic?.positions[player?.id || ""] && (
           <p className="position">{state.topic.positions[player!.id]}</p>
         )}
         {showScore && (
-          <div className="score-wrap" ref={scoreWrap}>
+          <div className="score-wrap">
             <AnimatedScore
               playerId={player?.id}
               units={player?.scoreUnits || 0}
@@ -310,28 +269,10 @@ export function PlayerCard({
           </div>
         )}
       </div>
-      <div
-        className="award-layer"
-        ref={awardLayer}
-        aria-hidden="true"
-        style={
-          {
-            "--award-slots": presentation.slots,
-            "--award-font": `${presentation.fontSize}px`,
-          } as React.CSSProperties
-        }
-      >
-        {presentation.notices.map((award) => (
-          <span
-            key={award.id}
-            className="award-slot"
-            style={{ "--lane": award.slot } as React.CSSProperties}
-          >
-            <span className="score-burst" data-award-id={award.id}>
-              +{points(award.deltaUnits)}
-            </span>
-          </span>
-        ))}
+      <div className="award-layer" aria-hidden="true">
+        {award && (
+          <ScoreBurst key={award.id} notice={award} reduced={reduced} />
+        )}
       </div>
       <span className="sr-only" role="status" aria-atomic="true">
         {announcement}

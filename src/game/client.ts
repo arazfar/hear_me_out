@@ -24,6 +24,7 @@ export type Update = {
   media?: true;
   feedback?: FeedbackCue;
   feedbackReset?: boolean;
+  commandResult?: { commandId: string; ok: boolean; error?: string };
 };
 export class Client {
   feedback = new FeedbackController();
@@ -51,7 +52,9 @@ export class Client {
     return this.connection.blocked;
   }
   private judgeRetry: ReturnType<typeof setTimeout> | undefined;
+  private inlineCommands = new Set<string>();
   closeTransport() {
+    this.inlineCommands.clear();
     clearTimeout(this.judgeRetry);
     const sockets = [...this.sockets.values()];
     this.sockets.clear();
@@ -357,14 +360,20 @@ export class Client {
     const ws = this.sockets.get("control");
     if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data));
   }
-  command(command: Command) {
+  command(command: Command, options: { inlineError?: boolean } = {}) {
     if (!this.session || !this.state) return;
     if (
       this.reconnecting &&
       !["media_status", "setup_cancel", "leave"].includes(command.type)
     )
       return;
+    if (
+      options.inlineError &&
+      this.sockets.get("control")?.readyState !== WebSocket.OPEN
+    )
+      return;
     const commandId = crypto.randomUUID();
+    if (options.inlineError) this.inlineCommands.add(commandId);
     this.send({
       commandId,
       connectionEpoch: this.session.connectionEpoch,
@@ -422,6 +431,15 @@ export class Client {
       return;
     }
     if (data.type === "ack") {
+      if (typeof data.ok !== "boolean") return;
+      const inline = this.inlineCommands.delete(data.commandId);
+      this.notify({
+        commandResult: {
+          commandId: data.commandId,
+          ok: data.ok,
+          error: data.error,
+        },
+      });
       if (
         data.ok === false &&
         this.setup.busy &&
@@ -435,7 +453,7 @@ export class Client {
         });
         return;
       }
-      if (data.ok === false)
+      if (data.ok === false && !inline)
         this.notify({ error: data.error || "Request could not complete." });
       return;
     }

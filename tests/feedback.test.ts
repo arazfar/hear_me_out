@@ -6,11 +6,7 @@ import { points, type Snapshot } from "../shared/domain";
 import type { GameEvent } from "../shared/protocol";
 import { FeedbackController, ScoreTally } from "../src/game/feedback";
 import { Client } from "../src/game/client";
-import {
-  AwardQueue,
-  awardCapacity,
-  type ScoreAward,
-} from "../src/game/award-queue";
+import { AwardQueue, type ScoreAward } from "../src/game/award-queue";
 import { turnStatus } from "../src/ui/presentation";
 
 const notice = (n: number): ScoreAward => ({
@@ -33,94 +29,79 @@ test("background judging preserves ownership for every turn type", () => {
     assert.equal(turnStatus(state), `${speaker.name}’s ${kind}`);
   }
   turn.pausedReason = "judge";
-  assert.equal(turnStatus(state, speaker.id), "Your turn next");
+  assert.equal(turnStatus(state, speaker.id), "Your closing next");
   turn.pausedReason = "recovery";
-  assert.equal(turnStatus(state, speaker.id), "Your turn next");
+  assert.equal(turnStatus(state, speaker.id), "Your closing next");
   turn.sealing = true;
   assert.equal(
     turnStatus(state, speaker.id),
-    `Finishing ${speaker.name}’s turn…`,
+    `Finishing ${speaker.name}’s words…`,
   );
 });
 
-test("fourteen queued fractional notices keep their slots for the full lifetime", () => {
-  for (const width of [150, 280, 420, 640]) {
-    const queue = new AwardQueue(),
-      capacity = awardCapacity(width);
-    const expected = Array.from({ length: 14 }, (_, n) => notice(n));
-    expected.forEach((award) => queue.enqueue(award));
-    const shown: ScoreAward[] = [],
-      slotUntil = new Map<number, number>();
-    let now = 0,
-      lastStart = -Infinity;
-    for (let step = 0; step < 100; step++) {
-      const { notices, nextAt } = queue.advance(now, capacity);
-      assert(notices.length <= capacity);
-      assert.equal(new Set(notices.map((n) => n.slot)).size, notices.length);
-      for (const { slot, startedAt, ...award } of notices) {
-        if (shown.some((n) => n.id === award.id)) continue;
-        assert(startedAt >= (slotUntil.get(slot) ?? -Infinity));
-        assert(startedAt - lastStart >= 85);
-        lastStart = startedAt;
-        slotUntil.set(slot, startedAt + 900);
-        shown.push(award);
-      }
-      if (!Number.isFinite(nextAt)) break;
-      assert(nextAt > now);
-      now = nextAt;
-    }
-    assert.deepEqual(shown, expected);
-    assert.equal(queue.advance(now + 900, capacity).notices.length, 0);
-  }
-  assert.equal(awardCapacity(0), 1);
-  assert.equal(awardCapacity(2000), 5);
+test("fractional awards combine into one burst and one exact announcement", () => {
+  const queue = new AwardQueue();
+  const awards = Array.from({ length: 14 }, (_, n) => notice(n));
+  awards.forEach((award) => queue.enqueue(award));
+  assert.equal(queue.advance(99).notice, null);
+  const shown = queue.advance(100);
+  assert(shown.started);
+  assert.deepEqual(
+    shown.notice?.awardIds,
+    awards.map((a) => a.id),
+  );
+  const units = awards.reduce((sum, award) => sum + award.deltaUnits, 0);
+  assert.equal(shown.notice?.deltaUnits, units);
+  assert.equal(shown.notice?.totalUnits, awards.at(-1)?.totalUnits);
+  assert(queue.advance(899).notice);
+  const finished = queue.advance(900);
+  assert.equal(finished.notice, null);
+  assert.equal(finished.completed?.deltaUnits, units);
+  assert.equal(queue.advance(901).completed, null);
 });
 
-test("late display timers start one notice without shortening or bunching the queue", () => {
+test("late display timers show the combined reward for its full lifetime", () => {
   const queue = new AwardQueue();
   for (let n = 0; n < 8; n++) queue.enqueue(notice(n));
-  assert.equal(queue.advance(0, 5).notices.length, 1);
-  const late = queue.advance(2000, 5);
-  assert.deepEqual(
-    late.notices.map((n) => [n.id, n.startedAt]),
-    [["award-1", 2000]],
-  );
-  assert.equal(late.nextAt, 2085);
-  assert.equal(queue.advance(2084, 5).notices.length, 1);
-  assert.equal(queue.advance(2085, 5).notices.length, 2);
-  assert(queue.advance(2899, 5).notices.some((n) => n.id === "award-1"));
-  assert(!queue.advance(2900, 5).notices.some((n) => n.id === "award-1"));
+  assert.equal(queue.advance(0).notice, null);
+  const late = queue.advance(2000);
+  assert.equal(late.notice?.startedAt, 2000);
+  assert.equal(late.notice?.awardIds.length, 8);
+  assert.equal(late.nextAt, 2600);
+  assert(queue.advance(2799).notice);
+  assert.equal(queue.advance(2800).notice, null);
 });
 
-test("clearing presentation discards active and pending notices, allowing a fresh immediate cue", () => {
+test("clearing presentation discards both the visible burst and pending gains", () => {
   const queue = new AwardQueue();
   for (let n = 0; n < 14; n++) queue.enqueue(notice(n));
-  queue.advance(0, 2);
-  queue.advance(85, 2);
+  queue.advance(100);
   queue.clear();
-  assert.deepEqual(queue.advance(100, 2), {
-    notices: [],
-    slots: 2,
+  assert.deepEqual(queue.advance(100), {
+    notice: null,
+    started: false,
+    completed: null,
     nextAt: Infinity,
   });
-  queue.enqueue(notice(20));
-  assert.deepEqual(
-    queue.advance(100, 2).notices.map((n) => n.id),
-    ["award-20"],
-  );
-  assert.equal(queue.advance(10000, 2).notices.length, 0);
+  queue.enqueue({ ...notice(20), at: 100 });
+  assert.equal(queue.advance(199).notice, null);
+  assert.equal(queue.advance(200).notice?.id, "award-20");
+  assert.equal(queue.advance(10000).notice, null);
 });
 
-test("shrinking capacity preserves occupied slots until expiry and queues the rest", () => {
+test("successive gains renew one burst without restarting its entrance", () => {
   const queue = new AwardQueue();
-  for (let n = 0; n < 8; n++) queue.enqueue(notice(n));
-  for (let n = 0; n < 5; n++) queue.advance(n * 85, 5);
-  const narrow = queue.advance(400, 2);
-  assert.equal(narrow.slots, 5);
-  assert.equal(narrow.notices.length, 5);
-  const next = queue.advance(900, 2);
-  assert.equal(next.notices.at(-1)?.id, "award-5");
-  assert.equal(next.notices.at(-1)?.slot, 0);
+  queue.enqueue(notice(0));
+  const first = queue.advance(100).notice!;
+  queue.enqueue({ ...notice(1), at: 750 });
+  const renewed = queue.advance(750);
+  assert.equal(renewed.started, false);
+  assert.equal(renewed.notice?.id, first.id);
+  assert.equal(renewed.notice?.startedAt, first.startedAt);
+  assert.equal(renewed.notice?.deltaUnits, 3);
+  assert.equal(renewed.notice?.holdUntil, 1200);
+  assert(queue.advance(1399).notice);
+  assert.equal(queue.advance(1400).completed?.deltaUnits, 3);
 });
 
 function fixture() {

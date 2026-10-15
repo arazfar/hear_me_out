@@ -163,6 +163,9 @@ async function enter(a: Page, b: Page, base: string, reservedCode?: string) {
   const s = await state(),
     tails = s.players.find((p) => p.id === s.tailsId)?.name === "Alex" ? a : b;
   await tails.getByRole("button", { name: "Is a hot dog a sandwich?" }).click();
+  await tails
+    .getByRole("button", { name: "It is a sandwich", exact: true })
+    .click();
   for (const p of [a, b])
     await p.getByRole("button", { name: "Confirm my side" }).click();
   await expect

@@ -117,10 +117,7 @@ export class Game {
     if (this.state.judge?.epoch === epoch) this.state.judge.status = "silent";
   }
   finishRoundPresentation() {
-    if (this.state.phase === "ROUND_RESOLVE") {
-      this.state.phaseDeadline = this.now();
-      this.tick();
-    }
+    if (this.state.phase === "ROUND_RESOLVE") this.tick();
   }
   connectPlayer(id: string) {
     this.player(id).connected = true;
@@ -336,6 +333,7 @@ export class Game {
   }
   lobby(status: string) {
     this.state.turn = null;
+    this.state.topic = null;
     this.state.players.forEach((p) => (p.ready = false));
     this.state.status = status;
     this.setPhase("LOBBY");
@@ -709,7 +707,7 @@ export class Game {
     });
     this.state.turn = null;
     this.state.status = `${winner.name} takes round ${this.state.round}. ${reason}`;
-    this.setPhase("ROUND_RESOLVE", 12000);
+    this.setPhase("ROUND_RESOLVE", 2200);
     this.emit("round_result", this.state.results.at(-1));
   }
   finishMatch() {

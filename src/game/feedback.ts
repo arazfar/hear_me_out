@@ -125,7 +125,8 @@ export class FeedbackController {
       } else if (
         event.type === "round_result" &&
         state.phase === "ROUND_RESOLVE" &&
-        event.payload.roundId === state.roundId
+        event.payload.roundId === state.roundId &&
+        state.players.find((p) => p.id === event.payload.winnerId)!.wins < 2
       ) {
         cue = { kind: "round", id, playerId: event.payload.winnerId, at };
       } else if (
@@ -150,7 +151,7 @@ export class ScoreTally {
     this.from = this.target = units;
   }
   value(now: number) {
-    const t = Math.max(0, Math.min(1, (now - this.began) / 400));
+    const t = Math.max(0, Math.min(1, (now - this.began) / 320));
     return t === 1
       ? this.target
       : this.from + (this.target - this.from) * (1 - (1 - t) ** 3);

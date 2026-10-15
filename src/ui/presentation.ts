@@ -58,7 +58,10 @@ export function speakingState(
   if (turn.sealing || local.pendingDone === turn.id)
     return {
       kind: "settling",
-      label: `Finishing ${name}’s turn…`,
+      label:
+        turn.settlement === "scoring"
+          ? `Bonk is scoring ${name}’s ${turn.kind}…`
+          : `Finishing ${name}’s words…`,
       listening: null,
     } as const;
   if (
@@ -68,8 +71,7 @@ export function speakingState(
   )
     return {
       kind: "preparing",
-      label:
-        turn.playerId === playerId ? "Your turn next" : `${name}’s turn next`,
+      label: `${turn.playerId === playerId ? "Your" : name + "’s"} ${turn.kind} next`,
       listening: null,
     } as const;
   return {
@@ -214,7 +216,12 @@ export function phaseAnnouncement(
     return recovery;
   switch (state.phase) {
     case "LOBBY":
-      return lobbyPresentation(state, playerId).announcement;
+      return [
+        state.matchId ? state.status : "",
+        lobbyPresentation(state, playerId).announcement,
+      ]
+        .filter(Boolean)
+        .join(" ");
     case "TOPIC_SELECT":
       return topicPresentation(state, playerId).selectionLabel;
     case "TOPIC_CONFIRM":

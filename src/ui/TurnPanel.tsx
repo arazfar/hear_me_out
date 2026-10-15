@@ -42,9 +42,15 @@ export function TurnPanel({
     rendering: client.playback.rendering,
     privateCheck: client.capture.privateCheck(),
   });
+  const listening = !pending && judgeIsListening(state, playerId || null);
+  const next = `${mine ? "Your" : state.players.find((p) => p.id === turn.playerId)?.name + "’s"} ${turn.kind} next`;
   return (
     <section
-      className={"turn-panel " + (seconds <= 5 && !paused ? "time-low" : "")}
+      className={
+        "turn-panel " +
+        (turn.sealing || pending ? "is-settling " : "") +
+        (seconds <= 5 && !paused ? "time-low" : "")
+      }
       style={
         {
           "--turn-color":
@@ -56,15 +62,15 @@ export function TurnPanel({
       aria-label="Current turn"
     >
       <div key={handoff} className={"turn-label " + (handoff ? "handoff" : "")}>
-        <Icon
-          name={
-            presentation.kind === "judge" && client.playback.rendering
-              ? "volume"
-              : presentation.kind === "player"
-                ? "ear"
+        {presentation.kind !== "player" && (
+          <Icon
+            name={
+              presentation.kind === "judge" && client.playback.rendering
+                ? "volume"
                 : "clock"
-          }
-        />
+            }
+          />
+        )}
         {presentation.label}
       </div>
       <div
@@ -91,16 +97,19 @@ export function TurnPanel({
       {mine && client.capture.micMuted && !paused && (
         <p className="turn-guidance">Your mic is off.</p>
       )}
-      {mine && !turn.sealing && (
-        <button
-          className="primary yield-button"
-          disabled={pending || !judgeIsListening(state, playerId || null)}
-          onClick={() => client.capture.finishTurn()}
-        >
-          I’m done
-          <Icon name="arrow" />
-        </button>
-      )}
+      <div className="turn-action">
+        {mine && listening ? (
+          <button
+            className="primary yield-button"
+            onClick={() => client.capture.finishTurn()}
+          >
+            I’m done
+            <Icon name="arrow" />
+          </button>
+        ) : ["judge", "buffering", "captions"].includes(presentation.kind) ? (
+          <p className="turn-next">{next}</p>
+        ) : null}
+      </div>
     </section>
   );
 }

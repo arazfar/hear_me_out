@@ -41,6 +41,7 @@ type Speech = {
   attempt: number;
   repairAt?: number;
   fallback: boolean;
+  hostPhase?: { phase: string; version: number };
 };
 /** Owns generation and delivery separately from both clients' rendered completion. */
 export class JudgePlayback {
@@ -110,7 +111,20 @@ export class JudgePlayback {
         this.room.game.selectTopic();
       return;
     }
-    void this.say(cue.text, cue.target, false, 20, cue.source);
+    void this.say(cue.text, cue.target, false, 20, cue.source, 0, {
+      phase: cue.phase,
+      version: cue.phaseVersion,
+    });
+  }
+  discardSupersededHostCue() {
+    const speech = this.speech;
+    if (
+      speech?.hostPhase &&
+      (speech.hostPhase.phase !== this.room.game.state.phase ||
+        speech.hostPhase.version !== this.room.game.state.phaseVersion) &&
+      (speech.startedAt === null || this.room.services.now() < speech.startedAt)
+    )
+      this.cancelSpeech();
   }
   startHandoff() {
     const handoff = this.pendingHandoff;
@@ -154,6 +168,7 @@ export class JudgePlayback {
     _budget = 20,
     prepared?: PreparedVoice,
     attempt = 0,
+    hostPhase?: Speech["hostPhase"],
   ) {
     if (
       this.speech ||
@@ -192,6 +207,7 @@ export class JudgePlayback {
       matchId: this.room.game.state.matchId,
       attempt,
       fallback: false,
+      hostPhase,
     };
     this.speech = s;
     if (this.room.game.state.turn && !this.room.game.state.turn.sealing) {
@@ -486,7 +502,7 @@ export class JudgePlayback {
       },
     );
     this.cancelSpeech();
-    void this.say(s.text, s.target, false, 20, source, 1);
+    void this.say(s.text, s.target, false, 20, source, 1, s.hostPhase);
   }
   private captions(s: Speech) {
     s.fallback = true;

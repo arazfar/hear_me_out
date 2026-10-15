@@ -81,6 +81,9 @@ test("runtime media failures preserve the floor, points, and recovery clock", as
     await tails
       .getByRole("button", { name: "Is a hot dog a sandwich?" })
       .click();
+    await tails
+      .getByRole("button", { name: "It is a sandwich", exact: true })
+      .click();
     for (const page of [a, b])
       await page.getByRole("button", { name: "Confirm my side" }).click();
     await expect
@@ -292,6 +295,9 @@ test("frozen live cameras require replacement and never resume on cached frames"
         : b;
     await tails
       .getByRole("button", { name: "Is a hot dog a sandwich?" })
+      .click();
+    await tails
+      .getByRole("button", { name: "It is a sandwich", exact: true })
       .click();
     for (const p of [a, b])
       await p.getByRole("button", { name: "Confirm my side" }).click();

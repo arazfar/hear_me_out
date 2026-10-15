@@ -1,8 +1,7 @@
 import { RecoveryCheck, currentReadinessPresentation } from "./DeviceCheck";
 import type { Player, Snapshot } from "../../shared/domain";
-import { client } from "../game/client";
 import { Icon } from "./Icon";
-import { useMediaVersion } from "./hooks";
+import { useDecision, useMediaVersion } from "./hooks";
 import { lobbyPresentation } from "./presentation";
 
 export function LobbyView({
@@ -19,6 +18,7 @@ export function LobbyView({
   copyInvite: () => void;
 }) {
   useMediaVersion();
+  const { pending, error, submit } = useDecision(state);
   const blocked = !me?.mediaReady;
   const readiness = currentReadinessPresentation();
   const presentation = lobbyPresentation(state, me?.id);
@@ -41,13 +41,24 @@ export function LobbyView({
         <p>{readiness.message}</p>
       )}
       {blocked && !inviting && <RecoveryCheck />}
+      {state.matchId && state.status && <p>{state.status}</p>}
+      {error && (
+        <p className="decision-error" role="alert">
+          {error}
+        </p>
+      )}
       {other && (!blocked || inviting) && (
         <button
           className={"primary " + (me?.ready ? "ready-button" : "")}
-          disabled={!me?.mediaReady || !other?.connected || busy}
-          onClick={() => client.command({ type: "ready", value: !me?.ready })}
+          disabled={!me?.mediaReady || !other?.connected || busy || !!pending}
+          aria-busy={!!pending}
+          onClick={() => submit({ type: "ready", value: !me?.ready })}
         >
-          {presentation.actionLabel}
+          {pending?.type === "ready"
+            ? pending.value
+              ? "Readying…"
+              : "Undoing…"
+            : presentation.actionLabel}
           <Icon name={me?.ready ? "check" : "arrow"} />
         </button>
       )}

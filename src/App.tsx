@@ -19,7 +19,12 @@ import { StageLoader } from "./ui/StageLoader";
 import { TitleView } from "./ui/TitleView";
 import { TopicView } from "./ui/TopicView";
 import { TurnPanel } from "./ui/TurnPanel";
-import { useMediaVersion, useReducedMotion, useServerNow } from "./ui/hooks";
+import {
+  useDecision,
+  useMediaVersion,
+  useReducedMotion,
+  useServerNow,
+} from "./ui/hooks";
 import {
   phaseAnnouncement,
   phaseTitle,
@@ -27,6 +32,7 @@ import {
 } from "./ui/presentation";
 
 function Recovery({ state }: { state: Snapshot }) {
+  const { pending, error, submit } = useDecision(state);
   const now = useServerNow(),
     disconnected = client.reconnecting,
     aborted = state.phase === "ABORTED" && !disconnected,
@@ -62,12 +68,18 @@ function Recovery({ state }: { state: Snapshot }) {
       {aborted && !departed && me?.mediaReady && (
         <button
           className="primary"
-          disabled={!me.mediaReady || rematch.ready}
-          onClick={() => client.command({ type: "rematch", value: true })}
+          disabled={!me.mediaReady || rematch.ready || !!pending}
+          aria-busy={!!pending}
+          onClick={() => submit({ type: "rematch", value: true })}
         >
-          {rematch.actionLabel}
+          {pending ? "Queuing rematch…" : rematch.actionLabel}
           <Icon name="refresh" />
         </button>
+      )}
+      {error && (
+        <p className="decision-error" role="alert">
+          {error}
+        </p>
       )}
       {aborted &&
         !departed &&
@@ -147,7 +159,6 @@ export function App() {
       }
       const cue = u.feedback;
       if (!cue) return;
-      if (cue.kind === "score") client.sound.effect("score");
       if (cue.kind === "coin") {
         client.sound.effect("coin");
         setReveal(true);

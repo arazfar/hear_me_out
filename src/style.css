@@ -155,6 +155,9 @@ p {
     #20102e
   );
 }
+.in-room {
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}
 .app-header {
   display: flex;
   align-items: center;
@@ -339,7 +342,7 @@ p {
   align-items: start;
   gap: 24px;
   width: min(1512px, 100%);
-  margin: auto auto 0;
+  margin: 0 auto;
   padding: 0 32px 24px;
   flex: 0 0 auto;
 }
@@ -361,14 +364,35 @@ p {
   --player: var(--cyan);
   grid-column: 3;
 }
+.face.scored {
+  margin-top: 64px;
+}
 .face-heading {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 4px 10px;
+  padding: 8px 12px;
   min-height: 44px;
   color: var(--player);
+}
+.face-heading h2 {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 22px;
+}
+.face-heading .activity {
+  grid-column: 2;
+  grid-row: 1;
+}
+.face-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 22px;
 }
 .face-heading h2 {
   font-size: 18px;
@@ -449,19 +473,16 @@ p {
   color: var(--cream);
   background: var(--surface);
   border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 3px 6px;
+  font-size: 11px;
   position: static;
-  margin: 6px 6px 0;
-  min-height: 30px;
+  margin-left: auto;
+  min-height: 22px;
 }
 .player-status .icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   color: var(--player);
-}
-.turn-status-slot {
-  min-height: 36px;
 }
 .has-floor .player-status {
   background: var(--cream);
@@ -471,25 +492,25 @@ p {
   color: var(--plum);
 }
 .face-bottom {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px 4px;
-  min-height: 56px;
+  padding: 6px 12px 4px;
+  min-height: 60px;
 }
 .position {
   font-size: 13px;
-  max-width: 60%;
   color: var(--muted);
   overflow-wrap: anywhere;
 }
 .score {
   display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: 4px;
-  font-size: 34px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 40px;
   line-height: 1;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -498,7 +519,8 @@ p {
   color: var(--player);
 }
 .score small {
-  font-size: 11px;
+  order: -1;
+  font-size: 10px;
   font-weight: 500;
   letter-spacing: 0;
   color: var(--muted);
@@ -508,6 +530,11 @@ p {
   align-items: center;
   gap: 5px;
   padding: 0 12px 10px;
+}
+.round-pips small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
 }
 .round-pips > span {
   display: grid;
@@ -527,22 +554,18 @@ p {
   height: 12px;
 }
 
-.award-slot {
-  position: absolute;
-  left: calc(var(--lane) * 100% / var(--award-slots));
-  width: calc(100% / var(--award-slots));
-  top: 14px;
-  text-align: center;
+.award-motion {
+  display: inline-block;
+  max-width: 100%;
 }
 .score-burst {
   display: inline-block;
   white-space: nowrap;
   color: var(--player);
   font:
-    var(--award-font, 23px) Bungee,
+    40px / 1.1 Bungee,
     sans-serif;
   pointer-events: none;
-  animation: score-pop 900ms var(--ease) both;
   text-shadow: 0 3px 8px #10031980;
 }
 .camera-status {
@@ -603,6 +626,14 @@ p {
   font-size: 14px;
   color: #64516b;
   margin-top: 10px;
+}
+.phase-panel .decision-error {
+  color: #892d30;
+  text-align: left;
+}
+.topic-proposition {
+  font-weight: 700;
+  color: var(--plum) !important;
 }
 .phase-panel .primary {
   margin-top: 16px;
@@ -762,6 +793,18 @@ p {
   color: var(--muted);
   margin: 6px 0 14px;
 }
+.turn-action {
+  display: grid;
+  align-items: center;
+  min-height: 48px;
+}
+.is-settling .turn-action {
+  display: none;
+}
+.turn-next {
+  font-size: 13px;
+  color: var(--muted);
+}
 .result-panel {
   position: relative;
 }
@@ -787,6 +830,8 @@ p {
   font-size: 12px;
 }
 .winner .face-heading::after {
+  grid-column: 2;
+  grid-row: 1;
   content: "WINNER";
   font-size: 11px;
   color: var(--plum);
@@ -880,13 +925,18 @@ p {
   font-weight: 400;
 }
 .controls {
+  position: fixed;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 20px;
   width: fit-content;
   max-width: calc(100% - 24px);
-  margin: 0 auto 14px;
+  margin: 0;
   padding: 6px;
   border-radius: 16px;
   background: #160d23;
@@ -1072,11 +1122,16 @@ p {
 /* Cues animate decoration only. Media, captions and input stay put. */
 .award-layer {
   position: absolute;
-  inset: auto 12px -42px;
-  height: 40px;
+  inset: -64px 0 auto;
+  height: 64px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 3px;
   pointer-events: none;
 }
 .score-wrap {
+  grid-column: 2;
   margin-left: auto;
   transform-origin: right center;
 }
@@ -1134,27 +1189,6 @@ p {
 }
 .phase-match_result:has(.celebrating) .stage {
   animation: bench-impact 180ms ease-out;
-}
-@keyframes score-pop {
-  0% {
-    opacity: 0;
-    transform: translateY(8px) scale(0.6);
-  }
-  14% {
-    opacity: 1;
-    transform: translateY(0) scale(1.12);
-  }
-  30% {
-    opacity: 1;
-    transform: translateY(-2px) scale(1);
-  }
-  65% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-18px) scale(1);
-  }
 }
 @keyframes coin-land {
   0% {
@@ -1218,7 +1252,10 @@ p {
     padding: 14px;
   }
   .face-picture {
-    height: clamp(180px, 30vh, 330px);
+    height: clamp(180px, 28vh, 220px);
+  }
+  .courtroom {
+    padding-bottom: 16px;
   }
   .result-panel .verdict-icon {
     display: none;
@@ -1370,6 +1407,9 @@ p {
   width: 100%;
   order: 3;
 }
+.bonk-aside-slot:empty {
+  display: none;
+}
 .app:not(.phase-round) .bonk-aside-slot {
   display: none;
 }
@@ -1425,7 +1465,7 @@ p {
   }
   .courtroom {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 56px 20px;
+    gap: 12px 20px;
     padding-inline: 24px;
   }
   .face-1 {
@@ -1460,7 +1500,7 @@ p {
   }
   .turn-label,
   .turn-guidance,
-  .yield-button {
+  .turn-action {
     grid-column: 1 / -1;
   }
   .timer-track {
@@ -1485,6 +1525,9 @@ p {
   }
 }
 @media (max-width: 700px) {
+  .in-room {
+    padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  }
   .wordmark {
     font-size: 16px;
   }
@@ -1520,9 +1563,11 @@ p {
   }
 
   .score-burst {
-    font-size: 13px;
+    font-size: 28px;
   }
   .award-layer {
+    top: -48px;
+    height: 48px;
     left: 0;
     right: 0;
   }
@@ -1583,7 +1628,7 @@ p {
     font-size: 12px;
   }
   .courtroom {
-    gap: 40px 8px;
+    gap: 12px 8px;
     padding: 0 8px 8px;
   }
   .face-heading .activity {
@@ -1601,20 +1646,18 @@ p {
     height: clamp(96px, 19vh, 150px);
   }
   .face-bottom {
-    flex-wrap: nowrap;
     padding: 8px 6px;
     gap: 4px;
   }
   .position {
     width: auto;
-    max-width: 55%;
     font-size: 12px;
   }
   .score {
-    font-size: 24px;
+    font-size: 28px;
   }
   .score small {
-    display: none;
+    font-size: 10px;
   }
   .score-numbers {
     min-width: 4ch;
@@ -1631,7 +1674,7 @@ p {
     width: 100%;
   }
   .phase-panel {
-    padding: 14px;
+    padding: 12px;
   }
   .phase-panel h2 {
     font-size: 22px;
@@ -1656,13 +1699,19 @@ p {
   }
   .controls {
     gap: 4px;
-    flex-wrap: wrap;
-    margin-top: 8px;
-    padding-bottom: max(4px, env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: calc(100% - 24px);
+    bottom: max(6px, env(safe-area-inset-bottom, 0px));
+    margin: 0;
+  }
+  .device-controls {
+    display: contents;
   }
   .controls button {
-    gap: 5px;
-    padding: 8px;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 4px;
     font-size: 12px;
   }
   .caption-zone {
@@ -1707,13 +1756,9 @@ p {
   }
   .player-status {
     position: static;
-    margin-top: 4px;
-    padding: 5px 6px;
-    margin-inline: 2px;
+    margin: 0 0 0 auto;
+    padding: 3px 4px;
     font-size: 11px;
-  }
-  .turn-status-slot {
-    min-height: 34px;
   }
   .player-status .icon {
     width: 14px;
@@ -1722,17 +1767,43 @@ p {
   }
   .face-heading {
     min-height: 44px;
-    gap: 6px;
-    padding: 8px 6px;
+    gap: 4px 6px;
+    padding: 6px;
     flex-wrap: wrap;
   }
   .face-heading h2 {
     font-size: 14px;
     flex: 1;
     min-width: 50%;
+    min-height: 18px;
   }
   .face-heading .round-pips {
-    margin-left: auto;
+    margin-left: 0;
+    gap: 3px;
+  }
+  .face-heading .round-pips > span {
+    width: 10px;
+    height: 10px;
+  }
+  .face.scored {
+    margin-top: 48px;
+  }
+  .topic-panel .suggestions {
+    margin-top: 8px;
+    gap: 6px;
+  }
+  .topic-panel .suggestions button {
+    min-height: 44px;
+    padding-block: 10px;
+  }
+  .topic-panel .decision-clock {
+    margin-top: 8px !important;
+  }
+  .topic-panel .text-button {
+    margin-top: 8px;
+  }
+  .topic-panel form .primary {
+    margin-top: 12px;
   }
   .caption-status {
     white-space: normal;
@@ -1752,45 +1823,54 @@ p {
     min-height: 12px;
   }
   .app-header {
-    padding-block: 4px;
+    padding-block: 2px;
   }
   .arena-heading {
-    padding-bottom: 8px;
+    padding-bottom: 4px;
   }
   .match-progress {
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
   .courtroom {
-    row-gap: 32px;
+    row-gap: 12px;
     padding-bottom: 4px;
   }
   .face-heading {
     min-height: 32px;
-    padding-block: 4px;
+    padding-block: 2px;
+    row-gap: 2px;
+  }
+  .face-meta,
+  .player-status {
+    min-height: 20px;
+  }
+  .player-status {
+    padding-block: 2px;
   }
   .face-picture {
     height: 96px;
   }
   .face-bottom {
-    min-height: 44px;
+    min-height: 48px;
     padding-block: 4px;
   }
   .timer {
-    font-size: 36px;
-    margin-block: 2px;
+    font-size: 32px;
+    margin-block: 0;
   }
   .turn-panel {
     gap: 2px 12px;
+    padding-block: 2px;
   }
   .turn-panel .primary {
     min-height: 44px;
     padding-block: 8px;
   }
+  .turn-action {
+    min-height: 44px;
+  }
   .bonk-aside-slot {
     min-height: 36px;
-  }
-  .award-slot {
-    top: 6px;
   }
   .bonk-aside {
     padding: 0 8px;
@@ -1803,7 +1883,7 @@ p {
   .player-caption,
   .judge-caption {
     display: block;
-    padding: 8px 10px;
+    padding: 6px 10px;
   }
   .caption-speaker {
     display: inline-flex;
@@ -1820,11 +1900,38 @@ p {
     display: block;
   }
   .controls {
-    margin-top: 4px;
-    margin-bottom: max(6px, env(safe-area-inset-bottom));
+    margin: 0;
   }
   .caption-zone {
     margin-block: 4px;
+  }
+  :is(.phase-round_resolve, .phase-match_result) .center-stage {
+    grid-template-columns: 1fr;
+  }
+  :is(.phase-round_resolve, .phase-match_result) .center-stage > .stage {
+    display: none;
+  }
+  :is(.phase-round_resolve, .phase-match_result)
+    .center-stage
+    > .phase-content {
+    grid-column: 1;
+  }
+  .result-panel {
+    padding: 10px 12px;
+  }
+  .result-panel h2 {
+    font-size: 22px;
+  }
+  .result-panel h2 span {
+    display: inline;
+    margin-left: 6px;
+  }
+  .result-panel.has-verdict-caption .verdict-reason {
+    display: none;
+  }
+  .result-panel .primary {
+    margin-top: 8px;
+    min-height: 44px;
   }
 }
 
@@ -1887,9 +1994,6 @@ p {
 .caption-zone:empty {
   min-height: 0;
   margin: 0;
-}
-.controls {
-  margin-top: auto;
 }
 .activity {
   min-width: 13px;

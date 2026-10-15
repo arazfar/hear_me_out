@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SUGGESTIONS, type Player, type Snapshot } from "../../shared/domain";
-import { client } from "../game/client";
 import { Icon } from "./Icon";
-import { useServerNow } from "./hooks";
+import { useDecision, useServerNow } from "./hooks";
 import { topicPresentation } from "./presentation";
 
 function DecisionClock({ deadline }: { deadline: number | null }) {
@@ -17,8 +16,15 @@ function DecisionClock({ deadline }: { deadline: number | null }) {
 export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
   const [custom, setCustom] = useState(false),
     [topic, setTopic] = useState(""),
-    [position, setPosition] = useState("");
+    [position, setPosition] = useState(""),
+    [suggestion, setSuggestion] = useState<(typeof SUGGESTIONS)[number] | null>(
+      null,
+    );
+  const { pending, error, submit } = useDecision(state);
   const selecting = state.phase === "TOPIC_SELECT";
+  useEffect(() => {
+    if (selecting) setSuggestion(null);
+  }, [selecting, state.phaseVersion]);
   const { choosing, confirmed, waiting, selectionLabel } = topicPresentation(
     state,
     me?.id,
@@ -31,12 +37,18 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
       {selecting ? (
         choosing ? (
           <>
-            <h2>{custom ? "Your topic" : "Pick a topic"}</h2>
+            <h2>
+              {custom
+                ? "Your topic"
+                : suggestion
+                  ? "Pick your side"
+                  : "Pick a topic"}
+            </h2>
             {custom ? (
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  client.command({
+                  submit({
                     type: "propose_topic",
                     text: topic.trim(),
                     chosenPosition: position.trim(),
@@ -51,6 +63,7 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
                   placeholder="Cats are better roommates than dogs"
                   onChange={(e) => setTopic(e.target.value)}
                   required
+                  disabled={!!pending}
                 />
                 <label htmlFor="position">Your side</label>
                 <input
@@ -60,28 +73,57 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
                   placeholder="I’m defending cats"
                   onChange={(e) => setPosition(e.target.value)}
                   required
+                  disabled={!!pending}
                 />
                 <button
                   className="primary"
-                  disabled={!topic.trim() || !position.trim()}
+                  disabled={!topic.trim() || !position.trim() || !!pending}
+                  aria-busy={pending?.type === "propose_topic"}
                 >
-                  Propose it
+                  {pending?.type === "propose_topic"
+                    ? "Proposing…"
+                    : "Propose it"}
                   <Icon name="arrow" />
                 </button>
               </form>
+            ) : suggestion ? (
+              <>
+                <p className="topic-proposition">{suggestion.proposition}</p>
+                <div className="suggestions side-options">
+                  {(["positive", "negative"] as const).map((side) => (
+                    <button
+                      key={side}
+                      autoFocus={side === "positive"}
+                      disabled={!!pending}
+                      aria-busy={
+                        pending?.type === "propose_topic" &&
+                        pending.chosenPosition === side
+                      }
+                      onClick={() =>
+                        submit({
+                          type: "propose_topic",
+                          text: suggestion.proposition,
+                          chosenPosition: side,
+                          suggestion: suggestion.id,
+                        })
+                      }
+                    >
+                      {pending?.type === "propose_topic" &&
+                      pending.chosenPosition === side
+                        ? "Proposing…"
+                        : suggestion[side]}
+                      <Icon name="arrow" />
+                    </button>
+                  ))}
+                </div>
+              </>
             ) : (
               <div className="suggestions">
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s.id}
-                    onClick={() =>
-                      client.command({
-                        type: "propose_topic",
-                        text: s.proposition,
-                        chosenPosition: s.positive,
-                        suggestion: s.id,
-                      })
-                    }
+                    disabled={!!pending}
+                    onClick={() => setSuggestion(s)}
                   >
                     {s.label}
                     <Icon name="arrow" />
@@ -91,9 +133,12 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
             )}
             <button
               className="text-button"
-              onClick={() => setCustom((v) => !v)}
+              disabled={!!pending}
+              onClick={() =>
+                suggestion ? setSuggestion(null) : setCustom((v) => !v)
+              }
             >
-              {custom ? "Back to suggestions" : "Write your own"}
+              {custom || suggestion ? "Back to suggestions" : "Write your own"}
             </button>
           </>
         ) : (
@@ -111,29 +156,42 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
           {waiting && <p>{waiting}</p>}
           <button
             className="primary"
-            disabled={confirmed || !me}
+            disabled={confirmed || !me || !!pending}
+            aria-busy={pending?.type === "confirm_topic"}
             onClick={() =>
-              client.command({
+              submit({
                 type: "confirm_topic",
                 topicRevision: state.topic!.revision,
               })
             }
           >
-            Confirm my side
+            {pending?.type === "confirm_topic"
+              ? "Confirming…"
+              : confirmed
+                ? "Confirmed"
+                : "Confirm my side"}
             <Icon name="check" />
           </button>
           <button
             className="text-button"
+            disabled={!!pending}
             onClick={() =>
-              client.command({
+              submit({
                 type: "reject_topic",
                 topicRevision: state.topic!.revision,
               })
             }
           >
-            Choose another topic
+            {pending?.type === "reject_topic"
+              ? "Choosing again…"
+              : "Choose another topic"}
           </button>
         </>
+      )}
+      {error && (
+        <p className="decision-error" role="alert">
+          {error}
+        </p>
       )}
       <DecisionClock deadline={state.phaseDeadline} />
     </section>

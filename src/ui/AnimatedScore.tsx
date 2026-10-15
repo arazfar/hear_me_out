@@ -64,7 +64,7 @@ export function AnimatedScore({
       <span className="score-numbers" aria-hidden="true">
         {points(display)}
       </span>
-      <small aria-hidden="true">pts</small>
+      <small aria-hidden="true">Round pts</small>
     </span>
   );
 }
