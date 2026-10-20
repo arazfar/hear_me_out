@@ -69,9 +69,22 @@ export class RoomController {
   services: RoomServices;
   timers = new Set<ReturnType<typeof setTimeout>>();
   topicRequest: AbortController | null = null;
-  constructor(code: string, services: Partial<RoomServices> = {}) {
+  constructor(
+    code: string,
+    services: Partial<RoomServices> = {},
+    admission: () => string | null = () => null,
+  ) {
     this.services = { ...defaultServices, ...services };
-    this.game = new Game(code, (e) => this.onEvent(e), this.services.now);
+    this.game = new Game(
+      code,
+      (e) => this.onEvent(e),
+      this.services.now,
+      () => {
+        const error = admission();
+        if (error) this.broadcast({ type: "error", error });
+        return error;
+      },
+    );
     this.game.coordinateInput = true;
   }
   later(callback: () => void, ms: number) {

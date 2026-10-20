@@ -50,6 +50,8 @@ Setup has a 30-second permission limit, 10-second connection limit, and 15-secon
 
 Device replacement commits only after local capture initialization succeeds. Cancelled or failed repairs stop their new resources and preserve healthy devices. Cancelling a private check keeps already-working capture. Repairs preserve the latest mic/camera privacy choices, including toggles while permissions or module loading are pending. Private checks pause quietly until the player explicitly re-enables the required device. Connection loss immediately replaces stale turn controls with recovery. One connection lifecycle owns HTTP and socket deadlines, bounded retries, and cancellation. Exhausted retries show “Connection lost. Check your network.” with a manual retry; neither retry nor duplicate resume requests reset the server's recovery allowance.
 
+Explicit mic repair replaces a live track whose source is muted, reusing a healthy camera. The player's mic-off choice alone does not trigger device replacement.
+
 Deliberate Leave ends an unfinished match immediately through one room-owned policy shared by HTTP and socket commands. Pending resume requests carry a persisted ID so Leave still releases the seat when the server has accepted resume but its response has not arrived. A newer connection invalidates that authority. Completed verdicts retain their winner after a friend leaves. Sound initialization has a ten-second deadline; worklet downloads are cancellable and retryable without replacing a healthy audio context. Setup cancellation and Leave invalidate pending initialization while preserving resources that already work.
 
 The center label identifies whose turn it is and whether Bonk is preparing, speaking, or finishing. Cards show the listening badge and actual readiness decisions, with round wins beside the name and scores below the video. Full captions wrap below the court and may extend the page. Secondary instructions live in How to play and Device help; setup and recovery keep one current instruction and an actionable repair or cancellation. Rematch readiness appears on the cards, with a named waiting action. Occasional silent Bonk asides reuse the accepted score reason (up to eight words / 80 characters), once per turn and no more than once every six seconds. There is no additional model request or spoken interruption. The internal ledger and scoring rules remain unchanged.
@@ -105,6 +107,8 @@ Requests capture their match, round, turn or connection ownership. Rematch/dispo
 
 Run `pnpm check`, `pnpm test`, `pnpm build`, and `pnpm test:ui` before merging. Browser acceptance covers complete matches, recovery, rematch, rewards, and private-check isolation in Chrome with RTC and forced relay, plus phone-sized Chrome and WebKit journeys under both transports. Multi-second deterministic PCM verifies final sample accounting and asymmetric rebuffering. CI installs the browser dependencies and retains reports and failure traces. These tests use synthetic media and mock providers; [the test guide](tests/browser/README.md) describes coverage and its limits.
 
+Focused reliability regressions cover clean/abnormal Cartesia SDK drainage against a local WebSocket server, repeated provider-error cleanup, abort ownership, authenticated microphone catch-up and overflow, relay admission under asymmetric delay, source-muted mic repair, and deferred match admission. These tests make no paid provider calls. See `tests/transcription-lifecycle.test.ts`, `tests/audio-ingress.test.ts`, `tests/relay-admission.test.ts`, `tests/setup.test.ts`, and `tests/match-admission.test.ts`.
+
 Live-provider rehearsal and physical two-player matches on desktop Chrome, Android Chrome, and iPhone Safari remain release requirements for the current required-media flow. Acoustic balance, mobile interruptions, real-network behavior, and hosted CI execution also need verification.
 
 ### Historical measurements
@@ -125,6 +129,8 @@ These measurements describe the earlier revision and do not validate the current
 ### Deployment
 
 Deploy the client and server together between matches. Keep a matching copy of both `dist/` and `dist-server/` before rebuilding. Rollback must restore both directories and restart the server, then refresh browser pages. Rooms remain deliberately ephemeral: server restarts require a new room. Do not market this beta as public-production ready.
+
+Before widening the beta, complete separate-network physical-device matches in RTC and forced relay, a live-provider rehearsal, and repeated abort/rematch resource checks. Monitor metadata-only transcription failures, active provider transports, microphone rejection reasons, relay-age drops and recovery duration. Authenticated `/api/diagnostics` exposes server counters; the browser client keeps a bounded `relayAudioAgeDrops` counter. Confirm provider connections return to zero after terminal cleanup. These fixes keep protocol 4 and require no data migration.
 
 See [demo and verification notes](docs/DEMO.md) for historical measurements, the demo script, and fallback behavior. A synthetic-audio integration test does not establish real-device human-match quality.
 

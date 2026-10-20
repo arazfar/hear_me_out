@@ -74,6 +74,22 @@ export function createRegistry(
       throw new RuleError("Your seat expired. Join a new room.");
     return { room, seat };
   };
+  const matchAdmissionError = (room: RoomController) => {
+    if (!providersReady())
+      return "Bonk isn’t ready to host. Try again shortly.";
+    if (
+      [...rooms.values()].some(
+        (other) =>
+          other !== room &&
+          !other.closed &&
+          !["LOBBY", "MATCH_RESULT", "ABORTED"].includes(
+            other.game.state.phase,
+          ),
+      )
+    )
+      return "The demo stage is occupied. Try again after that match.";
+    return null;
+  };
 
   return {
     rooms,
@@ -84,7 +100,13 @@ export function createRegistry(
     session,
     authenticate,
     providersReady,
-    createRoom: (code: string) => new RoomController(code, services),
+    matchAdmissionError,
+    createRoom: (code: string) => {
+      const room: RoomController = new RoomController(code, services, () =>
+        matchAdmissionError(room),
+      );
+      return room;
+    },
   };
 }
 export type RoomRegistry = ReturnType<typeof createRegistry>;

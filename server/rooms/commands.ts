@@ -39,19 +39,8 @@ export async function command(
   if ((c.type === "ready" || c.type === "rematch") && c.value)
     room.readiness.tick();
   if (c.type === "ready" || c.type === "rematch") {
-    if (c.value && !registry.providersReady())
-      throw new RuleError("Bonk isn’t ready to host. Try again shortly.");
-    if (
-      c.value &&
-      [...registry.rooms.values()].some(
-        (r) =>
-          r !== room &&
-          !["LOBBY", "MATCH_RESULT", "ABORTED"].includes(r.game.state.phase),
-      )
-    )
-      throw new RuleError(
-        "The demo stage is occupied. Try again after that match.",
-      );
+    const denied = c.value && registry.matchAdmissionError(room);
+    if (denied) throw new RuleError(denied);
     if (c.type === "ready") game.ready(id, c.value);
     else game.rematch(id, c.value);
   } else if (c.type === "media_status") room.media.mediaStatus(id, c);

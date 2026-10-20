@@ -48,6 +48,7 @@ export class Game {
     code: string,
     onEvent: (e: GameEvent) => void = () => {},
     now = Date.now,
+    private readonly admission: () => string | null = () => null,
   ) {
     this.now = now;
     this.onEvent = onEvent;
@@ -245,6 +246,20 @@ export class Game {
       throw new RuleError(
         "Both players need a working mic, camera, and connection.",
       );
+    // Votes may wait behind verdict playback. Check capacity synchronously at
+    // the transition, before resetting any completed result or claiming a stage.
+    const denied = this.admission();
+    if (denied) {
+      this.state.players.forEach((p) => (p.ready = false));
+      this.state.rematchReady = [];
+      this.state.status = denied;
+      this.emit(
+        this.state.phase === "MATCH_RESULT"
+          ? "rematch_changed"
+          : "ready_changed",
+      );
+      return;
+    }
     this.reactionTurns.clear();
     this.shownReasons.clear();
     this.reactionAt = -Infinity;
