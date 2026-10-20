@@ -291,6 +291,10 @@ runtime.app.post("/__test/failure/:code/:kind", (req, res) => {
       room.game.state.turn!.playerId,
       room.game.state.turn!.id,
     );
+  // Requalification with a healthy provider can safely preserve the turn.
+  // A terminal provider failure after accepted PCM must instead abort it.
+  if (req.params.kind === "speech-check")
+    room.readiness.failed(room.game.state.turn!.playerId);
   if (req.params.kind === "tts")
     room.game.degrade(
       "tts",

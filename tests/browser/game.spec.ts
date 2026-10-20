@@ -362,7 +362,7 @@ test("two players complete a scored match, recover media, and rematch", async ({
     }
     if (opportunities === 3) {
       const before = await snapshot(request, code);
-      await request.post("/__test/failure/" + code + "/stt");
+      await request.post("/__test/failure/" + code + "/speech-check");
       await expect
         .poll(async () => (await snapshot(request, code)).phase)
         .toBe("RECOVERING");

@@ -10,6 +10,13 @@ export class Transcription {
   constructor(readonly room: RoomController) {}
   ink = new Map<string, TranscriptionStream>();
   active = new Set<TranscriptionStream>();
+  // Physical closure can precede turn settlement. Keep completed contributors
+  // as well as draining ones until all evidence for this turn is sealed.
+  private contributors = new Map<
+    string,
+    { matchId: string | null; streams: Set<TranscriptionStream> }
+  >();
+  private reportedFailures = new WeakSet<TranscriptionStream>();
   private waiting = new Map<
     string,
     { requestedTurn?: string | null; force: boolean }
@@ -77,6 +84,81 @@ export class Transcription {
     this.room.readiness.audio(id, pcm);
     stream.send(Buffer.from(pcm));
   }
+  private retain(stream: TranscriptionStream) {
+    const turnId = stream.turnId!,
+      matchId = this.room.game.state.matchId;
+    let record = this.contributors.get(turnId);
+    if (!record || record.matchId !== matchId) {
+      record = { matchId, streams: new Set() };
+      this.contributors.set(turnId, record);
+    }
+    record.streams.add(stream);
+    return record;
+  }
+  private recordFailure(stream?: TranscriptionStream) {
+    if (stream && this.reportedFailures.has(stream)) return;
+    if (stream) this.reportedFailures.add(stream);
+    this.room.recordFailure("transcription");
+  }
+  private failEvidence(stream: TranscriptionStream) {
+    const { game } = this.room;
+    const record = stream.turnId && this.contributors.get(stream.turnId);
+    if (
+      this.room.closed ||
+      !record ||
+      !record.streams.has(stream) ||
+      record.matchId !== game.state.matchId ||
+      stream.turnId !== game.state.turn?.id ||
+      !["ROUND", "RECOVERING"].includes(game.state.phase)
+    )
+      return false;
+    this.recordFailure(stream);
+    game.abort("Bonk couldn’t finish that turn. Start a fresh match.");
+    return true;
+  }
+  /** Only eligible, cutoff-trimmed gameplay PCM belongs in this method. */
+  sendGameplay(id: string, pcm: Buffer) {
+    const stream = this.ink.get(id),
+      turn = this.room.game.state.turn;
+    if (!turn || turn.playerId !== id) return;
+    if (stream?.turnId !== turn.id) {
+      this.recordFailure();
+      this.room.game.abort(
+        "Bonk couldn’t finish that turn. Start a fresh match.",
+      );
+      return;
+    }
+    // send() may synchronously report a provider failure.
+    this.retain(stream);
+    try {
+      stream.send(pcm);
+    } catch {
+      this.sttFailure(id, turn.id);
+    }
+  }
+  async settleTurn(id: string, turnId: string) {
+    const current = this.ink.get(id);
+    if (current?.turnId !== turnId) {
+      this.recordFailure();
+      return false;
+    }
+    const record = this.retain(current);
+    this.ink.delete(id);
+    this.openedAt.delete(id);
+    const outcomes = await Promise.all(
+      [...record.streams].map(async (stream) => {
+        const ok = await stream.close().catch(() => false);
+        if (!ok) this.failEvidence(stream);
+        return ok;
+      }),
+    );
+    if (this.contributors.get(turnId) === record)
+      this.contributors.delete(turnId);
+    return outcomes.every(Boolean);
+  }
+  resetEvidence() {
+    this.contributors.clear();
+  }
   disconnect(id: string) {
     const stream = this.ink.get(id);
     this.ink.delete(id);
@@ -105,6 +187,7 @@ export class Transcription {
     }
   }
   retireGameplay() {
+    this.resetEvidence();
     this.sealedAudio.clear();
     for (const id of this.room.seats.keys()) {
       if (this.room.readiness.get(id).setup !== "checking") {
@@ -227,13 +310,19 @@ export class Transcription {
     const close = stream.close.bind(stream);
     let closing: Promise<boolean> | undefined;
     stream.close = () =>
-      (closing ||= close().finally(() => {
-        this.active.delete(stream);
-        const pending = [...this.waiting];
-        this.waiting.clear();
-        for (const [player, request] of pending)
-          this.rotate(player, request.requestedTurn, request.force);
-      }));
+      (closing ||= close()
+        .catch(() => false)
+        .then((ok) => {
+          if (!ok) this.failEvidence(stream);
+          return ok;
+        })
+        .finally(() => {
+          this.active.delete(stream);
+          const pending = [...this.waiting];
+          this.waiting.clear();
+          for (const [player, request] of pending)
+            this.rotate(player, request.requestedTurn, request.force);
+        }));
     this.purposes.set(stream, purpose);
     this.ink.set(id, stream);
 
@@ -242,10 +331,11 @@ export class Transcription {
   }
   sttFailure(id: string, _turnId: string | null) {
     if (this.room.closed) return;
-    this.room.recordFailure("transcription");
     const stream = this.ink.get(id);
+    this.recordFailure(stream);
     this.ink.delete(id);
     void stream?.close();
+    if (stream && this.failEvidence(stream)) return;
     this.room.readiness.failed(id);
     const count = this.retries.get(id) || 0;
     const version = (this.retryVersions.get(id) || 0) + 1;

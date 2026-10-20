@@ -345,6 +345,46 @@ test("private mic repair survives the speaker reconnecting without publishing or
   }
 });
 
+test("gameplay provider failure aborts without granting another floor or a winner", async ({
+  browser,
+  baseURL,
+}, info) => {
+  const f = await players(browser, "provider-abort-" + info.project.name),
+    [a, b] = f.pages;
+  try {
+    const { state, code } = await enter(a, b, baseURL!);
+    // enter() waits for captured gameplay to open the floor.
+    const before = await state();
+    await a.request.post(baseURL + "/__test/failure/" + code + "/stt");
+    await expect.poll(async () => (await state()).phase).toBe("ABORTED");
+    const after = await state();
+    expect(after.turn).toBeNull();
+    expect(after.winnerId).toBeNull();
+    expect(after.turnIndex).toBe(before.turnIndex);
+    for (const page of [a, b]) {
+      await expect(
+        page.getByRole("button", { name: "I’m done", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page
+          .getByText("Bonk couldn’t finish that turn. Start a fresh match.", {
+            exact: true,
+          })
+          .first(),
+      ).toBeVisible();
+    }
+    await expect
+      .poll(async () => {
+        const health = await (await a.request.get(baseURL + "/healthz")).json();
+        return health.rooms[0]?.sttConnections;
+      })
+      .toBe(0);
+    expect(f.errors).toEqual([]);
+  } finally {
+    await f.close();
+  }
+});
+
 test("a lost private success is replayed after reconnect without repeating capture or speech", async ({
   browser,
   baseURL,
@@ -364,7 +404,7 @@ test("a lost private success is replayed after reconnect without repeating captu
         "Alex"
           ? a
           : b;
-    await a.request.post(baseURL + "/__test/failure/" + code + "/stt");
+    await a.request.post(baseURL + "/__test/failure/" + code + "/speech-check");
     await expect.poll(async () => (await state()).phase).toBe("RECOVERING");
     const held = await state();
     await speaker.evaluate(() => {

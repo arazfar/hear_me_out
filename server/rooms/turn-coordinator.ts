@@ -191,9 +191,7 @@ export class TurnCoordinator {
     const matchId = game.state.matchId;
     this.draining.add(turnId);
     transcription.sealedAudio.delete(t.playerId);
-    const stream = transcription.ink.get(t.playerId);
-    transcription.ink.delete(t.playerId);
-    const drained = !stream || (await stream.close());
+    const drained = await transcription.settleTurn(t.playerId, turnId);
     this.draining.delete(turnId);
     if (
       this.room.closed ||
@@ -202,7 +200,6 @@ export class TurnCoordinator {
     )
       return;
     if (!drained) {
-      this.room.recordFailure("transcription");
       game.abort("Bonk couldn’t finish that turn. Start a fresh match.");
       return;
     }

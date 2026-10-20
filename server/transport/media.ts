@@ -82,7 +82,10 @@ export class RoomMedia {
         Math.max(0, Math.floor((cutoff - packet.capturedAt) * 16) + 1),
       );
       if (samples)
-        stream?.send(Buffer.from(packet.pcm.subarray(0, samples * 2)));
+        this.room.transcription.sendGameplay(
+          id,
+          Buffer.from(packet.pcm.subarray(0, samples * 2)),
+        );
       this.room.recordMetric(
         "captureToServerMs",
         Math.max(0, this.room.services.now() - packet.capturedAt),

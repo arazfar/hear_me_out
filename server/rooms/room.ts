@@ -158,6 +158,7 @@ export class RoomController {
       this.judging.recent = [];
       this.judging.queue = [];
       this.transcription.sealedAudio.clear();
+      this.transcription.resetEvidence();
       this.judging.planned.clear();
       this.transcription.retries.clear();
       for (const p of this.game.state.players)
@@ -325,6 +326,7 @@ export class RoomController {
   }
   close() {
     this.closed = true;
+    this.transcription.resetEvidence();
     this.clearTimers();
     this.topicRequest?.abort();
     this.judging.cancelJudgment();
