@@ -10,35 +10,72 @@ export type InkEvent = {
   error?: unknown;
 };
 export interface InkTransport {
-  on(event: "error" | "close", callback: (event: unknown) => void): unknown;
+  on(event: "error", callback: (error: unknown) => void): unknown;
+  on(
+    event: "close",
+    callback: (code: number, reason: string, unsent: unknown[]) => void,
+  ): unknown;
   sendRaw(audio: Buffer): unknown;
   send(message: { type: "close" }): unknown;
-  close(): unknown;
+  /** Resolves only when the physical transport is closed. */
+  dispose(): Promise<void>;
   stream(): AsyncIterable<InkEvent>;
 }
+export function inkTransport(
+  socket: ReturnType<Cartesia["stt"]["autoFinalize"]["websocket"]>,
+): InkTransport {
+  return {
+    on: (event, callback) => socket.on(event, callback),
+    sendRaw: (audio) => socket.sendRaw(audio),
+    send: (message) => socket.send(message),
+    stream: () => socket.stream(),
+    dispose: () =>
+      new Promise<void>((resolve) => {
+        const platform = socket.socket.platformSocket;
+        if (platform.readyState === 3) return resolve();
+        socket.on("close", () => resolve());
+        socket.close();
+        // This adapter runs on the Node server. A graceful close alone can wait
+        // 30 seconds for an unresponsive peer after a terminal provider failure.
+        if ("terminate" in platform) platform.terminate();
+      }),
+  };
+}
 function connectInk(): InkTransport {
-  return cartesia().stt.autoFinalize.websocket({
-    model: "ink-2",
-    encoding: "pcm_s16le",
-    sample_rate: 16000,
-    turn_start_threshold: 0.8,
-    turn_eager_end_threshold: 0.5,
-    turn_end_threshold: 0.3,
-    turn_end_timeout_ms: 1600,
-  });
+  return inkTransport(
+    cartesia().stt.autoFinalize.websocket({
+      model: "ink-2",
+      encoding: "pcm_s16le",
+      sample_rate: 16000,
+      turn_start_threshold: 0.8,
+      turn_eager_end_threshold: 0.5,
+      turn_end_threshold: 0.3,
+      turn_end_timeout_ms: 1600,
+    }),
+  );
 }
 export class InkSession {
   epoch = randomUUID();
   ws: InkTransport;
-  drainPromise: Promise<boolean> | null = null;
-  resolveDrain: ((ok: boolean) => void) | null = null;
+  private resolveDrain!: (ok: boolean) => void;
+  drainPromise = new Promise<boolean>((resolve) => {
+    this.resolveDrain = resolve;
+  });
   drainTimer: ReturnType<typeof setTimeout> | null = null;
   drainCompleted: boolean | null = null;
+  private cleanClose = false;
   finishDrain(ok: boolean) {
     if (this.drainCompleted !== null) return;
     this.drainCompleted = ok;
     if (this.drainTimer) clearTimeout(this.drainTimer);
-    this.resolveDrain?.(ok);
+    this.connected = false;
+    this.buffer = [];
+    this.bufferedBytes = 0;
+    // Keep the manager's active ownership until disposal has completed.
+    void this.ws.dispose().then(
+      () => this.resolveDrain(ok),
+      () => this.resolveDrain(false),
+    );
   }
   speechCounter = 0;
   transcript = "";
@@ -48,14 +85,10 @@ export class InkSession {
   failed = false;
   fail(error: unknown) {
     if (this.failed) return;
-    if (this.closing) {
-      this.failed = true;
-      this.finishDrain(false);
-      return;
-    }
     this.failed = true;
     this.connected = false;
-    this.handlers.error(error);
+    this.finishDrain(false);
+    if (!this.closing) this.handlers.error(error);
   }
   buffer: Buffer[] = [];
   bufferedBytes = 0;
@@ -74,21 +107,36 @@ export class InkSession {
   ) {
     this.ws = transport;
     this.ws.on("error", (e) => this.fail(e));
-    this.ws.on("close", () => {
-      if (!this.closing) this.fail(new Error("Transcription socket closed"));
+    this.ws.on("close", (code, _reason, unsent) => {
+      this.connected = false;
+      this.cleanClose = this.closing && code === 1000 && unsent.length === 0;
+      if (!this.cleanClose)
+        this.fail(
+          new Error("Transcription socket closed before successful drainage"),
+        );
     });
     void this.listen().then(
-      () => this.finishDrain(!this.failed),
-      (e) => {
-        this.fail(e);
-        this.finishDrain(false);
+      () => {
+        // The SDK iterator finishes even on abnormal closure. Its queued final
+        // events must be consumed before a clean close can seal the evidence.
+        if (this.cleanClose && !this.failed) this.finishDrain(true);
+        else
+          this.fail(
+            new Error("Transcription stream ended without a clean close"),
+          );
       },
+      (e) => this.fail(e),
     );
   }
   send(audio: Buffer) {
     if (this.closing || this.failed) return;
-    if (this.connected) this.ws.sendRaw(audio);
-    else {
+    if (this.connected) {
+      try {
+        this.ws.sendRaw(audio);
+      } catch (error) {
+        this.fail(error);
+      }
+    } else {
       // Silence while a session connects carries no evidence and must not
       // exhaust the bounded speech buffer (especially during judge playback).
       if (audio.every((byte) => byte === 0)) return;
@@ -102,6 +150,7 @@ export class InkSession {
     }
   }
   update(text: string, final: boolean) {
+    if (this.failed) return;
     this.transcript = text;
     this.handlers.caption(text, final);
     // Interim/eager transcripts are captions only: a provider revision must
@@ -132,6 +181,7 @@ export class InkSession {
   }
   async listen() {
     for await (const event of this.ws.stream()) {
+      if (this.failed) continue;
       if (event.type === "error") {
         this.fail(event.error);
         continue;
@@ -141,7 +191,10 @@ export class InkSession {
       if (!m) continue;
       if (m.type === "connected") {
         this.connected = true;
-        for (const b of this.buffer) this.ws.sendRaw(b);
+        for (const b of this.buffer) {
+          if (this.failed) break;
+          this.ws.sendRaw(b);
+        }
         this.buffer = [];
         this.bufferedBytes = 0;
       } else if (m.type === "turn.start") {
@@ -162,28 +215,18 @@ export class InkSession {
     }
   }
   close(): Promise<boolean> {
-    if (this.drainPromise) return this.drainPromise;
+    if (this.closing) return this.drainPromise;
     this.closing = true;
-    this.drainPromise = new Promise((resolve) => {
-      this.resolveDrain = resolve;
-    });
-    if (this.drainCompleted !== null) {
-      this.resolveDrain?.(this.drainCompleted);
-      return this.drainPromise;
-    }
-    try {
-      this.ws.send({ type: "close" });
-    } catch {
-      this.finishDrain(false);
-      return this.drainPromise;
-    }
+    if (this.drainCompleted !== null) return this.drainPromise;
     this.drainTimer = setTimeout(() => {
-      this.finishDrain(false);
-      try {
-        this.ws.close();
-      } catch {}
+      this.fail(new Error("Transcription drain timed out"));
     }, 5000);
     this.drainTimer.unref();
+    try {
+      this.ws.send({ type: "close" });
+    } catch (error) {
+      this.fail(error);
+    }
     return this.drainPromise;
   }
 }

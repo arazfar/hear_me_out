@@ -33,9 +33,7 @@ export function registerHttp(app: express.Express, registry: RoomRegistry) {
         phase: r.game.state.phase,
         players: r.game.state.players.length,
         media: r.game.state.mediaMode,
-        sttConnections: [...r.transcription.ink.values()].filter(
-          (s) => s.connected,
-        ).length,
+        sttConnections: r.transcription.active.size,
       })),
     }),
   );
@@ -65,6 +63,8 @@ export function registerHttp(app: express.Express, registry: RoomRegistry) {
         protocolVersion: PROTOCOL_VERSION,
         metrics: room.metrics,
         timeline: room.timeline,
+        failures: Object.fromEntries(room.failures),
+        sttConnections: room.transcription.active.size,
       });
     } catch {
       res.status(401).json({ error: "This seat is no longer active." });

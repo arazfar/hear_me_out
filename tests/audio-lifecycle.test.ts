@@ -628,8 +628,10 @@ test("ICE and metadata exports require the current authenticated seat and never 
     assert(!JSON.stringify(data).includes(session.token));
     if (path.endsWith("diagnostics"))
       assert.deepEqual(Object.keys(data).sort(), [
+        "failures",
         "metrics",
         "protocolVersion",
+        "sttConnections",
         "timeline",
       ]);
   }

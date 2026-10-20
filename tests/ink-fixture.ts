@@ -5,8 +5,8 @@ export class FakeInkTransport implements InkTransport {
   events: InkEvent[] = [];
   ended = false;
   wake = deferred<void>();
-  listeners = new Map<string, (error: unknown) => void>();
-  on(type: "error" | "close", callback: (event: unknown) => void) {
+  listeners = new Map<string, (...args: any[]) => void>();
+  on(type: "error" | "close", callback: (...args: any[]) => void) {
     this.listeners.set(type, callback);
   }
   sendRaw(_audio: Buffer) {}
@@ -15,7 +15,11 @@ export class FakeInkTransport implements InkTransport {
   }
   close() {
     this.ended = true;
+    this.listeners.get("close")?.(1000, "OK", []);
     this.wake.resolve();
+  }
+  async dispose() {
+    if (!this.ended) this.close();
   }
   push(event: InkEvent) {
     this.events.push(event);

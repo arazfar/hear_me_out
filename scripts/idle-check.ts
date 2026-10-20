@@ -9,7 +9,7 @@ const ink = new InkSession("idle", "round", null, {
   error: () => failures++,
 });
 await new Promise((r) => setTimeout(r, 500));
-ink.ws.close();
+await ink.ws.dispose();
 await new Promise((r) => setTimeout(r, 150));
 for (let i = 0; i < 50; i++) ink.send(Buffer.alloc(640));
 await new Promise((r) => setTimeout(r, 100));

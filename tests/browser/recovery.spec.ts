@@ -762,14 +762,14 @@ test("completed verdict keeps its winner after their seat leaves", async ({
       },
     });
     await expect(b.locator(".result-panel h2")).toHaveText(
-      "Alexwins the match!",
+      "Alex wins the match, 2–0!",
     );
     await a.getByRole("button", { name: "Leave", exact: true }).click();
     await expect(
       b.getByRole("button", { name: "Back to menu", exact: true }),
     ).toBeVisible();
     await expect(b.locator(".result-panel h2")).toHaveText(
-      "Alexwins the match!",
+      "Alex wins the match, 2–0!",
     );
     await expect(
       b.locator(".result-panel .device-check, .decision-clock"),

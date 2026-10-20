@@ -187,7 +187,7 @@ test("departed and terminal transcription callbacks cannot restore evidence, cap
     string,
     Parameters<RoomServices["createTranscription"]>[3]
   >();
-  const closing: boolean[] = [];
+  const closing: { id: string; ownsSeat: boolean; phase: string }[] = [];
   const f = roomFixture({
     transcriptionAvailable: () => true,
     createTranscription: (id, roundId, turnId, handlers) => {
@@ -196,7 +196,11 @@ test("departed and terminal transcription callbacks cannot restore evidence, cap
       return {
         ...fakeTranscription(turnId, roundId),
         close: async () => {
-          closing.push(f.room.seats.has(id));
+          closing.push({
+            id,
+            ownsSeat: f.room.seats.has(id),
+            phase: f.room.game.state.phase,
+          });
           handlers.caption("Late caption from close", true);
           handlers.segment(final);
           return true;
@@ -219,10 +223,16 @@ test("departed and terminal transcription callbacks cannot restore evidence, cap
     const captionsBefore = structuredClone(room.game.state.captions);
     room.leave(turn.playerId);
     assert.deepEqual(
-      closing,
-      [false],
+      closing.filter((entry) => entry.id === turn.playerId),
+      [{ id: turn.playerId, ownsSeat: false, phase: "ABORTED" }],
       "ownership was revoked before provider close",
     );
+    assert.equal(
+      closing.length,
+      2,
+      "abort also retires the other gameplay stream",
+    );
+    assert(closing.every((entry) => entry.phase === "ABORTED"));
     for (const [id, handlers] of callbacks) {
       handlers.caption("Late caption", true);
       handlers.segment({ ...segment, id: "late:" + id, playerId: id });

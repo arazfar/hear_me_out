@@ -183,6 +183,7 @@ export class TurnCoordinator {
     )
       return;
     if (!drained) {
+      this.room.recordFailure("transcription");
       game.abort("Bonk couldn’t finish that turn. Start a fresh match.");
       return;
     }

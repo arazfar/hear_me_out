@@ -37,6 +37,7 @@ export class Transcription {
         epoch: this.room.seats.get(id)!.epoch,
       };
     const { turn, phase } = this.room.game.state;
+    if (!["ROUND", "RECOVERING"].includes(phase)) return { kind: "idle" };
     const turnId =
       requestedTurn === undefined
         ? check.passed &&
@@ -102,6 +103,23 @@ export class Transcription {
       this.openedAt.delete(id);
       void stream.close();
     }
+  }
+  retireGameplay() {
+    this.sealedAudio.clear();
+    for (const id of this.room.seats.keys()) {
+      if (this.room.readiness.get(id).setup !== "checking") {
+        this.waiting.delete(id);
+        this.retryVersions.set(id, (this.retryVersions.get(id) || 0) + 1);
+      }
+      const stream = this.ink.get(id);
+      if (stream?.turnId) {
+        this.ink.delete(id);
+        this.openedAt.delete(id);
+      }
+    }
+    // Includes draining old epochs and a prepared successor, not just ink.
+    for (const stream of this.active)
+      if (stream.turnId !== null) void stream.close();
   }
   connecting(id: string) {
     const s = this.ink.get(id);

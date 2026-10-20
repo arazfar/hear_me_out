@@ -114,6 +114,8 @@ export class RoomController {
         if (this.game.state.phase !== "LOBBY") this.clearTimers();
         this.judging.cancelJudgment();
       }
+      if (this.game.state.phase === "ABORTED")
+        this.transcription.retireGameplay();
       if (this.playback.topicNudge)
         this.services.clearTimeout(this.playback.topicNudge);
       this.playback.topicNudge = null;
@@ -268,6 +270,9 @@ export class RoomController {
   leave(id: string) {
     const seat = this.seats.get(id);
     if (!seat) return;
+    // Abort also retires gameplay transcription. Revoke the departing seat
+    // before that transition can synchronously trigger a provider callback.
+    this.seats.delete(id);
     this.playback.pendingHandoff = null;
     for (const cue of this.playback.hostCues) cue.source?.cancel();
     this.playback.hostCues = [];
@@ -277,9 +282,7 @@ export class RoomController {
       game.abort(
         `${game.player(id).name} left the court. No winner this time.`,
       );
-    // Revoke callback/socket ownership before closing anything that can emit a
-    // final transcript or a disconnect. Both departure transports use this path.
-    this.seats.delete(id);
+    // Both departure transports release the same bookkeeping and sockets.
     this.transcription.release(id);
     this.readiness.records.delete(id);
     for (const ws of seat.sockets.values()) ws.close();
