@@ -41,11 +41,19 @@ The pending-resume departure test deliberately changes the remaining player's mi
 
 Core tests cover the lifecycle boundaries with deterministic clocks and provider callbacks. `private-check-reconnect.test.ts` additionally uses real authenticated sockets and HTTP resume with a delayed provider stub. Recovery browser fixtures fill the current scoring budget before injecting faults so a legitimate pending judgment cannot change the baseline.
 
+Mic requalification uses a healthy provider that can drain accepted evidence. Terminal provider failure after gameplay PCM instead aborts without granting another floor or issuing a winner, and releases its transports. Core recovery tests also hold retired streams across replacement: delayed clean finals must settle exactly once, while abnormal closure, provider error, and the original drain deadline fail safely.
+
+Relay admission tests schedule capture and both delivery hops independently, with opposite 60-second client wall-clock offsets, clock jumps, synchronization refreshes, and varying 0–100 ms jitter. They use the real client clock-reading path, check packet order through 600 ms delivery age, and retain the 750/751 ms boundary. The existing worklet tests establish the separate playback-buffer bound; these are deterministic admission checks, not acoustic or real-network measurements.
+
 The long-utterance scenario renders nine seconds plus a distinct final partial frame on both clients, delays the second client’s middle packets by one second, and explicitly mutes Bonk on one client. Both worklets must report the full sample count and the server must accept both completions before normal advancement. This is render accounting with mock PCM, not a physical speaker test.
+
+The friend-output continuity assertion in this scenario remains a qualification issue for headless WebKit RTC. A follow-up matrix run observed nine consecutive low-energy samples at 100 ms intervals, despite complete judge rendering. The same assertion also failed in one of two isolated runs on the pre-follow-up commit `d03b329`, with a shorter dip. This establishes an intermittent pre-existing failure, not its root cause or physical-device incidence. Keep the assertion and failure artifacts; a passing recheck does not establish uninterrupted friend playback.
 
 The decision-feedback scenario runs in all six projects. It checks lobby readiness and undo, role-specific topic selection, Enter-to-confirm feedback, subsequent Tab navigation, and a single announcement despite duplicate snapshots and clock ticks. A finished-match fixture then exercises real rematch votes during nine seconds of judge playback, with Bonk muted on one client and reduced motion on the other. Both clients must show “Rematch queued”, drain every sample, receive exactly one new-match coin event, and preserve repair/departure precedence. Peer microphone failure must keep its repair instructions visible while the healthy player’s vote stays queued. Screenshots and `decision-feedback-*.webm` recordings accompany these checks. Live-region DOM assertions establish message ownership and updates; they do not establish actual VoiceOver or other screen-reader speech.
 
 On macOS WebKit, the decision-feedback test uses Option-Tab to include buttons in native keyboard navigation; ordinary Tab uses the browser’s default link/form-field mode. Chrome and Linux WebKit use Tab. The application does not override either navigation mode or move focus after confirmation.
+
+The decision-feedback journey also makes another fixture room occupy the stage after both rematch votes are queued. Rejection must preserve the verdict and an actionable explanation on both clients. Once capacity is free, retry starts exactly one match and clears the obsolete notice.
 
 See [audio acceptance and measurement](../../docs/AUDIO_ACCEPTANCE.md) for latency definitions, per-transport targets, diagnostic export, and the live/physical qualification matrix.
 

@@ -99,6 +99,9 @@ for (const order of ["leave-first", "resume-first"] as const) {
     const initial = await post(base, "/api/rooms", { name: "Alex" });
     await post(base, "/api/join", { name: "Sam", code: initial.session.code });
     const room = app.registry.rooms.get(initial.session.code)!;
+    // This fixture has no media peers. Keep the readiness ticker from racing
+    // the HTTP ownership assertions; readiness recovery has separate coverage.
+    room.tick = () => {};
     startRound(room.game);
     const ledger = structuredClone(room.game.state.ledger);
     const request = { ...initial.session, resumeId: crypto.randomUUID() };
