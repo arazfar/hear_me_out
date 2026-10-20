@@ -1,5 +1,8 @@
 import { WebSocket } from "ws";
-import { decodeMicrophone } from "../../shared/media.js";
+import {
+  decodeMicrophone,
+  RELAY_AUDIO_MAX_AGE_MS,
+} from "../../shared/media.js";
 import type { Command } from "../../shared/protocol.js";
 import type { RoomController } from "../rooms/room.js";
 export class RoomMedia {
@@ -13,6 +16,7 @@ export class RoomMedia {
     future: 0,
     messages: 0,
     bytes: 0,
+    relayAge: 0,
   };
   private rejectAudio(reason: keyof RoomMedia["audioRejections"]) {
     this.audioRejections[reason] = Math.min(
@@ -95,11 +99,11 @@ export class RoomMedia {
       rms += (pcm.readInt16LE(i) / 32768) ** 2;
     rms = Math.sqrt(rms / Math.max(1, pcm.length / 16));
     if (rms > 0.018) seat.voiceAt = this.room.services.now();
-    if (
-      this.room.game.state.mediaMode !== "rtc" &&
-      this.room.services.now() - capturedAt < 250
-    )
-      this.forward(id, "audio", raw);
+    if (this.room.game.state.mediaMode !== "rtc") {
+      if (this.room.services.now() - capturedAt <= RELAY_AUDIO_MAX_AGE_MS)
+        this.forward(id, "audio", raw);
+      else this.rejectAudio("relayAge");
+    }
     if (this.room.services.now() - seat.lastActivity > 250) {
       seat.lastActivity = this.room.services.now();
       this.room.broadcast({

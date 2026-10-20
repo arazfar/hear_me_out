@@ -1,4 +1,5 @@
 /** Protocol 4. Every capture frame carries its purpose at capture time. */
+export const RELAY_AUDIO_MAX_AGE_MS = 750;
 const view = (bytes: Uint8Array) =>
   new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 const uint = (n: number) => Number.isInteger(n) && n >= 0 && n <= 0xffffffff;

@@ -1,4 +1,8 @@
-import { decodeMicrophone, decodeVideo } from "../../shared/media";
+import {
+  decodeMicrophone,
+  decodeVideo,
+  RELAY_AUDIO_MAX_AGE_MS,
+} from "../../shared/media";
 import {
   PROTOCOL_VERSION,
   serverMessageSchema,
@@ -27,6 +31,7 @@ export type Update = {
   commandResult?: { commandId: string; ok: boolean; error?: string };
 };
 export class Client {
+  relayAudioAgeDrops = 0;
   feedback = new FeedbackController();
   connection = new Connection(this);
   setup = new DeviceSetup(this);
@@ -518,10 +523,16 @@ export class Client {
         this.capture.privateCheck() ||
         packet.purpose === "private" ||
         packet.purpose === "health" ||
-        packet.end ||
-        this.serverNow() - packet.capturedAt > 250
+        packet.end
       )
         return;
+      if (this.serverNow() - packet.capturedAt > RELAY_AUDIO_MAX_AGE_MS) {
+        this.relayAudioAgeDrops = Math.min(
+          Number.MAX_SAFE_INTEGER,
+          this.relayAudioAgeDrops + 1,
+        );
+        return;
+      }
       const shorts = new Int16Array(packet.pcm.slice().buffer),
         floats = new Float32Array(shorts.length);
       for (let i = 0; i < shorts.length; i++) floats[i] = shorts[i] / 32768;
