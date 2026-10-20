@@ -1820,6 +1820,20 @@ test("two players receive decision feedback while a rematch waits for complete p
       ]);
       await noOverlap(page);
     }
+    // Another room occupies the stage after both rematch votes were accepted.
+    const busy = await (
+      await request.post("/api/rooms", {
+        data: { name: "Other court" },
+      })
+    ).json();
+    const busyCode = busy.session.code;
+    expect(
+      (
+        await request.post("/__test/present/" + busyCode, {
+          data: { phase: "TOPIC_SELECT", phaseDeadline: Date.now() + 60000 },
+        })
+      ).ok(),
+    ).toBe(true);
     await request.post("/__test/replay/" + code);
     await shot(a, "decision-queued-" + info.project.name);
     expect((await snapshot(request, code)).phase).toBe("MATCH_RESULT");
@@ -1830,6 +1844,28 @@ test("two players receive decision feedback while a rematch waits for complete p
       ).toEqual(["Both ready. Rematch queued."]);
     }
     await expect
+      .poll(async () => (await snapshot(request, code)).rematchReady)
+      .toEqual([]);
+    const denied = await snapshot(request, code);
+    expect(denied.matchId).toBe(result.matchId);
+    expect(denied.phase).toBe("MATCH_RESULT");
+    expect(denied.winnerId).toBe(p0.id);
+    for (const page of [a, b]) {
+      await expect(page.locator(".room-notice")).toContainText(
+        "The demo stage is occupied.",
+      );
+      await expect(
+        page.getByRole("button", { name: "Rematch", exact: true }),
+      ).toBeEnabled();
+    }
+    // Same-match snapshots must keep the explanation until a retry succeeds.
+    await request.post("/__test/replay/" + code);
+    for (const page of [a, b])
+      await expect(page.locator(".room-notice")).toBeVisible();
+    await request.post("/__test/failure/" + busyCode + "/abort");
+    await a.getByRole("button", { name: "Rematch", exact: true }).click();
+    await b.getByRole("button", { name: "Rematch", exact: true }).click();
+    await expect
       .poll(async () => (await snapshot(request, code)).matchId, {
         timeout: 20000,
       })
@@ -1837,6 +1873,7 @@ test("two players receive decision feedback while a rematch waits for complete p
     const next = await snapshot(request, code);
     for (const page of [a, b]) {
       await expect.poll(() => coins.get(page)).toEqual([next.matchId]);
+      await expect(page.locator(".room-notice")).toHaveCount(0);
       const rendered = await page.evaluate(
         (epoch) =>
           (window as any).__decisionAudio

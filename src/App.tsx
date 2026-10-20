@@ -141,8 +141,18 @@ export function App() {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let coinTimer: ReturnType<typeof setTimeout> | undefined;
+    let noticeContext = client.state;
     const unsub = client.on((u) => {
-      if (u.state) setState(u.state);
+      if (u.state) {
+        // Clear in message order, preserving any error from the new match.
+        if (
+          u.state.roomId !== noticeContext?.roomId ||
+          u.state.matchId !== noticeContext?.matchId
+        )
+          setError("");
+        noticeContext = u.state;
+        setState(u.state);
+      }
       if (u.connection) {
         if (u.connection === "left") {
           setState(null);
