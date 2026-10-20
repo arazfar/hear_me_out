@@ -184,6 +184,113 @@ test("healthy device reuse preserves track identity and a replacement reacquires
   assert.notEqual(f.client.capture.stream!.getVideoTracks()[0].id, camera.id);
 });
 
+test("retry replaces a live source-muted microphone once and completes the private check with the same camera", async (t) => {
+  const f = captureFixture(t);
+  t.after(() => f.client.setup.cancel());
+  const first = f.client.capture.devices();
+  await flush();
+  f.requests[0].resolve(f.stream());
+  await first;
+  const original = f.client.capture.stream!;
+  const mic = original.getAudioTracks()[0],
+    camera = original.getVideoTracks()[0];
+  Object.defineProperty(mic, "muted", { value: true });
+  const commands = await setupState(f, false);
+  const repair = f.client.setup.run();
+  await flush();
+  assert.equal(f.requests.length, 2);
+  assert.equal(f.constraints[1].video, false);
+  assert(f.constraints[1].audio);
+  const replacement = f.stream(true, false);
+  f.requests[1].resolve(replacement);
+  await flush();
+  assert.equal(f.client.capture.stream!.getVideoTracks()[0], camera);
+  assert.equal(
+    f.client.capture.stream!.getAudioTracks()[0],
+    replacement.getAudioTracks()[0],
+  );
+  assert.equal(mic.readyState, "ended");
+  assert.equal(camera.readyState, "live");
+  assert.equal(
+    commands.filter((command) => command.type === "setup_start").length,
+    1,
+  );
+  f.client.state!.players[0].readiness = { setup: "passed", blockers: [] };
+  f.client.setup.result({
+    type: "setup_result",
+    checkId: f.client.setup.checkId,
+    status: "passed",
+    text: "Bonk, hear me out.",
+  });
+  await repair;
+  assert.equal(f.client.setup.phase, "ready");
+  assert.equal(f.requests.length, 2);
+});
+
+for (const outcome of ["denied", "cancelled"] as const) {
+  test(`source-muted microphone repair ${outcome} preserves the healthy camera and stops late tracks`, async (t) => {
+    const f = captureFixture(t);
+    const first = f.client.capture.devices();
+    await flush();
+    f.requests[0].resolve(f.stream());
+    await first;
+    const original = f.client.capture.stream!,
+      graph = f.client.capture.worklet;
+    Object.defineProperty(original.getAudioTracks()[0], "muted", {
+      value: true,
+    });
+    const repair = f.client.capture.devices();
+    await flush();
+    assert.equal(f.requests.length, 2);
+    if (outcome === "denied")
+      f.requests[1].reject(new DOMException("denied", "NotAllowedError"));
+    else f.client.capture.cancelRequest();
+    await assert.rejects(repair);
+    assert.equal(f.client.capture.stream, original);
+    assert.equal(f.client.capture.worklet, graph);
+    assert.equal(original.getVideoTracks()[0].readyState, "live");
+    if (outcome === "cancelled") {
+      const late = f.stream(true, false);
+      f.requests[1].resolve(late);
+      await flush();
+      assert.equal(late.getAudioTracks()[0].readyState, "ended");
+      assert.equal(f.client.capture.stream, original);
+    }
+  });
+}
+
+test("source mute and player mic-off remain distinct during repair", async (t) => {
+  const f = captureFixture(t);
+  const first = f.client.capture.devices();
+  await flush();
+  f.requests[0].resolve(f.stream());
+  await first;
+  f.client.capture.muteMic();
+  await f.client.capture.devices();
+  assert.equal(
+    f.requests.length,
+    1,
+    "explicit mic-off does not replace a healthy source",
+  );
+  const previous = f.client.capture.stream!;
+  Object.defineProperty(previous.getAudioTracks()[0], "muted", { value: true });
+  const repair = f.client.capture.devices();
+  await flush();
+  assert.equal(f.requests.length, 2);
+  f.client.capture.muteCamera();
+  const replacement = f.stream(true, false);
+  f.requests[1].resolve(replacement);
+  await repair;
+  assert.equal(replacement.getAudioTracks()[0].enabled, false);
+  assert.equal(
+    f.client.capture.stream!.getVideoTracks()[0],
+    previous.getVideoTracks()[0],
+  );
+  assert.equal(previous.getVideoTracks()[0].enabled, false);
+  assert.equal(f.client.capture.micMuted, true);
+  assert.equal(f.client.capture.cameraOff, true);
+});
+
 test("setup replies from cancelled attempts cannot unlock a newer check", () => {
   const client = new Client();
   client.capture.syncMicrophone = () => {};

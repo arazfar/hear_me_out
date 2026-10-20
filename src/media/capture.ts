@@ -155,6 +155,7 @@ export class DeviceCapture {
     const needsAudio =
       !audio ||
       audio.readyState !== "live" ||
+      audio.muted ||
       (this.micDevice && audio.getSettings().deviceId !== this.micDevice);
     const needsVideo =
       repair === "camera" ||
