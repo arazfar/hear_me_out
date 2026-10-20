@@ -111,8 +111,7 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
           return;
         }
         if (binary) {
-          if (channel === "audio" && rate(`audio:${id}`, 100, 1000))
-            room.media.audio(id, bytes);
+          if (channel === "audio") room.media.audio(id, bytes);
           else if (channel === "video") {
             const frame = decodeVideo(bytes);
             if (videoEpoch !== room.game.state.mediaEpoch) {

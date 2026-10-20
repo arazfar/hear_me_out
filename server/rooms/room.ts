@@ -4,6 +4,7 @@ import { Game } from "../game/game.js";
 import { Judging } from "../judge/judging.js";
 import { JudgePlayback } from "../judge/playback.js";
 import { RoomMedia } from "../transport/media.js";
+import type { AudioBudget } from "../transport/audio-budget.js";
 import { defaultServices, type RoomServices } from "./services.js";
 import { Readiness } from "./readiness.js";
 import { TurnCoordinator } from "./turn-coordinator.js";
@@ -14,6 +15,7 @@ export type Seat = {
   resume?: { id: string; fromEpoch: number; toEpoch: number };
   sockets: Map<string, WebSocket>;
   audioSeq: number;
+  audioBudget: AudioBudget;
   lastAudioAt: number;
   voiceAt: number;
   lastActivity: number;

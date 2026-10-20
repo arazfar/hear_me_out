@@ -51,7 +51,8 @@ export class TurnCoordinator {
         : Infinity,
     );
   }
-  capture(id: string, packet: Packet) {
+  /** Pure eligibility check, also used before rejecting rate-limited evidence. */
+  acceptsCapture(id: string, packet: Packet) {
     const { game, transcription } = this.room,
       t = game.state.turn;
     if (
@@ -67,18 +68,11 @@ export class TurnCoordinator {
       return false;
     if (packet.end) {
       const boundary = transcription.sealedAudio.get(id);
-      if (
-        t.sealing &&
-        (!boundary ||
-          (Number.isFinite(boundary.maxSeq) && packet.seq !== boundary.maxSeq))
-      )
-        return false;
-      this.ends.set(packet.inputEpoch, {
-        seq: packet.seq,
-        at: packet.capturedAt,
-      });
-      if (t.sealing) void this.drain(t.id);
-      return false;
+      return (
+        !t.sealing ||
+        (!!boundary &&
+          (!Number.isFinite(boundary.maxSeq) || packet.seq === boundary.maxSeq))
+      );
     }
     if (this.ends.has(packet.inputEpoch)) return false;
     const boundary = transcription.sealedAudio.get(id);
@@ -94,7 +88,37 @@ export class TurnCoordinator {
         packet.capturedAt <= this.heldInput.before &&
         this.room.services.now() <= this.heldInput.expiresAt
       );
-    if (t.inputState === "granted") {
+    return (
+      (!game.state.judge || game.state.judge.status === "silent") &&
+      ((t.inputState === "granted" &&
+        packet.capturedAt <=
+          Math.max(
+            t.inputGrantedAt!,
+            Math.min(this.room.services.now(), packet.capturedAt),
+          ) +
+            t.remainingMs) ||
+        (t.inputState === "open" &&
+          !t.pausedReason &&
+          packet.capturedAt <= (t.deadline ?? -Infinity)))
+    );
+  }
+  capture(id: string, packet: Packet) {
+    if (!this.acceptsCapture(id, packet)) return false;
+    const { game } = this.room,
+      t = game.state.turn!;
+    if (packet.end) {
+      this.ends.set(packet.inputEpoch, {
+        seq: packet.seq,
+        at: packet.capturedAt,
+      });
+      if (t.sealing) void this.drain(t.id);
+      return false;
+    }
+    if (
+      t.inputState === "granted" &&
+      !t.sealing &&
+      this.heldInput?.epoch !== packet.inputEpoch
+    ) {
       this.room.recordMetric(
         "grantToCaptureMs",
         Math.max(0, this.room.services.now() - t.inputGrantedAt!),
@@ -113,12 +137,7 @@ export class TurnCoordinator {
         capturedAt: packet.capturedAt,
       });
     }
-    return (
-      t.inputState === "open" &&
-      !t.pausedReason &&
-      packet.capturedAt <= (t.deadline ?? -Infinity) &&
-      (!game.state.judge || game.state.judge.status === "silent")
-    );
+    return true;
   }
   sealed(lastAudioSeq: number, capturedBefore: number) {
     const { game, transcription } = this.room,

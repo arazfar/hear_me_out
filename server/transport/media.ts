@@ -5,19 +5,55 @@ import type { RoomController } from "../rooms/room.js";
 export class RoomMedia {
   constructor(readonly room: RoomController) {}
   rtcTimer: ReturnType<typeof setTimeout> | null = null;
+  audioRejections = {
+    invalid: 0,
+    epoch: 0,
+    sequence: 0,
+    stale: 0,
+    future: 0,
+    messages: 0,
+    bytes: 0,
+  };
+  private rejectAudio(reason: keyof RoomMedia["audioRejections"]) {
+    this.audioRejections[reason] = Math.min(
+      Number.MAX_SAFE_INTEGER,
+      this.audioRejections[reason] + 1,
+    );
+  }
   audio(id: string, raw: Buffer) {
     const packet = decodeMicrophone(raw),
       seat = this.room.seats.get(id);
-    if (
-      !packet ||
-      !seat ||
-      packet.epoch !== this.room.game.state.mediaEpoch ||
-      packet.seq <= seat.audioSeq ||
-      packet.seq > seat.audioSeq + 4096 ||
-      packet.capturedAt < this.room.services.now() - 3000 ||
-      packet.capturedAt > this.room.services.now() + 1000
-    )
+    if (!seat) return;
+    const now = this.room.services.now(),
+      limited = seat.audioBudget.admit(raw.length, now);
+    if (!packet) return this.rejectAudio("invalid");
+    if (packet.epoch !== this.room.game.state.mediaEpoch)
+      return this.rejectAudio("epoch");
+    if (packet.seq <= seat.audioSeq || packet.seq > seat.audioSeq + 4096)
+      return this.rejectAudio("sequence");
+    if (packet.capturedAt < now - 3000) return this.rejectAudio("stale");
+    if (packet.capturedAt > now + 1000) return this.rejectAudio("future");
+    if (limited) {
+      this.rejectAudio(limited);
+      const check = this.room.readiness.get(id);
+      if (this.room.readiness.testing(id)) {
+        if (
+          packet.purpose === "private" &&
+          packet.inputEpoch === check.inputEpoch
+        ) {
+          this.room.readiness.failed(
+            id,
+            "Your mic audio arrived too quickly. Try the mic check again.",
+          );
+          this.room.transcription.stopCheck(id);
+        }
+      } else if (this.room.turnCoordinator.acceptsCapture(id, packet)) {
+        this.room.game.abort(
+          "Part of that turn’s audio couldn’t be received. No verdict was issued. Start a fresh match.",
+        );
+      }
       return;
+    }
     const { seq, capturedAt } = packet;
     seat.audioSeq = seq;
     seat.lastAudioAt = this.room.services.now();

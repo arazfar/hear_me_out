@@ -1,6 +1,7 @@
 import { Game } from "../server/game/game";
 import { PreparedVoice } from "../server/judge/voice-cache";
 import { RoomController, type Seat } from "../server/rooms/room";
+import { AudioBudget } from "../server/transport/audio-budget";
 import type {
   RoomServices,
   TranscriptionStream,
@@ -45,6 +46,7 @@ export function seat(): Seat {
     epoch: 1,
     sockets: new Map(),
     audioSeq: -1,
+    audioBudget: new AudioBudget(),
     lastAudioAt: 0,
     voiceAt: 0,
     lastActivity: 0,

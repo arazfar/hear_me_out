@@ -65,6 +65,7 @@ export function registerHttp(app: express.Express, registry: RoomRegistry) {
         timeline: room.timeline,
         failures: Object.fromEntries(room.failures),
         sttConnections: room.transcription.active.size,
+        audioRejections: room.media.audioRejections,
       });
     } catch {
       res.status(401).json({ error: "This seat is no longer active." });

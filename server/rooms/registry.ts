@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { RuleError } from "../game/game.js";
 import { RoomController } from "./room.js";
+import { AudioBudget } from "../transport/audio-budget.js";
 
 import type { RoomServices } from "./services.js";
 export function createRegistry(
@@ -51,6 +52,7 @@ export function createRegistry(
       epoch: 1,
       sockets: new Map(),
       audioSeq: -1,
+      audioBudget: new AudioBudget(),
       lastAudioAt: 0,
       voiceAt: 0,
       lastActivity: 0,
