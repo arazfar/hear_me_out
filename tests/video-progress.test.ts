@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 import { Client } from "../src/game/client";
 import type { Snapshot } from "../shared/domain";
+import { encodeVideo } from "../shared/media";
 
 test("a delayed frame callback cannot count a cached decoder frame twice", (t) => {
   t.mock.timers.enable({ apis: ["setInterval"] });
@@ -182,11 +183,22 @@ test("failed or obsolete camera Blob reads are discarded and the encoder can ret
         }),
     }),
   );
-  client.video.resetVideo();
+  client.video.setPageActive(false);
   await pending;
   finishRead(new ArrayBuffer(3));
   await Promise.resolve();
-  assert.equal(sent, 1, "a reset cancels an in-flight read without sending it");
+  assert.equal(
+    sent,
+    1,
+    "navigation cancels an in-flight read without sending it",
+  );
+  t.mock.timers.tick(100);
+  assert.equal(
+    callbacks.length,
+    0,
+    "a still-visible navigating page stops encoding",
+  );
+  client.video.setPageActive(true);
   t.mock.timers.tick(100);
   client.video.resetVideo();
   read = false;
@@ -206,4 +218,93 @@ test("failed or obsolete camera Blob reads are discarded and the encoder can ret
   t.mock.timers.tick(100);
   await callbacks.shift()!(new Blob([new Uint8Array([1, 2, 3])]));
   assert.equal(sent, 2, "capture can continue after foreground restoration");
+});
+
+function decodeFixture(t: TestContext) {
+  const decoded: { finish: () => void }[] = [];
+  let closed = 0,
+    drawn = 0,
+    acknowledgements = 0;
+  const doc = {
+    hidden: false,
+    createElement: () => ({
+      width: 256,
+      height: 144,
+      getContext: () => ({ drawImage: () => drawn++, clearRect: () => {} }),
+    }),
+  };
+  for (const [key, value] of Object.entries({
+    document: doc,
+    createImageBitmap: () =>
+      new Promise((resolve) => {
+        decoded.push({
+          finish: () =>
+            resolve({
+              width: 256,
+              height: 144,
+              close: () => closed++,
+            }),
+        });
+      }),
+  })) {
+    const saved = Object.getOwnPropertyDescriptor(globalThis, key);
+    Object.defineProperty(globalThis, key, { value, configurable: true });
+    t.after(() => {
+      if (saved) Object.defineProperty(globalThis, key, saved);
+      else Reflect.deleteProperty(globalThis, key);
+    });
+  }
+  const client = new Client();
+  client.state = { mediaMode: "wss", mediaEpoch: 7 } as Snapshot;
+  client.video.captureGeneration = 2;
+  client.send = () => {
+    acknowledgements++;
+  };
+  return {
+    video: client.video,
+    doc,
+    decoded,
+    counts: () => ({ closed, drawn, acknowledgements }),
+    frame: (seq: number, probe = false) =>
+      encodeVideo(7, seq, Date.now(), new Uint8Array([1]), probe, 2).buffer,
+  };
+}
+
+test("hidden or navigating documents discard relay frames and probes before creating Blobs", async (t) => {
+  const f = decodeFixture(t);
+  f.video.setPageActive(false);
+  f.video.pendingVideo = f.frame(1);
+  await f.video.decodeVideo();
+  await f.video.probe(f.frame(2, true));
+  assert.equal(f.video.pendingVideo, null);
+  assert.equal(f.decoded.length, 0, "beforeunload precedes document.hidden");
+  f.video.setPageActive(true);
+  f.doc.hidden = true;
+  f.video.pendingVideo = f.frame(3);
+  await f.video.decodeVideo();
+  await f.video.probe(f.frame(4, true));
+  assert.equal(f.decoded.length, 0);
+  assert.equal(f.counts().acknowledgements, 0);
+});
+
+test("page restoration accepts fresh video but never renders or acknowledges obsolete decodes", async (t) => {
+  const f = decodeFixture(t);
+  f.video.pendingVideo = f.frame(1);
+  const receiving = f.video.decodeVideo();
+  const probing = f.video.probe(f.frame(2, true));
+  f.video.pendingVideo = f.frame(3);
+  f.video.setPageActive(false);
+  f.video.setPageActive(true);
+  f.decoded.forEach((decode) => decode.finish());
+  await Promise.all([receiving, probing]);
+  assert.deepEqual(f.counts(), { closed: 2, drawn: 0, acknowledgements: 0 });
+  assert.equal(f.video.pendingVideo, null);
+  f.video.pendingVideo = f.frame(4);
+  const fresh = f.video.decodeVideo();
+  f.decoded[2].finish();
+  await fresh;
+  const freshProbe = f.video.probe(f.frame(5, true));
+  f.decoded[3].finish();
+  await freshProbe;
+  assert.deepEqual(f.counts(), { closed: 4, drawn: 1, acknowledgements: 2 });
 });

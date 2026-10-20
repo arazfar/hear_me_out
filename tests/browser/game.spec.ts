@@ -140,11 +140,14 @@ test("two players complete a scored match, recover media, and rematch", async ({
     Page,
     { packets: number; audible: number; gameplay: number }
   >();
+  const videoPackets = new Map<Page, number>();
   for (const p of [a, b]) {
     p.on("pageerror", (e) => errors.push(e.message));
     p.on("websocket", (ws) => {
       ws.on("framesent", ({ payload }) => {
         if (typeof payload !== "string") {
+          if (ws.url().endsWith("/video"))
+            videoPackets.set(p, (videoPackets.get(p) || 0) + 1);
           if (ws.url().endsWith("/audio")) {
             const counts = microphonePackets.get(p) || {
               packets: 0,
@@ -205,6 +208,14 @@ test("two players complete a scored match, recover media, and rematch", async ({
   await expect(
     a.getByRole("button", { name: "Camera on", exact: true }),
   ).toBeVisible();
+  // A canceled navigation keeps the old document and does not fire pageshow.
+  // Both relay frames and RTC delivery probes must resume without device repair.
+  await b.route(b.url(), (route) => route.abort("aborted"), { times: 1 });
+  await expect(b.reload()).rejects.toThrow();
+  const afterAbort = videoPackets.get(b) || 0;
+  await expect
+    .poll(() => videoPackets.get(b) || 0)
+    .toBeGreaterThan(afterAbort + 1);
   await shot(a, "live-lobby-" + info.project.name);
   await expect(a.locator(".player-status")).toHaveCount(0);
   await a.getByRole("button", { name: "Ready to argue" }).click();
@@ -473,6 +484,16 @@ test("two players complete a scored match, recover media, and rematch", async ({
         });
     if (opportunities === 4) {
       microphonePackets.delete(b);
+      // Keep the old document alive after beforeunload. WebKit rejects Blob
+      // work in this interval even though document.hidden is still false.
+      await b.route(
+        b.url(),
+        async (route) => {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          await route.continue();
+        },
+        { times: 1 },
+      );
       await b.reload();
       await expect(b.locator(".courtroom")).toBeVisible();
       // A fresh page repairs devices from a tap, including Safari audio unlock.

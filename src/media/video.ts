@@ -17,7 +17,16 @@ export class RelayVideo {
   frameTimer: ReturnType<typeof setInterval> | null = null;
   cameraVideo: HTMLVideoElement | null = null;
   captureGeneration = 0;
+  private pageActive = true;
   private frameReader: FileReader | null = null;
+  setPageActive(active: boolean) {
+    if (active === this.pageActive) return;
+    this.pageActive = active;
+    if (!active) this.resetVideo();
+  }
+  private get canProcessFrames() {
+    return this.pageActive && !document.hidden;
+  }
   cancelFrameRead() {
     this.frameReader?.abort();
   }
@@ -59,6 +68,7 @@ export class RelayVideo {
       while (this.pendingVideo) {
         const frame = this.pendingVideo;
         this.pendingVideo = null;
+        if (!this.canProcessFrames) continue;
         const generation = this.videoGeneration;
         const header = new DataView(frame);
         let bitmap: ImageBitmap | null = null;
@@ -68,6 +78,7 @@ export class RelayVideo {
           );
           const seq = header.getUint32(5, true);
           if (
+            !this.canProcessFrames ||
             generation !== this.videoGeneration ||
             header.getUint32(1, true) !== this.client.state?.mediaEpoch ||
             seq <= this.remoteFrameSeq
@@ -101,12 +112,13 @@ export class RelayVideo {
     try {
       if (new DataView(frame).getUint32(17, true) !== this.captureGeneration)
         return;
+      if (!this.canProcessFrames) return;
       const bitmap = await createImageBitmap(
         new Blob([frame.slice(21)], { type: "image/jpeg" }),
       );
       const valid = bitmap.width > 0 && bitmap.height > 0;
       bitmap.close();
-      if (valid && generation === this.videoGeneration)
+      if (valid && this.canProcessFrames && generation === this.videoGeneration)
         this.client.send({
           type: "video_ack",
           probe: true,
@@ -174,7 +186,7 @@ export class RelayVideo {
         !this.client.state ||
         (this.client.state.mediaMode === "rtc" && !probe) ||
         this.client.capture.cameraOff ||
-        document.hidden ||
+        !this.canProcessFrames ||
         encoding ||
         !ws ||
         ws.readyState !== WebSocket.OPEN ||
@@ -191,7 +203,7 @@ export class RelayVideo {
       const mediaEpoch = this.client.state.mediaEpoch;
       const generation = this.videoGeneration;
       const current = () =>
-        !document.hidden &&
+        this.canProcessFrames &&
         this.client.state?.mediaEpoch === mediaEpoch &&
         generation === this.videoGeneration &&
         captureGeneration === this.captureGeneration;

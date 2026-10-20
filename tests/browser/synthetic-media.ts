@@ -25,11 +25,11 @@ export async function syntheticMicrophone(
       // itself be autoplay-blocked after navigation in WebKit automation.
       const audio = captureContext;
       try {
-        const stream = await acquire(constraints);
-        for (const track of stream.getAudioTracks()) {
-          stream.removeTrack(track);
-          track.stop();
-        }
+        // Opening a discarded native microphone can reconfigure CoreAudio and
+        // pause WebKit's shared audio clock, interrupting the generated tone.
+        const stream = constraints.video
+          ? await acquire({ ...constraints, audio: false })
+          : new MediaStream();
         const tone = audio.createOscillator(),
           gain = audio.createGain();
         const destination = audio.createMediaStreamDestination();

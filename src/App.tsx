@@ -183,20 +183,44 @@ export function App() {
       }
     });
     const visibility = () => {
-      if (document.hidden) client.video.cancelFrameRead();
+      client.video.setPageActive(!document.hidden);
       client.notify({ feedbackReset: true });
       void client.reportHealth();
     };
-    const pagehide = () => client.video.resetVideo();
+    // WebKit stops permitting Blob reads after beforeunload, while the old
+    // document can still receive frames before pagehide/visibilitychange.
+    let resumeVideoFrame = 0;
+    const hideVideo = () => {
+      cancelAnimationFrame(resumeVideoFrame);
+      resumeVideoFrame = 0;
+      client.video.setPageActive(false);
+    };
+    const showVideo = () => {
+      cancelAnimationFrame(resumeVideoFrame);
+      resumeVideoFrame = 0;
+      client.video.setPageActive(!document.hidden);
+    };
+    const beforeUnload = () => {
+      hideVideo();
+      // WebKit suspends rendering during navigation. If navigation is aborted,
+      // the next frame resumes video without waiting for a pageshow that never
+      // arrives. A successful navigation cancels this callback in pagehide.
+      resumeVideoFrame = requestAnimationFrame(showVideo);
+    };
     document.addEventListener("visibilitychange", visibility);
-    window.addEventListener("pagehide", pagehide);
+    window.addEventListener("beforeunload", beforeUnload);
+    window.addEventListener("pagehide", hideVideo);
+    window.addEventListener("pageshow", showVideo);
     void client.restore();
     return () => {
       unsub();
       clearTimeout(timer);
       clearTimeout(coinTimer);
       document.removeEventListener("visibilitychange", visibility);
-      window.removeEventListener("pagehide", pagehide);
+      cancelAnimationFrame(resumeVideoFrame);
+      window.removeEventListener("beforeunload", beforeUnload);
+      window.removeEventListener("pagehide", hideVideo);
+      window.removeEventListener("pageshow", showVideo);
     };
   }, []);
   useEffect(() => {
