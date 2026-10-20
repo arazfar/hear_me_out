@@ -1,4 +1,6 @@
-import Cartesia from "@cartesia/cartesia-js";
+// SDK 4.2's ESM entry falls back to native WebSocket without terminate().
+// Its exported CommonJS entry selects Node ws, bounding forced disposal.
+import Cartesia from "@cartesia/cartesia-js/index.js";
 import { createHash, randomUUID } from "node:crypto";
 import { type Segment } from "../../shared/domain.js";
 

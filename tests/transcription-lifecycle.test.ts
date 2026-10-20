@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { AddressInfo } from "node:net";
-import Cartesia from "@cartesia/cartesia-js";
+import Cartesia from "@cartesia/cartesia-js/index.js";
 import { WebSocket, WebSocketServer } from "ws";
 import { InkSession, inkTransport } from "../server/providers/ink";
 import { encodeMicrophone } from "../shared/media";
@@ -154,6 +154,8 @@ test("five failed SDK drains release physical sockets before leaving room accoun
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
   server.on("connection", (socket) => {
+    // Keep reading TCP EOF, but never cooperate with the close handshake.
+    socket.close = () => {};
     socket.send(JSON.stringify({ type: "connected" }));
     socket.on("message", (data, binary) => {
       if (!binary && JSON.parse(data.toString()).type === "close")
