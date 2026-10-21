@@ -26,7 +26,7 @@ pnpm exec playwright test --project=webkit --project=webkit-relay -g 'two player
 pnpm exec playwright test --project=webkit-relay -g 'two players complete a scored match' --repeat-each=10 --retries=0
 ```
 
-CI runs type checking, core tests, and the production build on Linux, followed by six independent browser jobs on macOS 15. The browser runner uses native macOS media clocks and codecs, matching the locally validated suite and Playwright's recommendation to test WebKit media on macOS for Safari fidelity. Linux browser runs exposed missing WebKit capture progress and intermittent Chrome media starvation; they are not claimed as validated coverage. Each browser job has a 20-minute allowance and retains the JSON report and failure traces for 14 days. A local passing run does not establish that hosted CI has run successfully.
+CI runs type checking, core tests, and the production build on Linux, followed by six independent browser jobs on macOS 26 (Apple silicon). The browser runner uses native macOS media clocks and codecs, matching the locally validated suite and Playwright's recommendation to test WebKit media on macOS for Safari fidelity. Linux browser runs exposed missing WebKit capture progress; Intel macOS runners also showed media starvation and substantially slower rendering. These environments are not claimed as validated browser coverage. Each browser job has a 20-minute allowance and retains the JSON report and failure traces for 14 days. A local passing run does not establish that hosted CI has run successfully.
 
 ## Coverage
 
