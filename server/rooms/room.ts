@@ -9,6 +9,7 @@ import { defaultServices, type RoomServices } from "./services.js";
 import { Readiness } from "./readiness.js";
 import { TurnCoordinator } from "./turn-coordinator.js";
 import { Transcription } from "./transcription.js";
+import { settleCleanup } from "../shutdown.js";
 export type Seat = {
   tokenHash: string;
   epoch: number;
@@ -37,6 +38,7 @@ export class RoomController {
   }
   seats = new Map<string, Seat>();
   closed = false;
+  private closing?: Promise<boolean>;
   createdAt = Date.now();
   lastActiveAt = Date.now();
   metrics: {
@@ -325,22 +327,38 @@ export class RoomController {
     this.turnCoordinator.advance();
   }
   close() {
+    if (this.closing) return this.closing;
+    let done!: (ok: boolean) => void;
+    this.closing = new Promise<boolean>((resolve) => (done = resolve));
     this.closed = true;
-    this.transcription.resetEvidence();
-    this.clearTimers();
-    this.topicRequest?.abort();
-    this.judging.cancelJudgment();
-    if (this.playback.topicNudge)
-      this.services.clearTimeout(this.playback.topicNudge);
-    for (const cue of this.playback.hostCues) cue.source?.cancel();
+    const streams = new Set([
+      ...this.transcription.active,
+      ...this.transcription.ink.values(),
+    ]);
+    const actions: Array<() => unknown> = [
+      () => this.transcription.resetEvidence(),
+      () => this.clearTimers(),
+      () => this.topicRequest?.abort(),
+      () => this.judging.cancelJudgment(),
+      () => {
+        if (this.playback.topicNudge)
+          this.services.clearTimeout(this.playback.topicNudge);
+      },
+      ...this.playback.hostCues.map((cue) => () => cue.source?.cancel()),
+      () => this.judging.invalidateCandidate(),
+      () => this.playback.cancelSpeech(),
+      () => {
+        if (this.media.rtcTimer)
+          this.services.clearTimeout(this.media.rtcTimer);
+      },
+      ...[...streams].map((stream) => () => stream.close()),
+      ...[...this.seats.values()].flatMap((seat) =>
+        [...seat.sockets.values()].map((socket) => () => socket.close()),
+      ),
+    ];
     this.playback.hostCues = [];
-    this.judging.invalidateCandidate();
-    this.playback.cancelSpeech();
-    if (this.media.rtcTimer) this.services.clearTimeout(this.media.rtcTimer);
-    for (const s of this.transcription.active) void s.close();
-    for (const s of this.transcription.ink.values()) void s.close();
     this.transcription.ink.clear();
-    for (const seat of this.seats.values())
-      for (const ws of seat.sockets.values()) ws.close();
+    void settleCleanup(actions).then(done);
+    return this.closing;
   }
 }

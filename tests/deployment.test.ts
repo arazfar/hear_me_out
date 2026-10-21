@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createServer, type IncomingMessage, type Server } from "node:http";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
@@ -12,6 +12,7 @@ import {
   trustedProxyHops,
 } from "../server/transport/client-ip";
 import { services } from "./fixtures";
+import { AUDIO_WORKLETS } from "../server/frontend";
 
 async function listen(server: Server) {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -22,6 +23,32 @@ function request(forwarded?: string) {
     socket: { remoteAddress: "127.0.0.1" },
     headers: { "x-forwarded-for": forwarded },
   } as unknown as IncomingMessage;
+}
+
+async function buildFixture(dir: string) {
+  await mkdir(join(dir, ".vite"), { recursive: true });
+  await mkdir(join(dir, "assets"), { recursive: true });
+  await writeFile(
+    join(dir, "index.html"),
+    '<!doctype html><script type="module" src="/assets/app.js"></script>',
+  );
+  for (const file of [
+    ...AUDIO_WORKLETS,
+    "assets/app.js",
+    "assets/lazy.js",
+    "assets/app.css",
+  ])
+    await writeFile(join(dir, file), "/* fixture */");
+  const manifest = {
+    "index.html": {
+      isEntry: true,
+      file: "assets/app.js",
+      css: ["assets/app.css"],
+      dynamicImports: ["lazy"],
+    },
+    lazy: { file: "assets/lazy.js" },
+  };
+  await writeFile(join(dir, ".vite/manifest.json"), JSON.stringify(manifest));
 }
 
 test("proxy identity ignores forged prefixes and rejects malformed or short paths", () => {
@@ -52,6 +79,7 @@ test("proxy identity ignores forged prefixes and rejects malformed or short path
 
 test("readiness requires configuration and built assets, then fails during shutdown", async (t) => {
   const dir = await mkdtemp(join(tmpdir(), "hmo-readiness-"));
+  await buildFixture(dir);
   let configured = false;
   const runtime = createApp({
     distPath: dir,
@@ -67,8 +95,6 @@ test("readiness requires configuration and built assets, then fails during shutd
   });
   assert.equal((await fetch(base + "/readyz")).status, 503);
   configured = true;
-  assert.equal((await fetch(base + "/readyz")).status, 503);
-  await writeFile(join(dir, "index.html"), "<!doctype html>Ready");
   const ready = await fetch(base + "/readyz");
   assert.equal(ready.status, 200);
   assert.equal(ready.headers.get("cache-control"), "no-store");
@@ -88,6 +114,75 @@ test("readiness requires configuration and built assets, then fails during shutd
     ).status,
     503,
   );
+});
+
+test("readiness rejects incomplete immutable builds and static misses never become HTML", async (t) => {
+  for (const missing of [
+    "index.html",
+    ".vite/manifest.json",
+    "assets/app.js",
+    "assets/lazy.js",
+    "assets/app.css",
+    ...AUDIO_WORKLETS,
+  ]) {
+    await t.test(missing, async () => {
+      const dir = await mkdtemp(join(tmpdir(), "hmo-build-"));
+      await buildFixture(dir);
+      await rm(join(dir, missing));
+      const runtime = createApp({ distPath: dir, providersReady: () => true });
+      try {
+        const base = await listen(runtime.server);
+        const ready = await fetch(base + "/readyz");
+        assert.equal(ready.status, 503);
+        assert.deepEqual(await ready.json(), { ok: false });
+        if (missing.startsWith("assets/") || AUDIO_WORKLETS.includes(missing))
+          assert.equal((await fetch(base + "/" + missing)).status, 404);
+      } finally {
+        await runtime.close();
+        await rm(dir, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
+test("manifest validation rejects invalid entries and keeps SPA navigation", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "hmo-manifest-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  for (const manifest of [
+    "{",
+    "{}",
+    JSON.stringify({
+      "index.html": {
+        isEntry: true,
+        file: "assets/app.js",
+        imports: ["absent"],
+      },
+    }),
+    JSON.stringify({ "index.html": { isEntry: true, file: "../outside.js" } }),
+  ]) {
+    await buildFixture(dir);
+    await writeFile(join(dir, ".vite/manifest.json"), manifest);
+    const runtime = createApp({ distPath: dir, providersReady: () => true });
+    const base = await listen(runtime.server);
+    assert.equal((await fetch(base + "/readyz")).status, 503);
+    await runtime.close();
+  }
+  await buildFixture(dir);
+  const runtime = createApp({ distPath: dir, providersReady: () => true });
+  t.after(() => runtime.close());
+  const base = await listen(runtime.server);
+  assert.equal((await fetch(base + "/readyz")).status, 200);
+  for (const path of ["/", "/court/invite"])
+    assert.match(await (await fetch(base + path)).text(), /doctype html/);
+  for (const path of [
+    "/assets/app.js",
+    ...AUDIO_WORKLETS.map((file) => "/" + file),
+  ])
+    assert.match(
+      (await fetch(base + path)).headers.get("content-type")!,
+      /javascript/,
+    );
+  assert.equal((await fetch(base + "/assets/absent.js")).status, 404);
 });
 
 test("HTTP clients behind one proxy get separate limits; forged prefixes do not reset them", async (t) => {

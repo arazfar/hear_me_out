@@ -7,6 +7,8 @@ import { createRegistry } from "./rooms/registry.js";
 import type { RoomServices } from "./rooms/services.js";
 import { registerHttp } from "./transport/http.js";
 import { registerSockets } from "./transport/sockets.js";
+import { AUDIO_WORKLETS, frontendReady } from "./frontend.js";
+import { settleCleanup } from "./shutdown.js";
 import {
   createClientIpResolver,
   trustedProxyHops,
@@ -26,8 +28,9 @@ export function createApp(
   const proxyHops = options.proxyHops ?? trustedProxyHops();
   const clientIp = createClientIpResolver(proxyHops);
   const dist = resolve(options.distPath ?? "dist");
+  const built = frontendReady(dist);
   let stopping = false;
-  let closing: Promise<void> | undefined;
+  let closing: Promise<boolean> | undefined;
   app.disable("x-powered-by");
   app.use(express.json({ limit: "16kb" }));
   app.use((_req, res, next) => {
@@ -38,10 +41,7 @@ export function createApp(
   });
 
   app.get("/readyz", (_req, res) => {
-    const ready =
-      !stopping &&
-      registry.providersReady() &&
-      existsSync(resolve(dist, "index.html"));
+    const ready = !stopping && registry.providersReady() && built;
     res.setHeader("Cache-Control", "no-store");
     res.status(ready ? 200 : 503).json({ ok: ready });
   });
@@ -85,6 +85,10 @@ export function createApp(
         },
       }),
     );
+    app.get(
+      ["/assets/{*path}", ...AUDIO_WORKLETS.map((file) => "/" + file)],
+      (_req, res) => res.sendStatus(404),
+    );
     app.get("/{*path}", (_req, res) =>
       res.sendFile(resolve(dist, "index.html")),
     );
@@ -98,27 +102,42 @@ export function createApp(
     );
   function close() {
     if (closing) return closing;
+    let done!: (ok: boolean) => void;
+    closing = new Promise<boolean>((resolve) => (done = resolve));
     stopping = true;
     clearInterval(ticking);
     clearInterval(pruning);
-    closing = new Promise<void>((done) => {
-      for (const socket of wss.clients) socket.close(1012, "Server restarting");
-      for (const room of rooms.values()) room.close();
-      rooms.clear();
-      byId.clear();
-      buckets.clear();
-      const force = setTimeout(() => {
-        for (const socket of wss.clients) socket.terminate();
-        server.closeAllConnections();
-      }, 5000);
-      force.unref();
-      Promise.all([
-        new Promise<void>((resolve) => wss.close(() => resolve())),
-        new Promise<void>((resolve) => server.close(() => resolve())),
-      ]).then(() => {
-        clearTimeout(force);
-        done();
-      });
+    const force = setTimeout(() => {
+      for (const socket of wss.clients) socket.terminate();
+      server.closeAllConnections();
+    }, 5000);
+    force.unref();
+    const cleanup = settleCleanup([
+      ...[...wss.clients].map(
+        (socket) => () => socket.close(1012, "Server restarting"),
+      ),
+      ...[...rooms.values()].map((room) => () => room.close()),
+      () =>
+        new Promise<boolean>((resolve) =>
+          wss.close((error) => resolve(!error)),
+        ),
+      () =>
+        new Promise<boolean>((resolve) =>
+          server.close((error) =>
+            resolve(
+              !error ||
+                (error as NodeJS.ErrnoException).code ===
+                  "ERR_SERVER_NOT_RUNNING",
+            ),
+          ),
+        ),
+    ]);
+    rooms.clear();
+    byId.clear();
+    buckets.clear();
+    void cleanup.then((ok) => {
+      clearTimeout(force);
+      done(ok);
     });
     return closing;
   }
