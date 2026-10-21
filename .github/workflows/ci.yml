@@ -50,5 +50,7 @@ jobs:
           path: |
             output/playwright/results.json
             output/playwright/results/
+            output/playwright/ready-together/after/*.png
+            output/playwright/recovery-ownership/after/*.png
           if-no-files-found: ignore
           retention-days: 14

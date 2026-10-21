@@ -20,13 +20,9 @@ export default defineConfig({
     headless: true,
     viewport: { width: 1280, height: 720 },
     permissions: ["camera", "microphone"],
-    trace: {
-      mode: "retain-on-failure",
-      // Continuous screenshots compete with real-time audio on hosted VMs.
-      screenshots: !process.env.CI,
-      snapshots: true,
-      sources: true,
-    },
+    // Tracing every routed audio packet can starve real-time delivery on hosted
+    // VMs. CI retains structured diagnostics and explicit screenshots instead.
+    trace: process.env.CI ? "off" : "retain-on-failure",
     launchOptions: {
       args: [
         "--use-fake-device-for-media-stream",
