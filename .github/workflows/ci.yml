@@ -25,7 +25,8 @@ jobs:
       - run: pnpm build
   browser:
     needs: verify
-    runs-on: ubuntu-latest
+    # Native media clocks/codecs match the locally validated Safari/Chrome suite.
+    runs-on: macos-15-intel
     timeout-minutes: 20
     strategy:
       fail-fast: false
