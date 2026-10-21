@@ -182,8 +182,9 @@ export function App() {
         timer = setTimeout(() => setCelebrate(false), 1200);
       }
     });
+    let navigationSuspended = false;
     const visibility = () => {
-      client.video.setPageActive(!document.hidden);
+      client.video.setPageActive(!document.hidden && !navigationSuspended);
       client.notify({ feedbackReset: true });
       void client.reportHealth();
     };
@@ -191,11 +192,13 @@ export function App() {
     // document can still receive frames before pagehide/visibilitychange.
     let resumeVideoFrame = 0;
     const hideVideo = () => {
+      navigationSuspended = true;
       cancelAnimationFrame(resumeVideoFrame);
       resumeVideoFrame = 0;
       client.video.setPageActive(false);
     };
     const showVideo = () => {
+      navigationSuspended = false;
       cancelAnimationFrame(resumeVideoFrame);
       resumeVideoFrame = 0;
       client.video.setPageActive(!document.hidden);

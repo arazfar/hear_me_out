@@ -208,6 +208,38 @@ test("two players complete a scored match, recover media, and rematch", async ({
   await expect(
     a.getByRole("button", { name: "Camera on", exact: true }),
   ).toBeVisible();
+  // Exercise ordinary visibility and page restoration independently of reload.
+  for (const suspension of ["visibility", "pagehide"] as const) {
+    await b.evaluate((kind) => {
+      if (kind === "visibility") {
+        Object.defineProperty(document, "hidden", {
+          configurable: true,
+          value: true,
+        });
+        document.dispatchEvent(new Event("visibilitychange"));
+      } else
+        window.dispatchEvent(
+          new PageTransitionEvent("pagehide", { persisted: true }),
+        );
+    }, suspension);
+    // Let already-sent frames reach the observer, then cover a full RTC probe interval.
+    await b.waitForTimeout(150);
+    const whileSuspended = videoPackets.get(b) || 0;
+    await b.waitForTimeout(850);
+    expect(videoPackets.get(b) || 0).toBe(whileSuspended);
+    await b.evaluate((kind) => {
+      if (kind === "visibility") {
+        Reflect.deleteProperty(document, "hidden");
+        document.dispatchEvent(new Event("visibilitychange"));
+      } else
+        window.dispatchEvent(
+          new PageTransitionEvent("pageshow", { persisted: true }),
+        );
+    }, suspension);
+    await expect
+      .poll(() => videoPackets.get(b) || 0)
+      .toBeGreaterThan(whileSuspended + 1);
+  }
   // A canceled navigation keeps the old document and does not fire pageshow.
   // Both relay frames and RTC delivery probes must resume without device repair.
   await b.route(b.url(), (route) => route.abort("aborted"), { times: 1 });
@@ -486,9 +518,43 @@ test("two players complete a scored match, recover media, and rematch", async ({
       microphonePackets.delete(b);
       // Keep the old document alive after beforeunload. WebKit rejects Blob
       // work in this interval even though document.hidden is still false.
+      await b.evaluate(() => {
+        window.addEventListener(
+          "beforeunload",
+          () => {
+            document.documentElement.dataset.beforeReload = "true";
+          },
+          { once: true },
+        );
+      });
       await b.route(
         b.url(),
         async (route) => {
+          // Chromium blocks evaluate until navigation completes. Inject this
+          // WebKit-specific fault where the old document remains executable.
+          if (info.project.name.startsWith("webkit")) {
+            expect(
+              await b.evaluate(
+                () => document.documentElement.dataset.beforeReload,
+              ),
+            ).toBe("true");
+            // A foreground event must not undo pending navigation suspension.
+            // This event pair is injected; beforeunload above is native.
+            await b.evaluate(() => {
+              const hidden = Object.getOwnPropertyDescriptor(
+                document,
+                "hidden",
+              );
+              Object.defineProperty(document, "hidden", {
+                configurable: true,
+                value: true,
+              });
+              document.dispatchEvent(new Event("visibilitychange"));
+              if (hidden) Object.defineProperty(document, "hidden", hidden);
+              else Reflect.deleteProperty(document, "hidden");
+              document.dispatchEvent(new Event("visibilitychange"));
+            });
+          }
           await new Promise((resolve) => setTimeout(resolve, 250));
           await route.continue();
         },
