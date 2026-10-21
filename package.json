@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.12.1",
   "scripts": {
     "dev": "concurrently -k \"tsx watch server/index.ts\" \"vite --host 0.0.0.0\"",
     "build": "tsc --noEmit && vite build && esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist-server/index.js",
@@ -47,6 +48,6 @@
     "vite": "8.3.3"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": "24.21.0"
   }
 }

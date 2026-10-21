@@ -115,7 +115,9 @@ test("two players complete a scored match, recover media, and rematch", async ({
   const ca = await browser.newContext({
     isMobile: phone,
     hasTouch: phone,
-    recordVideo: { dir: root + "/video", size: { width: 1280, height: 720 } },
+    recordVideo: process.env.CI
+      ? undefined
+      : { dir: root + "/video", size: { width: 1280, height: 720 } },
     permissions: ["camera", "microphone"],
     viewport,
   });
@@ -1522,7 +1524,9 @@ test("busy scoring combines gains without collisions in either motion setting", 
   const ca = await browser.newContext({
     permissions: ["camera", "microphone"],
     viewport: { width: 1280, height: 720 },
-    recordVideo: { dir: root + "/video", size: { width: 1280, height: 720 } },
+    recordVideo: process.env.CI
+      ? undefined
+      : { dir: root + "/video", size: { width: 1280, height: 720 } },
   });
   const cb = await browser.newContext({
     permissions: ["camera", "microphone"],
@@ -1557,6 +1561,8 @@ test("busy scoring combines gains without collisions in either motion setting", 
   type Audit = {
     frames: number;
     visibleFrames: number;
+    firstVisible: number | null;
+    lastVisible: number | null;
     maxVisible: number;
     collisions: string[][];
     mounts: string[];
@@ -1578,6 +1584,8 @@ test("busy scoring combines gains without collisions in either motion setting", 
       const audit: Audit = {
         frames: 0,
         visibleFrames: 0,
+        firstVisible: null,
+        lastVisible: null,
         maxVisible: 0,
         collisions: [],
         mounts: [],
@@ -1607,7 +1615,11 @@ test("busy scoring combines gains without collisions in either motion setting", 
           (node) => Number(getComputedStyle(node).opacity) > 0.01,
         );
         audit.maxVisible = Math.max(audit.maxVisible, visible.length);
-        if (visible.length) audit.visibleFrames++;
+        if (visible.length) {
+          audit.visibleFrames++;
+          audit.firstVisible ??= performance.now();
+          audit.lastVisible = performance.now();
+        }
         for (let i = 0; i < visible.length; i++)
           for (let j = i + 1; j < visible.length; j++) {
             const r = visible[i].getBoundingClientRect(),
@@ -1679,11 +1691,18 @@ test("busy scoring combines gains without collisions in either motion setting", 
     const audit = await page.evaluate(
       () => (window as unknown as { awardAudit: Audit }).awardAudit,
     );
+    await info.attach(
+      page === a ? "normal-motion-awards" : "reduced-motion-awards",
+      { body: JSON.stringify(audit), contentType: "application/json" },
+    );
     expect(audit.mounts).toEqual([ids[0]]);
     expect(audit.lifetimes).toHaveLength(1);
     expect(Math.min(...audit.lifetimes)).toBeGreaterThan(700);
     expect(audit.maxVisible).toBe(1);
-    expect(audit.visibleFrames).toBeGreaterThan(10);
+    // Hosted browsers can throttle animation-frame sampling. Require sustained
+    // visible time rather than assuming the runner delivers a particular FPS.
+    expect(audit.firstVisible).not.toBeNull();
+    expect(audit.lastVisible! - audit.firstVisible!).toBeGreaterThan(500);
     expect(audit.collisions).toEqual([]);
     expect(audit.labels[ids[0]]).toBe(
       "+" +
@@ -1696,10 +1715,6 @@ test("busy scoring combines gains without collisions in either motion setting", 
           nodes.map((n) => n.getBoundingClientRect().height),
         ),
     ).toEqual(heights.get(page));
-    await info.attach(
-      page === a ? "normal-motion-awards" : "reduced-motion-awards",
-      { body: JSON.stringify(audit), contentType: "application/json" },
-    );
   }
   await request.post("/__test/replay/" + code);
   for (const page of [a, b]) {
@@ -1733,7 +1748,9 @@ test("two players receive decision feedback while a rematch waits for complete p
   const ca = await browser.newContext({
     viewport,
     permissions: ["camera", "microphone"],
-    recordVideo: { dir: root + "/video", size: viewport },
+    recordVideo: process.env.CI
+      ? undefined
+      : { dir: root + "/video", size: viewport },
   });
   const cb = await (second || browser).newContext({
     viewport,
@@ -1746,14 +1763,31 @@ test("two players receive decision feedback while a rematch waits for complete p
     await context.addInitScript(() => {
       const Original = AudioWorkletNode;
       (window as any).__decisionAudio = [];
+      (window as any).__decisionPlaybackAcks = [];
+      const OriginalSocket = WebSocket;
+      window.WebSocket = class extends OriginalSocket {
+        send(data: Parameters<WebSocket["send"]>[0]) {
+          if (typeof data === "string") {
+            const message = JSON.parse(data);
+            if (message.command?.type === "audio_playback")
+              (window as any).__decisionPlaybackAcks.push({
+                ...message.command,
+                at: Date.now(),
+              });
+          }
+          super.send(data);
+        }
+      };
       window.AudioWorkletNode = class extends Original {
         constructor(...args: ConstructorParameters<typeof AudioWorkletNode>) {
           super(...args);
-          if (args[1] === "judge-playback")
+          if (args[1] === "judge-playback") {
+            (window as any).__decisionContext = args[0];
             this.port.addEventListener("message", (event) => {
               if (event.data.type === "drained")
                 (window as any).__decisionAudio.push(event.data);
             });
+          }
         }
       };
     });
@@ -1773,8 +1807,9 @@ test("two players receive decision feedback while a rematch waits for complete p
     });
   const announcement = (page: Page) =>
     page.locator('.app > [aria-live="polite"]');
+  let code = "";
   try {
-    const code = await enter(a, b, baseURL!);
+    code = await enter(a, b, baseURL!);
     await a.getByRole("button", { name: "Ready to argue" }).click();
     await expect(announcement(a)).toHaveText("Ready. Waiting for Sam.");
     await expect(announcement(b)).toHaveText("Alex is ready. Ready to argue.");
@@ -1997,6 +2032,22 @@ test("two players receive decision feedback while a rematch waits for complete p
     );
     await expect(a.locator(".result-panel h2")).toContainText("Alex");
   } finally {
+    if (code) {
+      await info.attach("rematch-diagnostics", {
+        body: Buffer.from(JSON.stringify({
+          state: await snapshot(request, code),
+          timeline: await (await request.post("/__test/timeline/" + code)).json(),
+          clients: await Promise.all([a, b].map((page) =>
+            page.evaluate(() => ({
+              rendered: (window as any).__decisionAudio,
+              acknowledgments: (window as any).__decisionPlaybackAcks,
+              clock: (window as any).__decisionContext?.currentTime,
+              output: (window as any).__decisionContext?.getOutputTimestamp?.(),
+            })))),
+        })),
+        contentType: "application/json",
+      });
+    }
     const video = a.video();
     await ca.close();
     await cb.close();

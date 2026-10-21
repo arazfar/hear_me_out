@@ -175,7 +175,9 @@ test("frozen live cameras require replacement and never resume on cached frames"
   const ca = await browser.newContext({
     permissions: ["camera", "microphone"],
     viewport: { width: 1280, height: 720 },
-    recordVideo: { dir: root + "/video", size: { width: 1280, height: 720 } },
+    recordVideo: process.env.CI
+      ? undefined
+      : { dir: root + "/video", size: { width: 1280, height: 720 } },
   });
   const cb = await browser.newContext({
     permissions: ["camera", "microphone"],
@@ -429,6 +431,6 @@ test("frozen live cameras require replacement and never resume on cached frames"
     });
   } finally {
     await Promise.all([ca.close(), cb.close()]);
-    await a.video()!.saveAs(root + `/camera-repair-${info.project.name}.webm`);
+    await a.video()?.saveAs(root + `/camera-repair-${info.project.name}.webm`);
   }
 });

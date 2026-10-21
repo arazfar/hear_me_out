@@ -97,13 +97,22 @@ export function fixedVoice(text: string): PreparedVoice | undefined {
   return voice;
 }
 let warming = false;
+let generation = 0;
+export function clearHostVoice() {
+  generation++;
+  warming = false;
+  for (const voice of fixed.values()) voice.cancel();
+  fixed.clear();
+}
 export function warmHostVoice() {
   if (warming || !process.env.FISH_AUDIO_API_KEY) return;
   warming = true;
+  const owner = generation;
   // Warm only lines the host can use verbatim, within the cache reservation.
   const lines = [...PHRASES.topic, ...PHRASES.nudge];
   void (async () => {
     for (const text of lines) {
+      if (owner !== generation) return;
       const voice = fixedVoice(text);
       if (!voice) continue;
       while (!voice.done && !voice.cancelled)

@@ -6,7 +6,9 @@ A party game targeting desktop Chrome, Android Chrome, and iPhone Safari, with p
 
 ## Run
 
-Requires Node 22.12+ and pnpm. No LiveKit or managed media account is used.
+Requires the Node version in `.node-version` and pnpm 10.12.1. No LiveKit or managed media account is used.
+
+For hosted operation, see [Render deployment](docs/RENDER.md). The Blueprint deploys the app on Render Free with CI-gated updates.
 
 ```sh
 pnpm install --frozen-lockfile

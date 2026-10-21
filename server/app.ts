@@ -7,17 +7,27 @@ import { createRegistry } from "./rooms/registry.js";
 import type { RoomServices } from "./rooms/services.js";
 import { registerHttp } from "./transport/http.js";
 import { registerSockets } from "./transport/sockets.js";
+import {
+  createClientIpResolver,
+  trustedProxyHops,
+} from "./transport/client-ip.js";
 export function createApp(
   options: {
     services?: Partial<RoomServices>;
     providersReady?: () => boolean;
+    distPath?: string;
+    proxyHops?: number;
   } = {},
 ) {
   const app = express(),
     server = createServer(app);
   const registry = createRegistry(options.services, options.providersReady);
   const { rooms, byId, buckets } = registry;
-  app.set("trust proxy", "loopback");
+  const proxyHops = options.proxyHops ?? trustedProxyHops();
+  const clientIp = createClientIpResolver(proxyHops);
+  const dist = resolve(options.distPath ?? "dist");
+  let stopping = false;
+  let closing: Promise<void> | undefined;
   app.disable("x-powered-by");
   app.use(express.json({ limit: "16kb" }));
   app.use((_req, res, next) => {
@@ -27,8 +37,26 @@ export function createApp(
     next();
   });
 
-  registerHttp(app, registry);
-  const wss = registerSockets(server, registry);
+  app.get("/readyz", (_req, res) => {
+    const ready =
+      !stopping &&
+      registry.providersReady() &&
+      existsSync(resolve(dist, "index.html"));
+    res.setHeader("Cache-Control", "no-store");
+    res.status(ready ? 200 : 503).json({ ok: ready });
+  });
+  app.use((_req, res, next) => {
+    if (stopping) {
+      res.setHeader("Connection", "close");
+      res
+        .status(503)
+        .json({ error: "Server restarting. Join a new court shortly." });
+      return;
+    }
+    next();
+  });
+  registerHttp(app, registry, clientIp);
+  const wss = registerSockets(server, registry, clientIp, () => stopping);
   const ticking = setInterval(() => {
     for (const room of rooms.values()) if (!room.closed) room.tick();
   }, 100);
@@ -47,7 +75,6 @@ export function createApp(
     for (const [key, b] of buckets)
       if (b.expires < Date.now()) buckets.delete(key);
   }, 10000);
-  const dist = resolve("dist");
   if (existsSync(dist)) {
     app.use(
       express.static(dist, {
@@ -70,12 +97,30 @@ export function createApp(
         ),
     );
   function close() {
+    if (closing) return closing;
+    stopping = true;
     clearInterval(ticking);
     clearInterval(pruning);
-    for (const room of rooms.values()) room.close();
-    for (const socket of wss.clients) socket.terminate();
-    wss.close();
-    server.close();
+    closing = new Promise<void>((done) => {
+      for (const socket of wss.clients) socket.close(1012, "Server restarting");
+      for (const room of rooms.values()) room.close();
+      rooms.clear();
+      byId.clear();
+      buckets.clear();
+      const force = setTimeout(() => {
+        for (const socket of wss.clients) socket.terminate();
+        server.closeAllConnections();
+      }, 5000);
+      force.unref();
+      Promise.all([
+        new Promise<void>((resolve) => wss.close(() => resolve())),
+        new Promise<void>((resolve) => server.close(() => resolve())),
+      ]).then(() => {
+        clearTimeout(force);
+        done();
+      });
+    });
+    return closing;
   }
 
   return { app, server, registry, close };

@@ -13,7 +13,13 @@ import { acceptUpgrade } from "./upgrade.js";
 import type { Server } from "node:http";
 import { command } from "../rooms/commands.js";
 import type { RoomRegistry } from "../rooms/registry.js";
-export function registerSockets(server: Server, registry: RoomRegistry) {
+import type { ClientIp } from "./client-ip.js";
+export function registerSockets(
+  server: Server,
+  registry: RoomRegistry,
+  clientIp: ClientIp,
+  stopping = () => false,
+) {
   const { authenticate, rate } = registry;
   const wss = new WebSocketServer({
     noServer: true,
@@ -22,8 +28,9 @@ export function registerSockets(server: Server, registry: RoomRegistry) {
   });
   server.on("upgrade", (req, socket, head) => {
     if (
+      stopping() ||
       wss.clients.size >= 128 ||
-      !rate(`upgrade:${req.socket.remoteAddress}`, 60, 60000) ||
+      !rate(`upgrade:${clientIp(req)}`, 60, 60000) ||
       !acceptUpgrade(req.url, req.headers.host, req.headers.origin)
     ) {
       socket.destroy();
