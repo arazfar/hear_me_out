@@ -43,6 +43,9 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps ${{ startsWith(matrix.project, 'webkit') && 'webkit' || 'chrome' }}
       - run: pnpm test:ui --project=${{ matrix.project }}
+      - name: Summarize browser attempts
+        if: always()
+        run: node scripts/browser-summary.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
