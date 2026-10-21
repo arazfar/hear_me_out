@@ -9,7 +9,6 @@ services:
     buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm build
     startCommand: node dist-server/index.js
     healthCheckPath: /readyz
-    maxShutdownDelaySeconds: 30
     envVars:
       - key: NODE_ENV
         value: production

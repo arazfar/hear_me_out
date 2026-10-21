@@ -57,6 +57,7 @@ services retain only two previous deploys for rollback. Rollbacks and all restar
 discard in-memory rooms; players must create new courts. Shutdown rejects new
 admissions, closes sockets with restart code 1012, disposes providers, and exits
 within 25 seconds (Render's deadline is 30 seconds).
+The Blueprint omits `maxShutdownDelaySeconds`: Render rejects that setting on Free.
 
 ## Free-tier limits
 
