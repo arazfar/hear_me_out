@@ -7,6 +7,7 @@ import { RuleError } from "../game/game.js";
 
 import type { RoomRegistry } from "../rooms/registry.js";
 import type { Seat } from "../rooms/room.js";
+import type { ClientIp } from "./client-ip.js";
 
 function ownsResume(seat: Seat, epoch: number, id?: string) {
   return (
@@ -16,7 +17,11 @@ function ownsResume(seat: Seat, epoch: number, id?: string) {
     seat.resume.toEpoch === seat.epoch
   );
 }
-export function registerHttp(app: express.Express, registry: RoomRegistry) {
+export function registerHttp(
+  app: express.Express,
+  registry: RoomRegistry,
+  clientIp: ClientIp,
+) {
   const { rooms, byId, rate, name, session, authenticate } = registry;
   app.get("/healthz", (_req, res) =>
     res.json({
@@ -66,6 +71,17 @@ export function registerHttp(app: express.Express, registry: RoomRegistry) {
         failures: Object.fromEntries(room.failures),
         sttConnections: room.transcription.active.size,
         audioRejections: room.media.audioRejections,
+        ...(process.env.PROXY_DIAGNOSTICS === "true"
+          ? {
+              network: {
+                clientIp: clientIp(req),
+                forwardedCount:
+                  typeof req.headers["x-forwarded-for"] === "string"
+                    ? req.headers["x-forwarded-for"].split(",").length
+                    : 0,
+              },
+            }
+          : {}),
       });
     } catch {
       res.status(401).json({ error: "This seat is no longer active." });
@@ -73,7 +89,7 @@ export function registerHttp(app: express.Express, registry: RoomRegistry) {
   });
   app.post("/api/rooms", (req, res) => {
     try {
-      if (!rate(`create:${req.ip}`, 3, 60000)) {
+      if (!rate(`create:${clientIp(req)}`, 3, 60000)) {
         res
           .status(429)
           .json({ error: "Too many courts opened. Try again in a minute." });
@@ -109,7 +125,7 @@ export function registerHttp(app: express.Express, registry: RoomRegistry) {
   });
   app.post("/api/join", (req, res) => {
     try {
-      if (!rate(`join:${req.ip}`, 5, 60000)) {
+      if (!rate(`join:${clientIp(req)}`, 5, 60000)) {
         res
           .status(429)
           .json({ error: "Too many join attempts. Try again in a minute." });
@@ -139,7 +155,7 @@ export function registerHttp(app: express.Express, registry: RoomRegistry) {
   });
   app.post("/api/resume", (req, res) => {
     try {
-      if (!rate(`resume:${req.ip}`, 30, 60000)) {
+      if (!rate(`resume:${clientIp(req)}`, 30, 60000)) {
         res
           .status(429)
           .json({ error: "Reconnect limit reached. Try again shortly." });

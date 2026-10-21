@@ -11,7 +11,7 @@ pnpm build
 pnpm test:ui
 ```
 
-The suite starts loopback fixture servers on ports 3102 and 3103. Keep those ports free. It uses independent players, synthetic cameras and microphones, and mock speech, topic, judging, and voice providers. It makes no external provider calls. The fixture and its `/__test/*` routes are never imported by the production entrypoint.
+The suite starts loopback fixture servers on ports 3102 and 3103. Keep those ports free, or set `TEST_RTC_PORT` and `TEST_RELAY_PORT` to available ports. It uses independent players, synthetic cameras and microphones, and mock speech, topic, judging, and voice providers. It makes no external provider calls. The fixture and its `/__test/*` routes are never imported by the production entrypoint.
 
 Run the departure regression repeatedly in both transports with:
 

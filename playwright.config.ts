@@ -1,4 +1,8 @@
 import { defineConfig } from "@playwright/test";
+const rtcPort = Number(process.env.TEST_RTC_PORT || 3102);
+const relayPort = Number(process.env.TEST_RELAY_PORT || 3103);
+const rtcURL = `http://127.0.0.1:${rtcPort}`;
+const relayURL = `http://127.0.0.1:${relayPort}`;
 export default defineConfig({
   testDir: "./tests/browser",
   timeout: 120000,
@@ -26,21 +30,21 @@ export default defineConfig({
   projects: [
     {
       name: "rtc",
-      use: { channel: "chrome", baseURL: "http://127.0.0.1:3102" },
+      use: { channel: "chrome", baseURL: rtcURL },
     },
     {
       name: "relay",
-      use: { channel: "chrome", baseURL: "http://127.0.0.1:3103" },
+      use: { channel: "chrome", baseURL: relayURL },
     },
     {
       name: "phone",
       grep: /two players|phone layouts/,
-      use: { channel: "chrome", baseURL: "http://127.0.0.1:3102" },
+      use: { channel: "chrome", baseURL: rtcURL },
     },
     {
       name: "phone-relay",
       grep: /two players|phone layouts/,
-      use: { channel: "chrome", baseURL: "http://127.0.0.1:3103" },
+      use: { channel: "chrome", baseURL: relayURL },
     },
     {
       name: "webkit",
@@ -48,7 +52,7 @@ export default defineConfig({
       use: {
         browserName: "webkit",
         channel: undefined,
-        baseURL: "http://127.0.0.1:3102",
+        baseURL: rtcURL,
         launchOptions: { args: [] },
       },
     },
@@ -58,21 +62,20 @@ export default defineConfig({
       use: {
         browserName: "webkit",
         channel: undefined,
-        baseURL: "http://127.0.0.1:3103",
+        baseURL: relayURL,
         launchOptions: { args: [] },
       },
     },
   ],
   webServer: [
     {
-      command: "PORT=3102 pnpm exec tsx scripts/browser-fixture.ts",
-      url: "http://127.0.0.1:3102/healthz",
+      command: `PORT=${rtcPort} pnpm exec tsx scripts/browser-fixture.ts`,
+      url: `${rtcURL}/healthz`,
       reuseExistingServer: false,
     },
     {
-      command:
-        "PORT=3103 FORCE_WSS=true pnpm exec tsx scripts/browser-fixture.ts",
-      url: "http://127.0.0.1:3103/healthz",
+      command: `PORT=${relayPort} FORCE_WSS=true pnpm exec tsx scripts/browser-fixture.ts`,
+      url: `${relayURL}/healthz`,
       reuseExistingServer: false,
     },
   ],

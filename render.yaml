@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: hear-me-out
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    autoDeployTrigger: checksPass
+    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm build
+    startCommand: node dist-server/index.js
+    healthCheckPath: /readyz
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY_HOPS
+        value: "3"
+      - key: FORCE_WSS
+        value: "false"
+      - key: JUDGE_MODEL
+        value: gpt-6-luna
+      - key: JUDGE_REASONING
+        value: none
+      - key: FISH_TTS_MODEL
+        value: s2-pro
+      - key: FISH_VOICE_ID
+        value: 29f4e37195264ebc86cf568ea6e36aff
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CARTESIA_API_KEY
+        sync: false
+      - key: FISH_AUDIO_API_KEY
+        sync: false
