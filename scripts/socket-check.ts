@@ -34,6 +34,7 @@ const a = await post("/api/rooms", { name: "Sam" }),
 class Peer {
   state: Snapshot;
   sockets = new Map<string, WebSocket>();
+  connected = false;
   seq = 0;
   videoSeq = 0;
   setup = false;
@@ -95,6 +96,7 @@ class Peer {
     return id;
   }
   async connect() {
+    this.connected = false;
     for (const ch of ["control", "audio", "video", "judge"]) {
       const s = new WebSocket(`${wsbase}/socket/${ch}`);
       this.sockets.set(ch, s);
@@ -183,6 +185,7 @@ class Peer {
           this.errors.push(event.error);
       });
     }
+    this.connected = true;
     this.interval = setInterval(() => this.audio(), 20);
   }
   finishAudio() {
@@ -249,6 +252,7 @@ class Peer {
     }
   }
   close() {
+    this.connected = false;
     clearInterval(this.interval);
     for (const timer of this.playbackTimers) clearTimeout(timer);
     this.playbackTimers.clear();
@@ -261,6 +265,8 @@ await pa.connect();
 await pb.connect();
 const status = setInterval(() => {
   for (const p of [pa, pb]) {
+    // A public reconnect can span a status tick while channels are opening.
+    if (!p.connected) continue;
     p.command({
       type: "media_status",
       captureId: p.session.playerId + ":mic",
@@ -275,10 +281,10 @@ const status = setInterval(() => {
     });
     for (const probe of [true, false])
       setTimeout(
-        () =>
-          p.sockets
-            .get("video")
-            ?.send(
+        () => {
+          const video = p.sockets.get("video");
+          if (p.connected && video?.readyState === WebSocket.OPEN)
+            video.send(
               encodeVideo(
                 p.state.mediaEpoch,
                 ++p.videoSeq,
@@ -286,7 +292,8 @@ const status = setInterval(() => {
                 new Uint8Array([255, 216, 255, 217]),
                 probe,
               ),
-            ),
+            );
+        },
         probe ? 0 : 100,
       );
   }
