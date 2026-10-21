@@ -1561,6 +1561,8 @@ test("busy scoring combines gains without collisions in either motion setting", 
   type Audit = {
     frames: number;
     visibleFrames: number;
+    firstVisible: number | null;
+    lastVisible: number | null;
     maxVisible: number;
     collisions: string[][];
     mounts: string[];
@@ -1582,6 +1584,8 @@ test("busy scoring combines gains without collisions in either motion setting", 
       const audit: Audit = {
         frames: 0,
         visibleFrames: 0,
+        firstVisible: null,
+        lastVisible: null,
         maxVisible: 0,
         collisions: [],
         mounts: [],
@@ -1611,7 +1615,11 @@ test("busy scoring combines gains without collisions in either motion setting", 
           (node) => Number(getComputedStyle(node).opacity) > 0.01,
         );
         audit.maxVisible = Math.max(audit.maxVisible, visible.length);
-        if (visible.length) audit.visibleFrames++;
+        if (visible.length) {
+          audit.visibleFrames++;
+          audit.firstVisible ??= performance.now();
+          audit.lastVisible = performance.now();
+        }
         for (let i = 0; i < visible.length; i++)
           for (let j = i + 1; j < visible.length; j++) {
             const r = visible[i].getBoundingClientRect(),
@@ -1683,11 +1691,18 @@ test("busy scoring combines gains without collisions in either motion setting", 
     const audit = await page.evaluate(
       () => (window as unknown as { awardAudit: Audit }).awardAudit,
     );
+    await info.attach(
+      page === a ? "normal-motion-awards" : "reduced-motion-awards",
+      { body: JSON.stringify(audit), contentType: "application/json" },
+    );
     expect(audit.mounts).toEqual([ids[0]]);
     expect(audit.lifetimes).toHaveLength(1);
     expect(Math.min(...audit.lifetimes)).toBeGreaterThan(700);
     expect(audit.maxVisible).toBe(1);
-    expect(audit.visibleFrames).toBeGreaterThan(10);
+    // Hosted browsers can throttle animation-frame sampling. Require sustained
+    // visible time rather than assuming the runner delivers a particular FPS.
+    expect(audit.firstVisible).not.toBeNull();
+    expect(audit.lastVisible! - audit.firstVisible!).toBeGreaterThan(500);
     expect(audit.collisions).toEqual([]);
     expect(audit.labels[ids[0]]).toBe(
       "+" +
@@ -1700,10 +1715,6 @@ test("busy scoring combines gains without collisions in either motion setting", 
           nodes.map((n) => n.getBoundingClientRect().height),
         ),
     ).toEqual(heights.get(page));
-    await info.attach(
-      page === a ? "normal-motion-awards" : "reduced-motion-awards",
-      { body: JSON.stringify(audit), contentType: "application/json" },
-    );
   }
   await request.post("/__test/replay/" + code);
   for (const page of [a, b]) {
