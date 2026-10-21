@@ -8,6 +8,8 @@ export default defineConfig({
   // Hosted runners also close two browser contexts inside this budget.
   // Individual gameplay and recovery deadlines remain unchanged.
   timeout: process.env.CI ? 180000 : 120000,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
   workers: 1,
   fullyParallel: false,
   expect: { timeout: 15000 },
