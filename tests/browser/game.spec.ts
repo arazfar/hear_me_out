@@ -1752,14 +1752,31 @@ test("two players receive decision feedback while a rematch waits for complete p
     await context.addInitScript(() => {
       const Original = AudioWorkletNode;
       (window as any).__decisionAudio = [];
+      (window as any).__decisionPlaybackAcks = [];
+      const OriginalSocket = WebSocket;
+      window.WebSocket = class extends OriginalSocket {
+        send(data: Parameters<WebSocket["send"]>[0]) {
+          if (typeof data === "string") {
+            const message = JSON.parse(data);
+            if (message.command?.type === "audio_playback")
+              (window as any).__decisionPlaybackAcks.push({
+                ...message.command,
+                at: Date.now(),
+              });
+          }
+          super.send(data);
+        }
+      };
       window.AudioWorkletNode = class extends Original {
         constructor(...args: ConstructorParameters<typeof AudioWorkletNode>) {
           super(...args);
-          if (args[1] === "judge-playback")
+          if (args[1] === "judge-playback") {
+            (window as any).__decisionContext = args[0];
             this.port.addEventListener("message", (event) => {
               if (event.data.type === "drained")
                 (window as any).__decisionAudio.push(event.data);
             });
+          }
         }
       };
     });
@@ -1779,8 +1796,9 @@ test("two players receive decision feedback while a rematch waits for complete p
     });
   const announcement = (page: Page) =>
     page.locator('.app > [aria-live="polite"]');
+  let code = "";
   try {
-    const code = await enter(a, b, baseURL!);
+    code = await enter(a, b, baseURL!);
     await a.getByRole("button", { name: "Ready to argue" }).click();
     await expect(announcement(a)).toHaveText("Ready. Waiting for Sam.");
     await expect(announcement(b)).toHaveText("Alex is ready. Ready to argue.");
@@ -2003,6 +2021,22 @@ test("two players receive decision feedback while a rematch waits for complete p
     );
     await expect(a.locator(".result-panel h2")).toContainText("Alex");
   } finally {
+    if (code) {
+      await info.attach("rematch-diagnostics", {
+        body: Buffer.from(JSON.stringify({
+          state: await snapshot(request, code),
+          timeline: await (await request.post("/__test/timeline/" + code)).json(),
+          clients: await Promise.all([a, b].map((page) =>
+            page.evaluate(() => ({
+              rendered: (window as any).__decisionAudio,
+              acknowledgments: (window as any).__decisionPlaybackAcks,
+              clock: (window as any).__decisionContext?.currentTime,
+              output: (window as any).__decisionContext?.getOutputTimestamp?.(),
+            })))),
+        })),
+        contentType: "application/json",
+      });
+    }
     const video = a.video();
     await ca.close();
     await cb.close();
