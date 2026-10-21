@@ -115,7 +115,9 @@ test("two players complete a scored match, recover media, and rematch", async ({
   const ca = await browser.newContext({
     isMobile: phone,
     hasTouch: phone,
-    recordVideo: { dir: root + "/video", size: { width: 1280, height: 720 } },
+    recordVideo: process.env.CI
+      ? undefined
+      : { dir: root + "/video", size: { width: 1280, height: 720 } },
     permissions: ["camera", "microphone"],
     viewport,
   });
@@ -1522,7 +1524,9 @@ test("busy scoring combines gains without collisions in either motion setting", 
   const ca = await browser.newContext({
     permissions: ["camera", "microphone"],
     viewport: { width: 1280, height: 720 },
-    recordVideo: { dir: root + "/video", size: { width: 1280, height: 720 } },
+    recordVideo: process.env.CI
+      ? undefined
+      : { dir: root + "/video", size: { width: 1280, height: 720 } },
   });
   const cb = await browser.newContext({
     permissions: ["camera", "microphone"],
@@ -1733,7 +1737,9 @@ test("two players receive decision feedback while a rematch waits for complete p
   const ca = await browser.newContext({
     viewport,
     permissions: ["camera", "microphone"],
-    recordVideo: { dir: root + "/video", size: viewport },
+    recordVideo: process.env.CI
+      ? undefined
+      : { dir: root + "/video", size: viewport },
   });
   const cb = await (second || browser).newContext({
     viewport,

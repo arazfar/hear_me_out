@@ -5,7 +5,9 @@ const rtcURL = `http://127.0.0.1:${rtcPort}`;
 const relayURL = `http://127.0.0.1:${relayPort}`;
 export default defineConfig({
   testDir: "./tests/browser",
-  timeout: 120000,
+  // Hosted runners also close two browser contexts inside this budget.
+  // Individual gameplay and recovery deadlines remain unchanged.
+  timeout: process.env.CI ? 180000 : 120000,
   workers: 1,
   fullyParallel: false,
   expect: { timeout: 15000 },
@@ -18,7 +20,13 @@ export default defineConfig({
     headless: true,
     viewport: { width: 1280, height: 720 },
     permissions: ["camera", "microphone"],
-    trace: "retain-on-failure",
+    trace: {
+      mode: "retain-on-failure",
+      // Continuous screenshots compete with real-time audio on hosted VMs.
+      screenshots: !process.env.CI,
+      snapshots: true,
+      sources: true,
+    },
     launchOptions: {
       args: [
         "--use-fake-device-for-media-stream",

@@ -22,7 +22,7 @@ async function players(
       browser.newContext({
         permissions: ["camera", "microphone"],
         viewport: { width: 1280, height: 720 },
-        ...(i === 0 || recordBoth
+        ...(!process.env.CI && (i === 0 || recordBoth)
           ? {
               recordVideo: {
                 dir: output + "/video",
