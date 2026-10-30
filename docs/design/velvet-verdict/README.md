@@ -22,7 +22,7 @@ Additional after captures: [360px verdict](after/verdict-360.png), [844×390 lan
 - `pnpm test`: 252 passed, 0 failures.
 - `pnpm build`: passed; existing lazy Three.js bundle remains above Vite's 500 kB advisory threshold.
 - Focused phone-layout and Velvet Verdict state-atlas checks: 2 passed in 34.4 seconds after the final review fixes.
-- Full `pnpm test:ui` six-project matrix: in progress. Final counts and CI status will be recorded before handoff.
+- Full `pnpm test:ui` six-project matrix and hosted CI: final run counts, outcomes, and links are recorded in [draft PR #4](https://github.com/arazfar/hear_me_out/pull/4).
 
 The atlas covers 17 surface/state families at 1440×900, 1280×720, 360×640, 390×844, and 844×390. [Surface measurements](surface-checks.json) record actual composited text contrast, 44px target dimensions, and horizontal overflow. All 85 captured combinations passed those checks; the lowest sampled text ratio was 5.50:1. This is focused coverage, not a claim of complete WCAG conformance. Existing acceptance tests retain keyboard/focus restoration, single-owner announcements, full long captions and punctuation, reduced motion, persistent video elements, reward collisions, private checks, recovery, and rematch assertions. The new identity checks exercise both client perspectives, either winner, array reordering, departure, vacant-seat replacement, reconnect, and rematch.
 
