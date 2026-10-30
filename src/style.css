@@ -69,6 +69,10 @@ a {
   scrollbar-width: thin;
   scrollbar-color: var(--stroke) var(--surface);
 }
+input:not([type="checkbox"]),
+select {
+  min-height: 44px;
+}
 input {
   width: 100%;
   min-width: 0;
@@ -144,6 +148,9 @@ p {
   flex: 0 0 auto;
 }
 .wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   font-family: var(--font-display);
   font-size: 20px;
   line-height: 1;

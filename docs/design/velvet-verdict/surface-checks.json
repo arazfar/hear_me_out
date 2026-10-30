@@ -5,6 +5,13 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -14,6 +21,13 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -23,6 +37,13 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -32,6 +53,13 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -41,6 +69,13 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -50,6 +85,18 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -59,6 +106,18 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -68,6 +127,18 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -77,6 +148,18 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -86,6 +169,18 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -95,6 +190,7 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
+    "indicators": [],
     "minText": 7.694525117806864,
     "overflow": false
   },
@@ -104,6 +200,7 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
+    "indicators": [],
     "minText": 7.694525117806864,
     "overflow": false
   },
@@ -113,6 +210,7 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
+    "indicators": [],
     "minText": 7.694525117806864,
     "overflow": false
   },
@@ -122,6 +220,7 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
+    "indicators": [],
     "minText": 7.694525117806864,
     "overflow": false
   },
@@ -131,6 +230,7 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
+    "indicators": [],
     "minText": 7.694525117806864,
     "overflow": false
   },
@@ -140,7 +240,14 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Ready to argue"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -149,7 +256,14 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Ready to argue"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -158,7 +272,14 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Ready to argue"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -167,7 +288,14 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Ready to argue"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -176,7 +304,14 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Ready to argue"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -185,7 +320,8 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -194,7 +330,8 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -203,7 +340,8 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -212,7 +350,8 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -221,7 +360,8 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -230,7 +370,8 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -239,7 +380,8 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -248,7 +390,8 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -257,7 +400,8 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -266,7 +410,113 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
+    "overflow": false
+  },
+  {
+    "name": "custom-topic",
+    "width": 1440,
+    "height": 900,
+    "failures": [],
+    "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
+    "minText": 5.495296634233284,
+    "overflow": false
+  },
+  {
+    "name": "custom-topic",
+    "width": 1280,
+    "height": 720,
+    "failures": [],
+    "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
+    "minText": 5.495296634233284,
+    "overflow": false
+  },
+  {
+    "name": "custom-topic",
+    "width": 360,
+    "height": 640,
+    "failures": [],
+    "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
+    "minText": 5.495296634233284,
+    "overflow": false
+  },
+  {
+    "name": "custom-topic",
+    "width": 390,
+    "height": 844,
+    "failures": [],
+    "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
+    "minText": 5.495296634233284,
+    "overflow": false
+  },
+  {
+    "name": "custom-topic",
+    "width": 844,
+    "height": 390,
+    "failures": [],
+    "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 12.763239378834268,
+        "control": "input"
+      }
+    ],
+    "minText": 5.495296634233284,
     "overflow": false
   },
   {
@@ -275,7 +525,14 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Confirm my side"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -284,7 +541,14 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Confirm my side"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -293,7 +557,14 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Confirm my side"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -302,7 +573,14 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Confirm my side"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -311,7 +589,14 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Confirm my side"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -320,7 +605,14 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "I’m done"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -329,7 +621,14 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "I’m done"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -338,7 +637,14 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "I’m done"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -347,7 +653,14 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "I’m done"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -356,7 +669,14 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "I’m done"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -365,7 +685,8 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -374,7 +695,8 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -383,7 +705,8 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -392,7 +715,8 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -401,7 +725,8 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -410,7 +735,8 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -419,7 +745,8 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -428,7 +755,8 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -437,7 +765,8 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -446,7 +775,8 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -455,7 +785,14 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Rematch"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -464,7 +801,14 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Rematch"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -473,7 +817,14 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Rematch"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -482,7 +833,14 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Rematch"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -491,7 +849,14 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Rematch"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -500,6 +865,7 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
+    "indicators": [],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -509,6 +875,7 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
+    "indicators": [],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -518,6 +885,7 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
+    "indicators": [],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -527,6 +895,7 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
+    "indicators": [],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -536,6 +905,7 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
+    "indicators": [],
     "minText": 5.495296634233284,
     "overflow": false
   },
@@ -545,7 +915,8 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -554,7 +925,8 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -563,7 +935,8 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -572,7 +945,8 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -581,7 +955,8 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -590,7 +965,14 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -599,7 +981,14 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -608,7 +997,14 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -617,7 +1013,14 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -626,7 +1029,14 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -635,7 +1045,14 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -644,7 +1061,14 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -653,7 +1077,14 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -662,7 +1093,14 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -671,7 +1109,14 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -680,7 +1125,19 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Got it"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -689,7 +1146,19 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Got it"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -698,7 +1167,19 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Got it"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -707,7 +1188,19 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Got it"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -716,7 +1209,19 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Got it"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -725,7 +1230,14 @@
     "height": 900,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -734,7 +1246,14 @@
     "height": 720,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -743,7 +1262,14 @@
     "height": 640,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -752,7 +1278,14 @@
     "height": 844,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   },
   {
@@ -761,7 +1294,14 @@
     "height": 390,
     "failures": [],
     "smallTargets": [],
-    "minText": 7.560054090549975,
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 6.842203911727926,
+        "control": "Back to menu"
+      }
+    ],
+    "minText": 6.094657581627115,
     "overflow": false
   }
 ]

@@ -55,9 +55,7 @@ async function inspectSurface(page: Page) {
         !rect.width ||
         !rect.height ||
         style.visibility === "hidden" ||
-        el.closest(
-          '[aria-hidden="true"], .sr-only, canvas, video, svg, .avatar',
-        )
+        el.closest('[aria-hidden="true"], .sr-only, canvas, video, svg')
       )
         continue;
       const text = [...el.childNodes]
@@ -66,8 +64,14 @@ async function inspectSurface(page: Page) {
         .join("")
         .trim();
       if (!text && !el.matches("input")) continue;
+      const textStyle =
+        el.matches("input[placeholder]") && !(el as HTMLInputElement).value
+          ? getComputedStyle(el, "::placeholder")
+          : style;
       const bg = background(el),
-        fg = over(rgba(style.color), bg);
+        color = rgba(textStyle.color);
+      color[3] *= Number(textStyle.opacity);
+      const fg = over(color, bg);
       const ratio = contrast(fg, bg);
       const large =
         parseFloat(style.fontSize) >= 24 ||
@@ -84,7 +88,7 @@ async function inspectSurface(page: Page) {
     }
     const smallTargets = [
       ...document.querySelectorAll<HTMLElement>(
-        "button, summary, .motion-toggle",
+        "button, summary, .motion-toggle, a, input:not([type=checkbox]), select",
       ),
     ].flatMap((el) => {
       const r = el.getBoundingClientRect();
@@ -92,9 +96,40 @@ async function inspectSurface(page: Page) {
         ? [{ text: el.textContent, w: r.width, h: r.height }]
         : [];
     });
+    const indicators = [
+      ...document.querySelectorAll<HTMLElement>(
+        '.primary:not(:disabled), input:not([type="checkbox"]), :focus-visible',
+      ),
+    ].flatMap((el) => {
+      const rect = el.getBoundingClientRect();
+      if (!rect.width || !rect.height) return [];
+      const style = getComputedStyle(el);
+      const outer = background(el.parentElement);
+      const measured = [];
+      if (el.matches('.primary:not(:disabled), input:not([type="checkbox"])'))
+        measured.push({
+          kind: "control boundary",
+          ratio: Math.max(
+            contrast(background(el), outer),
+            parseFloat(style.borderWidth) > 0
+              ? contrast(over(rgba(style.borderColor), outer), outer)
+              : 0,
+          ),
+        });
+      if (el.matches(":focus-visible") && parseFloat(style.outlineWidth) > 0)
+        measured.push({
+          kind: "focus outline",
+          ratio: contrast(over(rgba(style.outlineColor), outer), outer),
+        });
+      return measured.map((m) => ({
+        ...m,
+        control: el.textContent?.trim().slice(0, 40) || "input",
+      }));
+    });
     return {
       failures,
       smallTargets,
+      indicators,
       minText,
       overflow: document.documentElement.scrollWidth > innerWidth,
     };
@@ -123,6 +158,7 @@ test("Velvet Verdict state atlas, stable identities and accessible surfaces", as
   const a = await ca.newPage(),
     b = await cb.newPage();
   const checks: unknown[] = [];
+  const interactionChecks: unknown[] = [];
   let roomCode = "";
   let originalPlayers: Snapshot["players"] = [];
   const capture = async (name: string) => {
@@ -138,6 +174,12 @@ test("Velvet Verdict state atlas, stable identities and accessible surfaces", as
         .toEqual([]);
       expect
         .soft(check.smallTargets, `${name} at ${width}: touch targets`)
+        .toEqual([]);
+      expect
+        .soft(
+          check.indicators.filter((i) => i.ratio < 3),
+          `${name} at ${width}: control/focus contrast`,
+        )
         .toEqual([]);
       expect
         .soft(check.overflow, `${name} at ${width}: horizontal overflow`)
@@ -167,6 +209,28 @@ test("Velvet Verdict state atlas, stable identities and accessible surfaces", as
     await a.goto(baseURL!);
     await expect(a.locator(".stage canvas")).toBeVisible();
     await capture("title");
+    const primary = a.getByRole("button", { name: "Create room", exact: true });
+    const inspectInteraction = async (state: string) => {
+      const result = await inspectSurface(a);
+      interactionChecks.push({ state, ...result });
+      expect(result.failures, state + " text contrast").toEqual([]);
+      expect(
+        result.indicators.filter((i) => i.ratio < 3),
+        state + " indicator contrast",
+      ).toEqual([]);
+    };
+    await expect(primary).toBeDisabled();
+    await inspectInteraction("disabled");
+    await a.getByLabel("Your name", { exact: true }).fill("Alex");
+    await a.keyboard.press("Tab");
+    await expect(primary).toBeFocused();
+    await inspectInteraction("keyboard focus");
+    await primary.hover();
+    await inspectInteraction("hover");
+    await a.mouse.down();
+    await inspectInteraction("pressed");
+    await a.mouse.move(0, 0);
+    await a.mouse.up();
     await a.getByRole("button", { name: "Join a friend", exact: true }).click();
     await capture("join");
     await a.getByRole("button", { name: "Create your own room" }).click();
@@ -334,6 +398,10 @@ test("Velvet Verdict state atlas, stable identities and accessible surfaces", as
     ] as [string, Partial<Snapshot>][]) {
       await present(patch);
       await capture(name);
+      if (name === "topic") {
+        await a.getByRole("button", { name: "Write your own" }).click();
+        await capture("custom-topic");
+      }
     }
     for (const winner of [p0, p1]) {
       await present({
@@ -392,6 +460,10 @@ test("Velvet Verdict state atlas, stable identities and accessible surfaces", as
     await writeFile(
       `${root}/surface-checks.json`,
       JSON.stringify(checks, null, 2),
+    );
+    await writeFile(
+      `${root}/interaction-checks.json`,
+      JSON.stringify(interactionChecks, null, 2),
     );
     if (roomCode)
       await request.post("/__test/present/" + roomCode, {
