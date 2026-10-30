@@ -1,3 +1,4 @@
+import { playerSeat } from "./identity";
 import type { Snapshot } from "../../shared/domain";
 import { client } from "../game/client";
 import { useMediaVersion } from "./hooks";
@@ -45,7 +46,7 @@ export function Captions({ state }: { state: Snapshot }) {
         <div className="player-caption">
           <span
             className={
-              "caption-speaker player-color-" + state.players.indexOf(speaker!)
+              "caption-speaker player-color-" + playerSeat(state, speaker)
             }
           >
             {speaker?.name}

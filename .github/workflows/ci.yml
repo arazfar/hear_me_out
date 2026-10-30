@@ -55,5 +55,6 @@ jobs:
             output/playwright/results/
             output/playwright/ready-together/after/*.png
             output/playwright/recovery-ownership/after/*.png
+            output/playwright/velvet-verdict/after/
           if-no-files-found: ignore
           retention-days: 14

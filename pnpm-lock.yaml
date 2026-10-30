@@ -11,11 +11,11 @@ importers:
       '@cartesia/cartesia-js':
         specifier: 4.2.0
         version: 4.2.0(ws@8.22.0)
-      '@fontsource/bungee':
-        specifier: ^5.2.5
+      '@fontsource/lilita-one':
+        specifier: ^5.3.0
         version: 5.3.0
-      '@fontsource/space-grotesk':
-        specifier: ^5.2.10
+      '@fontsource/nunito-sans':
+        specifier: ^5.3.0
         version: 5.3.0
       '@react-three/fiber':
         specifier: 9.8.1
@@ -261,11 +261,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@fontsource/bungee@5.3.0':
-    resolution: {integrity: sha512-vKwbDE7yMrqfGxgFan+diPLwgWp9j4FGYaLm+OhUoqYO6Pr02QIi/p0KiTW0E/7uiXqfTd6cMj+/E4h2sc3Ocg==}
+  '@fontsource/lilita-one@5.3.0':
+    resolution: {integrity: sha512-bNW3tD+m5pOsAQpW/NvtRbFthFe+B73hDJK2DLLCFCtF+1p+UMBgo7ibxdcb9Sftr06LKAVbt080wiMdSqGbOg==}
 
-  '@fontsource/space-grotesk@5.3.0':
-    resolution: {integrity: sha512-ksnGizDPXIDuvqcTYTSrmZ+evx9sDlS8rp7+42BQ7wU+spt3twEoXfbJz672C+5CLg6VeUQwRy5RXshWb67LcQ==}
+  '@fontsource/nunito-sans@5.3.0':
+    resolution: {integrity: sha512-CctNhebQ2YYJUwVMCAkHexQg7yedfz9s8JzaETALyc9QIQuDFRlNTWXux9H5PsNLgptPkrzRDomAdLJt1sDFpQ==}
 
   '@oxc-project/types@0.153.0':
     resolution: {integrity: sha512-jSNrRIyvPVLL5E1z/tS5zLAprosGz/FuI1PWwEOz59j3E4TTTzSpqKb/RDGqJhhW0QHYISGXxq582wGx6T11Tw==}
@@ -1221,9 +1221,9 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@fontsource/bungee@5.3.0': {}
+  '@fontsource/lilita-one@5.3.0': {}
 
-  '@fontsource/space-grotesk@5.3.0': {}
+  '@fontsource/nunito-sans@5.3.0': {}
 
   '@oxc-project/types@0.153.0': {}
 

@@ -147,6 +147,8 @@ export function PlayerCard({
         (active ? " has-floor" : "") +
         (winner ? " winner" : "")
       }
+      data-seat={index}
+      data-player-id={player?.id}
       aria-label={(player?.name || "Empty seat") + (local ? ", you" : "")}
     >
       <div className="face-heading">
@@ -163,6 +165,7 @@ export function PlayerCard({
           <i />
           <i />
           <i />
+          <small aria-hidden="true">Voice</small>
         </span>
         <div className="face-meta">
           {showScore && (
@@ -203,7 +206,7 @@ export function PlayerCard({
                         : "mic"
                 }
               />
-              <span>{active ? "Listening" : status}</span>
+              <span>{active ? "Bonk is scoring" : status}</span>
             </div>
           )}
         </div>

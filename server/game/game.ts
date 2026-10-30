@@ -199,6 +199,7 @@ export class Game {
       (p) => p.name.toLowerCase() === name.toLowerCase(),
     );
     const p: Player = {
+      seat: this.state.players.some((p, i) => (p.seat ?? i) === 0) ? 1 : 0,
       id: randomUUID(),
       name: duplicate ? `${name.slice(0, 16)} (2)` : name,
       connected: true,

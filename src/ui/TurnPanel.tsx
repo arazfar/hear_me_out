@@ -1,3 +1,4 @@
+import { playerColor } from "./identity";
 import { useEffect, useState } from "react";
 import { judgeIsListening, type Snapshot } from "../../shared/domain";
 import { client } from "../game/client";
@@ -53,10 +54,7 @@ export function TurnPanel({
       }
       style={
         {
-          "--turn-color":
-            state.players[0]?.id === turn.playerId
-              ? "var(--pink)"
-              : "var(--cyan)",
+          "--turn-color": playerColor(state, turn.playerId),
         } as React.CSSProperties
       }
       aria-label="Current turn"

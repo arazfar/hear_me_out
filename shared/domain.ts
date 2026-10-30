@@ -38,6 +38,7 @@ export const CAPS: Record<Opportunity, Record<Criterion, number>> = {
   closing: { reasoning: 14, rebuttal: 12, impact: 8, wit: 4, clarity: 2 },
 };
 export const playerSchema = z.object({
+  seat: z.union([z.literal(0), z.literal(1)]).optional(),
   id: z.string(),
   name: z.string(),
   connected: z.boolean(),

@@ -26,7 +26,8 @@ export function LobbyView({
     !other && me?.readiness?.blockers.every((b) => b === "peer_video");
   return (
     <section className="phase-panel lobby" aria-label="Lobby">
-      {!other && <h2>Invite your friend</h2>}
+      {!other && <h2>Save a seat for your friend.</h2>}
+      {other && !blocked && <h2>Both sides are here.</h2>}
       {!other && (
         <button
           className="invite-code"

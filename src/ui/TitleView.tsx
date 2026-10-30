@@ -30,7 +30,7 @@ export function TitleView({
     <section className="title-layout">
       <div className="title-world">
         <h1>
-          HEAR ME <span>OUT.</span>
+          Hear me <span>out.</span>
         </h1>
         <p className="title-tagline">Two friends. One terrible take.</p>
         <StageLoader state={null} reduced={reduced} hero />
@@ -52,6 +52,12 @@ export function TitleView({
           <DeviceCheck />
         ) : (
           <>
+            <h2>{joining ? "Your friend awaits." : "Court is in session."}</h2>
+            <p className="entry-intro">
+              {joining
+                ? "A room for two. A take to defend."
+                : "Bring a friend. Make your case. Bonk will hear you both."}
+            </p>
             <label htmlFor="player-name">Your name</label>
             <input
               id="player-name"
@@ -115,7 +121,9 @@ export function TitleView({
                   ? "Create your own room"
                   : "Join a friend"}
             </button>
-            <p className="entry-note">Mic & camera required</p>
+            <p className="entry-note">
+              Mic & camera required · Headphones help
+            </p>
           </>
         )}
       </form>

@@ -1,380 +1,473 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-12T20:50:05.270551Z",
-  "title": "Design System: Hear Me Out",
+  "generatedAt": "2026-10-30T20:33:59.155354Z",
+  "title": "Design System: Hear Me Out — Velvet Verdict",
   "extensions": {
     "colorMeta": {
-      "cream": {
+      "canvas": {
         "role": "neutral",
-        "displayName": "Painted Cream",
+        "displayName": "Burgundy Canvas",
         "tonalRamp": [
-          "oklch(15% 0.04715 87.03)",
-          "oklch(26% 0.04715 87.03)",
-          "oklch(38% 0.04715 87.03)",
-          "oklch(49% 0.04715 87.03)",
-          "oklch(61% 0.04715 87.03)",
-          "oklch(72% 0.04715 87.03)",
-          "oklch(84% 0.04715 87.03)",
-          "oklch(95% 0.04715 87.03)"
-        ]
-      },
-      "plum": {
-        "role": "neutral",
-        "displayName": "Plum Ink",
-        "tonalRamp": [
-          "oklch(15% 0.05957 306.65)",
-          "oklch(26% 0.05957 306.65)",
-          "oklch(38% 0.05957 306.65)",
-          "oklch(49% 0.05957 306.65)",
-          "oklch(61% 0.05957 306.65)",
-          "oklch(72% 0.05957 306.65)",
-          "oklch(84% 0.05957 306.65)",
-          "oklch(95% 0.05957 306.65)"
-        ]
-      },
-      "lime": {
-        "role": "primary",
-        "displayName": "Action Lime",
-        "tonalRamp": [
-          "oklch(15% 0.20774 120.85)",
-          "oklch(26% 0.20774 120.85)",
-          "oklch(38% 0.20774 120.85)",
-          "oklch(49% 0.20774 120.85)",
-          "oklch(61% 0.20774 120.85)",
-          "oklch(72% 0.20774 120.85)",
-          "oklch(84% 0.20774 120.85)",
-          "oklch(95% 0.20774 120.85)"
-        ]
-      },
-      "pink": {
-        "role": "secondary",
-        "displayName": "Seat Pink",
-        "tonalRamp": [
-          "oklch(15% 0.21957 358.56)",
-          "oklch(26% 0.21957 358.56)",
-          "oklch(38% 0.21957 358.56)",
-          "oklch(49% 0.21957 358.56)",
-          "oklch(61% 0.21957 358.56)",
-          "oklch(72% 0.21957 358.56)",
-          "oklch(84% 0.21957 358.56)",
-          "oklch(95% 0.21957 358.56)"
-        ]
-      },
-      "cyan": {
-        "role": "secondary",
-        "displayName": "Seat Cyan",
-        "tonalRamp": [
-          "oklch(15% 0.12988 211.41)",
-          "oklch(26% 0.12988 211.41)",
-          "oklch(38% 0.12988 211.41)",
-          "oklch(49% 0.12988 211.41)",
-          "oklch(61% 0.12988 211.41)",
-          "oklch(72% 0.12988 211.41)",
-          "oklch(84% 0.12988 211.41)",
-          "oklch(95% 0.12988 211.41)"
-        ]
-      },
-      "lavender": {
-        "role": "secondary",
-        "displayName": "Bonk Lavender",
-        "tonalRamp": [
-          "oklch(15% 0.10413 297.89)",
-          "oklch(26% 0.10413 297.89)",
-          "oklch(38% 0.10413 297.89)",
-          "oklch(49% 0.10413 297.89)",
-          "oklch(61% 0.10413 297.89)",
-          "oklch(72% 0.10413 297.89)",
-          "oklch(84% 0.10413 297.89)",
-          "oklch(95% 0.10413 297.89)"
+          "oklch(15% 0.03629 344.84)",
+          "oklch(26% 0.03629 344.84)",
+          "oklch(38% 0.03629 344.84)",
+          "oklch(49% 0.03629 344.84)",
+          "oklch(61% 0.03629 344.84)",
+          "oklch(72% 0.03629 344.84)",
+          "oklch(84% 0.03629 344.84)",
+          "oklch(95% 0.03629 344.84)"
         ]
       },
       "surface": {
         "role": "neutral",
-        "displayName": "Plum Surface",
+        "displayName": "Velvet Plum",
         "tonalRamp": [
-          "oklch(15% 0.05904 313.75)",
-          "oklch(26% 0.05904 313.75)",
-          "oklch(38% 0.05904 313.75)",
-          "oklch(49% 0.05904 313.75)",
-          "oklch(61% 0.05904 313.75)",
-          "oklch(72% 0.05904 313.75)",
-          "oklch(84% 0.05904 313.75)",
-          "oklch(95% 0.05904 313.75)"
+          "oklch(15% 0.05147 333.97)",
+          "oklch(26% 0.05147 333.97)",
+          "oklch(38% 0.05147 333.97)",
+          "oklch(49% 0.05147 333.97)",
+          "oklch(61% 0.05147 333.97)",
+          "oklch(72% 0.05147 333.97)",
+          "oklch(84% 0.05147 333.97)",
+          "oklch(95% 0.05147 333.97)"
+        ]
+      },
+      "cream": {
+        "role": "neutral",
+        "displayName": "Warm Cream",
+        "tonalRamp": [
+          "oklch(15% 0.02931 80.66)",
+          "oklch(26% 0.02931 80.66)",
+          "oklch(38% 0.02931 80.66)",
+          "oklch(49% 0.02931 80.66)",
+          "oklch(61% 0.02931 80.66)",
+          "oklch(72% 0.02931 80.66)",
+          "oklch(84% 0.02931 80.66)",
+          "oklch(95% 0.02931 80.66)"
+        ]
+      },
+      "seat0": {
+        "role": "secondary",
+        "displayName": "Powder Blue Seat",
+        "tonalRamp": [
+          "oklch(15% 0.06214 236.73)",
+          "oklch(26% 0.06214 236.73)",
+          "oklch(38% 0.06214 236.73)",
+          "oklch(49% 0.06214 236.73)",
+          "oklch(61% 0.06214 236.73)",
+          "oklch(72% 0.06214 236.73)",
+          "oklch(84% 0.06214 236.73)",
+          "oklch(95% 0.06214 236.73)"
+        ]
+      },
+      "seat1": {
+        "role": "secondary",
+        "displayName": "Apricot Seat",
+        "tonalRamp": [
+          "oklch(15% 0.09522 50.81)",
+          "oklch(26% 0.09522 50.81)",
+          "oklch(38% 0.09522 50.81)",
+          "oklch(49% 0.09522 50.81)",
+          "oklch(61% 0.09522 50.81)",
+          "oklch(72% 0.09522 50.81)",
+          "oklch(84% 0.09522 50.81)",
+          "oklch(95% 0.09522 50.81)"
+        ]
+      },
+      "brass": {
+        "role": "primary",
+        "displayName": "Bonk Brass",
+        "tonalRamp": [
+          "oklch(15% 0.10791 85.06)",
+          "oklch(26% 0.10791 85.06)",
+          "oklch(38% 0.10791 85.06)",
+          "oklch(49% 0.10791 85.06)",
+          "oklch(61% 0.10791 85.06)",
+          "oklch(72% 0.10791 85.06)",
+          "oklch(84% 0.10791 85.06)",
+          "oklch(95% 0.10791 85.06)"
+        ]
+      },
+      "surface-raised": {
+        "role": "neutral",
+        "displayName": "Surface Raised",
+        "tonalRamp": [
+          "oklch(15% 0.05270 337.28)",
+          "oklch(26% 0.05270 337.28)",
+          "oklch(38% 0.05270 337.28)",
+          "oklch(49% 0.05270 337.28)",
+          "oklch(61% 0.05270 337.28)",
+          "oklch(72% 0.05270 337.28)",
+          "oklch(84% 0.05270 337.28)",
+          "oklch(95% 0.05270 337.28)"
+        ]
+      },
+      "surface-hover": {
+        "role": "neutral",
+        "displayName": "Surface Hover",
+        "tonalRamp": [
+          "oklch(15% 0.04978 338.38)",
+          "oklch(26% 0.04978 338.38)",
+          "oklch(38% 0.04978 338.38)",
+          "oklch(49% 0.04978 338.38)",
+          "oklch(61% 0.04978 338.38)",
+          "oklch(72% 0.04978 338.38)",
+          "oklch(84% 0.04978 338.38)",
+          "oklch(95% 0.04978 338.38)"
         ]
       },
       "muted": {
         "role": "neutral",
-        "displayName": "Muted Lilac",
+        "displayName": "Muted Rose Cream",
         "tonalRamp": [
-          "oklch(15% 0.03592 315.71)",
-          "oklch(26% 0.03592 315.71)",
-          "oklch(38% 0.03592 315.71)",
-          "oklch(49% 0.03592 315.71)",
-          "oklch(61% 0.03592 315.71)",
-          "oklch(72% 0.03592 315.71)",
-          "oklch(84% 0.03592 315.71)",
-          "oklch(95% 0.03592 315.71)"
+          "oklch(15% 0.03322 345.12)",
+          "oklch(26% 0.03322 345.12)",
+          "oklch(38% 0.03322 345.12)",
+          "oklch(49% 0.03322 345.12)",
+          "oklch(61% 0.03322 345.12)",
+          "oklch(72% 0.03322 345.12)",
+          "oklch(84% 0.03322 345.12)",
+          "oklch(95% 0.03322 345.12)"
         ]
       },
-      "warning": {
-        "role": "tertiary",
-        "displayName": "Warm Warning",
+      "stroke": {
+        "role": "neutral",
+        "displayName": "Stroke",
         "tonalRamp": [
-          "oklch(15% 0.10790 74.09)",
-          "oklch(26% 0.10790 74.09)",
-          "oklch(38% 0.10790 74.09)",
-          "oklch(49% 0.10790 74.09)",
-          "oklch(61% 0.10790 74.09)",
-          "oklch(72% 0.10790 74.09)",
-          "oklch(84% 0.10790 74.09)",
-          "oklch(95% 0.10790 74.09)"
+          "oklch(15% 0.05068 343.31)",
+          "oklch(26% 0.05068 343.31)",
+          "oklch(38% 0.05068 343.31)",
+          "oklch(49% 0.05068 343.31)",
+          "oklch(61% 0.05068 343.31)",
+          "oklch(72% 0.05068 343.31)",
+          "oklch(84% 0.05068 343.31)",
+          "oklch(95% 0.05068 343.31)"
         ]
       },
-      "lime-hover": {
+      "action-hover": {
         "role": "primary",
-        "displayName": "Lifted Lime",
+        "displayName": "Action Hover",
         "tonalRamp": [
-          "oklch(15% 0.15899 118.83)",
-          "oklch(26% 0.15899 118.83)",
-          "oklch(38% 0.15899 118.83)",
-          "oklch(49% 0.15899 118.83)",
-          "oklch(61% 0.15899 118.83)",
-          "oklch(72% 0.15899 118.83)",
-          "oklch(84% 0.15899 118.83)",
-          "oklch(95% 0.15899 118.83)"
+          "oklch(15% 0.09447 85.60)",
+          "oklch(26% 0.09447 85.60)",
+          "oklch(38% 0.09447 85.60)",
+          "oklch(49% 0.09447 85.60)",
+          "oklch(61% 0.09447 85.60)",
+          "oklch(72% 0.09447 85.60)",
+          "oklch(84% 0.09447 85.60)",
+          "oklch(95% 0.09447 85.60)"
         ]
       },
-      "field-paper": {
-        "role": "neutral",
-        "displayName": "Field Paper",
+      "action-pressed": {
+        "role": "primary",
+        "displayName": "Action Pressed",
         "tonalRamp": [
-          "oklch(15% 0.01422 84.58)",
-          "oklch(26% 0.01422 84.58)",
-          "oklch(38% 0.01422 84.58)",
-          "oklch(49% 0.01422 84.58)",
-          "oklch(61% 0.01422 84.58)",
-          "oklch(72% 0.01422 84.58)",
-          "oklch(84% 0.01422 84.58)",
-          "oklch(95% 0.01422 84.58)"
+          "oklch(15% 0.10744 82.37)",
+          "oklch(26% 0.10744 82.37)",
+          "oklch(38% 0.10744 82.37)",
+          "oklch(49% 0.10744 82.37)",
+          "oklch(61% 0.10744 82.37)",
+          "oklch(72% 0.10744 82.37)",
+          "oklch(84% 0.10744 82.37)",
+          "oklch(95% 0.10744 82.37)"
         ]
       },
-      "field-stroke": {
+      "field": {
         "role": "neutral",
-        "displayName": "Field Stroke",
+        "displayName": "Field",
         "tonalRamp": [
-          "oklch(15% 0.03396 322.66)",
-          "oklch(26% 0.03396 322.66)",
-          "oklch(38% 0.03396 322.66)",
-          "oklch(49% 0.03396 322.66)",
-          "oklch(61% 0.03396 322.66)",
-          "oklch(72% 0.03396 322.66)",
-          "oklch(84% 0.03396 322.66)",
-          "oklch(95% 0.03396 322.66)"
+          "oklch(15% 0.01751 81.33)",
+          "oklch(26% 0.01751 81.33)",
+          "oklch(38% 0.01751 81.33)",
+          "oklch(49% 0.01751 81.33)",
+          "oklch(61% 0.01751 81.33)",
+          "oklch(72% 0.01751 81.33)",
+          "oklch(84% 0.01751 81.33)",
+          "oklch(95% 0.01751 81.33)"
         ]
       },
       "paper-copy": {
         "role": "neutral",
         "displayName": "Paper Copy",
         "tonalRamp": [
-          "oklch(15% 0.04749 316.85)",
-          "oklch(26% 0.04749 316.85)",
-          "oklch(38% 0.04749 316.85)",
-          "oklch(49% 0.04749 316.85)",
-          "oklch(61% 0.04749 316.85)",
-          "oklch(72% 0.04749 316.85)",
-          "oklch(84% 0.04749 316.85)",
-          "oklch(95% 0.04749 316.85)"
+          "oklch(15% 0.05308 348.17)",
+          "oklch(26% 0.05308 348.17)",
+          "oklch(38% 0.05308 348.17)",
+          "oklch(49% 0.05308 348.17)",
+          "oklch(61% 0.05308 348.17)",
+          "oklch(72% 0.05308 348.17)",
+          "oklch(84% 0.05308 348.17)",
+          "oklch(95% 0.05308 348.17)"
         ]
       },
-      "paper-focus": {
+      "field-stroke": {
         "role": "neutral",
-        "displayName": "Paper Focus",
+        "displayName": "Field Stroke",
         "tonalRamp": [
-          "oklch(15% 0.15148 311.26)",
-          "oklch(26% 0.15148 311.26)",
-          "oklch(38% 0.15148 311.26)",
-          "oklch(49% 0.15148 311.26)",
-          "oklch(61% 0.15148 311.26)",
-          "oklch(72% 0.15148 311.26)",
-          "oklch(84% 0.15148 311.26)",
-          "oklch(95% 0.15148 311.26)"
-        ]
-      },
-      "quiet-control": {
-        "role": "neutral",
-        "displayName": "Quiet Control",
-        "tonalRamp": [
-          "oklch(15% 0.04715 87.03 / 0.0549)",
-          "oklch(26% 0.04715 87.03 / 0.0549)",
-          "oklch(38% 0.04715 87.03 / 0.0549)",
-          "oklch(49% 0.04715 87.03 / 0.0549)",
-          "oklch(61% 0.04715 87.03 / 0.0549)",
-          "oklch(72% 0.04715 87.03 / 0.0549)",
-          "oklch(84% 0.04715 87.03 / 0.0549)",
-          "oklch(95% 0.04715 87.03 / 0.0549)"
-        ]
-      },
-      "quiet-control-hover": {
-        "role": "neutral",
-        "displayName": "Quiet Control Hover",
-        "tonalRamp": [
-          "oklch(15% 0.04715 87.03 / 0.1333)",
-          "oklch(26% 0.04715 87.03 / 0.1333)",
-          "oklch(38% 0.04715 87.03 / 0.1333)",
-          "oklch(49% 0.04715 87.03 / 0.1333)",
-          "oklch(61% 0.04715 87.03 / 0.1333)",
-          "oklch(72% 0.04715 87.03 / 0.1333)",
-          "oklch(84% 0.04715 87.03 / 0.1333)",
-          "oklch(95% 0.04715 87.03 / 0.1333)"
+          "oklch(15% 0.06081 347.72)",
+          "oklch(26% 0.06081 347.72)",
+          "oklch(38% 0.06081 347.72)",
+          "oklch(49% 0.06081 347.72)",
+          "oklch(61% 0.06081 347.72)",
+          "oklch(72% 0.06081 347.72)",
+          "oklch(84% 0.06081 347.72)",
+          "oklch(95% 0.06081 347.72)"
         ]
       },
       "disabled-fill": {
         "role": "neutral",
         "displayName": "Disabled Fill",
         "tonalRamp": [
-          "oklch(15% 0.04274 87.37)",
-          "oklch(26% 0.04274 87.37)",
-          "oklch(38% 0.04274 87.37)",
-          "oklch(49% 0.04274 87.37)",
-          "oklch(61% 0.04274 87.37)",
-          "oklch(72% 0.04274 87.37)",
-          "oklch(84% 0.04274 87.37)",
-          "oklch(95% 0.04274 87.37)"
+          "oklch(15% 0.04072 339.06)",
+          "oklch(26% 0.04072 339.06)",
+          "oklch(38% 0.04072 339.06)",
+          "oklch(49% 0.04072 339.06)",
+          "oklch(61% 0.04072 339.06)",
+          "oklch(72% 0.04072 339.06)",
+          "oklch(84% 0.04072 339.06)",
+          "oklch(95% 0.04072 339.06)"
         ]
       },
-      "disabled-copy": {
+      "disabled-text": {
         "role": "neutral",
-        "displayName": "Disabled Copy",
+        "displayName": "Disabled Text",
         "tonalRamp": [
-          "oklch(15% 0.04235 317.20)",
-          "oklch(26% 0.04235 317.20)",
-          "oklch(38% 0.04235 317.20)",
-          "oklch(49% 0.04235 317.20)",
-          "oklch(61% 0.04235 317.20)",
-          "oklch(72% 0.04235 317.20)",
-          "oklch(84% 0.04235 317.20)",
-          "oklch(95% 0.04235 317.20)"
+          "oklch(15% 0.02752 344.71)",
+          "oklch(26% 0.02752 344.71)",
+          "oklch(38% 0.02752 344.71)",
+          "oklch(49% 0.02752 344.71)",
+          "oklch(61% 0.02752 344.71)",
+          "oklch(72% 0.02752 344.71)",
+          "oklch(84% 0.02752 344.71)",
+          "oklch(95% 0.02752 344.71)"
         ]
       },
-      "option-fill": {
-        "role": "neutral",
-        "displayName": "Option Fill",
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Danger",
         "tonalRamp": [
-          "oklch(15% 0.02916 77.53)",
-          "oklch(26% 0.02916 77.53)",
-          "oklch(38% 0.02916 77.53)",
-          "oklch(49% 0.02916 77.53)",
-          "oklch(61% 0.02916 77.53)",
-          "oklch(72% 0.02916 77.53)",
-          "oklch(84% 0.02916 77.53)",
-          "oklch(95% 0.02916 77.53)"
+          "oklch(15% 0.08644 15.49)",
+          "oklch(26% 0.08644 15.49)",
+          "oklch(38% 0.08644 15.49)",
+          "oklch(49% 0.08644 15.49)",
+          "oklch(61% 0.08644 15.49)",
+          "oklch(72% 0.08644 15.49)",
+          "oklch(84% 0.08644 15.49)",
+          "oklch(95% 0.08644 15.49)"
+        ]
+      },
+      "danger-ink": {
+        "role": "tertiary",
+        "displayName": "Danger Ink",
+        "tonalRamp": [
+          "oklch(15% 0.12009 8.91)",
+          "oklch(26% 0.12009 8.91)",
+          "oklch(38% 0.12009 8.91)",
+          "oklch(49% 0.12009 8.91)",
+          "oklch(61% 0.12009 8.91)",
+          "oklch(72% 0.12009 8.91)",
+          "oklch(84% 0.12009 8.91)",
+          "oklch(95% 0.12009 8.91)"
+        ]
+      },
+      "wood": {
+        "role": "tertiary",
+        "displayName": "Wood",
+        "tonalRamp": [
+          "oklch(15% 0.08633 46.77)",
+          "oklch(26% 0.08633 46.77)",
+          "oklch(38% 0.08633 46.77)",
+          "oklch(49% 0.08633 46.77)",
+          "oklch(61% 0.08633 46.77)",
+          "oklch(72% 0.08633 46.77)",
+          "oklch(84% 0.08633 46.77)",
+          "oklch(95% 0.08633 46.77)"
+        ]
+      },
+      "wood-light": {
+        "role": "tertiary",
+        "displayName": "Wood Light",
+        "tonalRamp": [
+          "oklch(15% 0.07774 60.30)",
+          "oklch(26% 0.07774 60.30)",
+          "oklch(38% 0.07774 60.30)",
+          "oklch(49% 0.07774 60.30)",
+          "oklch(61% 0.07774 60.30)",
+          "oklch(72% 0.07774 60.30)",
+          "oklch(84% 0.07774 60.30)",
+          "oklch(95% 0.07774 60.30)"
+        ]
+      },
+      "wood-dark": {
+        "role": "tertiary",
+        "displayName": "Wood Dark",
+        "tonalRamp": [
+          "oklch(15% 0.05906 26.05)",
+          "oklch(26% 0.05906 26.05)",
+          "oklch(38% 0.05906 26.05)",
+          "oklch(49% 0.05906 26.05)",
+          "oklch(61% 0.05906 26.05)",
+          "oklch(72% 0.05906 26.05)",
+          "oklch(84% 0.05906 26.05)",
+          "oklch(95% 0.05906 26.05)"
+        ]
+      },
+      "brass-light": {
+        "role": "primary",
+        "displayName": "Brass Light",
+        "tonalRamp": [
+          "oklch(15% 0.08097 86.88)",
+          "oklch(26% 0.08097 86.88)",
+          "oklch(38% 0.08097 86.88)",
+          "oklch(49% 0.08097 86.88)",
+          "oklch(61% 0.08097 86.88)",
+          "oklch(72% 0.08097 86.88)",
+          "oklch(84% 0.08097 86.88)",
+          "oklch(95% 0.08097 86.88)"
+        ]
+      },
+      "brass-dark": {
+        "role": "primary",
+        "displayName": "Brass Dark",
+        "tonalRamp": [
+          "oklch(15% 0.08899 75.00)",
+          "oklch(26% 0.08899 75.00)",
+          "oklch(38% 0.08899 75.00)",
+          "oklch(49% 0.08899 75.00)",
+          "oklch(61% 0.08899 75.00)",
+          "oklch(72% 0.08899 75.00)",
+          "oklch(84% 0.08899 75.00)",
+          "oklch(95% 0.08899 75.00)"
+        ]
+      },
+      "velvet-light": {
+        "role": "tertiary",
+        "displayName": "Velvet Light",
+        "tonalRamp": [
+          "oklch(15% 0.06499 345.33)",
+          "oklch(26% 0.06499 345.33)",
+          "oklch(38% 0.06499 345.33)",
+          "oklch(49% 0.06499 345.33)",
+          "oklch(61% 0.06499 345.33)",
+          "oklch(72% 0.06499 345.33)",
+          "oklch(84% 0.06499 345.33)",
+          "oklch(95% 0.06499 345.33)"
+        ]
+      },
+      "shadow": {
+        "role": "neutral",
+        "displayName": "Shadow Tint",
+        "tonalRamp": [
+          "oklch(15% 0.02431 337.15)",
+          "oklch(26% 0.02431 337.15)",
+          "oklch(38% 0.02431 337.15)",
+          "oklch(49% 0.02431 337.15)",
+          "oklch(61% 0.02431 337.15)",
+          "oklch(72% 0.02431 337.15)",
+          "oklch(84% 0.02431 337.15)",
+          "oklch(95% 0.02431 337.15)"
         ]
       }
     },
     "typographyMeta": {
       "display": {
-        "displayName": "Title identity",
-        "purpose": "Bungee title heading; size expression is overridden at the documented responsive breakpoints."
+        "displayName": "Display",
+        "purpose": "Title lettering, with responsive sizes in DESIGN.md."
       },
       "headline": {
-        "displayName": "Entry headline",
-        "purpose": "The cream entry-card heading."
+        "displayName": "Headline",
+        "purpose": "Entry headings; 26px on phones."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Short task headings."
       },
       "proposition": {
         "displayName": "Proposition",
-        "purpose": "The main room heading above both player faces."
-      },
-      "title": {
-        "displayName": "Phase title",
-        "purpose": "Task and recovery card headings."
+        "purpose": "Full wrapping user-authored proposition."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "Entry explanation and live captions."
+        "purpose": "Default conversational copy."
       },
       "body-small": {
-        "displayName": "Compact body",
-        "purpose": "Phase instructions and dialog copy."
+        "displayName": "Body Small",
+        "purpose": "Task and dialog copy."
       },
       "label": {
-        "displayName": "Field label",
-        "purpose": "Labels above entry and recovery fields."
+        "displayName": "Label",
+        "purpose": "Visible field labels."
       },
       "action": {
-        "displayName": "Primary action",
-        "purpose": "Bold text inside the lime action."
+        "displayName": "Action",
+        "purpose": "Primary action labels."
       },
       "score": {
         "displayName": "Score",
-        "purpose": "Tabular player totals; reduced at compact sizes."
+        "purpose": "Tabular player scores; 28px on phones."
       },
       "timer": {
-        "displayName": "Turn timer",
-        "purpose": "Tabular remaining time in the center well."
+        "displayName": "Timer",
+        "purpose": "Tabular active clock; 44px on phones and 32px on short phones."
       }
     },
     "shadows": [
       {
-        "name": "surface-lift",
-        "value": "0 12px 30px #0b041a55",
-        "purpose": "Cream cards, score bursts, and toasts; source custom property --shadow."
-      },
-      {
-        "name": "player-frame",
-        "value": "inset 0 2px 0 #ffffff66, 0 10px 24px #10031955",
-        "purpose": "Highlight and soft lift around player media."
-      },
-      {
-        "name": "primary-action",
-        "value": "inset 0 -3px 0 #51650a33, 0 5px 12px #21112919",
-        "purpose": "The shallow resting lip and shadow of the lime action."
-      },
-      {
-        "name": "primary-hover",
-        "value": "inset 0 -3px 0 #51650a33, 0 7px 18px #21112925",
-        "purpose": "Hover shadow accompanying the 1px lift."
+        "name": "surface",
+        "value": "0 12px 30px #160B1355",
+        "purpose": "Entry/task panels and toast."
       },
       {
         "name": "dialog",
-        "value": "0 20px 80px #08021099",
-        "purpose": "The modal above the dark backdrop."
+        "value": "0 20px 80px #160B1399",
+        "purpose": "Dialog above a #26131Edf backdrop."
+      },
+      {
+        "name": "button",
+        "value": "inset 0 -3px 0 #89632955, 0 4px 10px #160B1333",
+        "purpose": "Painted brass action edge."
+      },
+      {
+        "name": "frame",
+        "value": "0 8px 24px #160B1355",
+        "purpose": "Persistent player cards."
       }
     ],
     "motion": [
       {
+        "name": "quick",
+        "value": "160ms",
+        "purpose": "Standard control transitions."
+      },
+      {
         "name": "ease",
         "value": "cubic-bezier(0.16, 1, 0.3, 1)",
-        "purpose": "Source --ease for transform and event animations."
+        "purpose": "Standard decorative easing."
       },
       {
-        "name": "quick",
-        "value": "180ms",
-        "purpose": "Source --quick for button state transitions."
-      },
-      {
-        "name": "phase",
-        "value": "280ms",
-        "purpose": "Source --phase for the small phase-content arrival."
-      },
-      {
-        "name": "score-tally",
-        "value": "480ms",
-        "purpose": "Visible score increments in the same round; reduced motion updates immediately."
-      },
-      {
-        "name": "score-burst",
-        "value": "1.2s",
-        "purpose": "A brief response to a fresh committed-score event."
+        "name": "phase-arrive",
+        "value": "220ms",
+        "purpose": "Handoff arrival; Bonk aside uses 180ms."
       },
       {
         "name": "coin-land",
-        "value": "0.8s",
-        "purpose": "The coin rotates into its final assigned face."
+        "value": "800ms",
+        "purpose": "Coin reveal."
       },
       {
-        "name": "result-confetti",
+        "name": "win-pop",
+        "value": "600ms",
+        "purpose": "Round pips and verdict icon."
+      },
+      {
+        "name": "bench-impact",
+        "value": "180ms ease-out",
+        "purpose": "Brief verdict stage impact."
+      },
+      {
+        "name": "confetti-fall",
         "value": "1.2s",
-        "purpose": "A fresh result flourish; hidden under reduced motion."
+        "purpose": "Decorative result cue, absent in reduced motion."
       }
     ],
     "breakpoints": [
@@ -383,145 +476,143 @@
         "value": "(max-width: 1119px)"
       },
       {
-        "name": "narrow",
+        "name": "phone",
         "value": "(max-width: 700px)"
       },
       {
-        "name": "short-desktop",
-        "value": "(max-height: 820px) and (min-width: 1120px)"
+        "name": "wide-short",
+        "value": "(min-width: 1120px) and (max-height: 820px)"
+      },
+      {
+        "name": "phone-short",
+        "value": "(max-width: 700px) and (max-height: 740px)"
+      },
+      {
+        "name": "landscape-flow-dock",
+        "value": "(max-height: 500px) and (max-width: 1119px)"
       }
     ]
   },
   "components": [
     {
-      "name": "Primary action",
+      "name": "Brass primary action",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The lime forward action used to create, join, confirm, ready, or rematch. This preview shows its light-card focus treatment.",
-      "html": "<button class=\"ds-primary\" type=\"button\">Create room<svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 12h15m-6-6 6 6-6 6\" /></svg></button>",
-      "css": ".ds-primary { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 48px; width: 100%; padding: 12px 18px; border: 0; cursor: pointer; background: var(--lime, #d8ff3e); color: var(--plum, #20102e); border-radius: var(--radius-small, 12px); font-family: \"Space Grotesk\", sans-serif; font-size: 15px; font-weight: 700; box-shadow: inset 0 -3px 0 #51650a33, 0 5px 12px #21112919; transition: background var(--quick, 180ms), transform var(--quick, 180ms) var(--ease, cubic-bezier(0.16, 1, 0.3, 1)), box-shadow var(--quick, 180ms); } .ds-primary:active { transform: translateY(2px); } .ds-primary:not(:disabled):hover { background: #e5ff7c; box-shadow: inset 0 -3px 0 #51650a33, 0 7px 18px #21112925; transform: translateY(-1px); } .ds-primary:disabled { cursor: not-allowed; background: #dacdaf; color: #615067; box-shadow: none; } .ds-primary:disabled .ds-icon { opacity: .6; } .ds-primary:focus-visible { outline: 3px solid #602480; outline-offset: 4px; }.ds-primary .ds-icon { width: 20px; height: 20px; flex: 0 0 auto; vertical-align: middle; }@media (prefers-reduced-motion: reduce) { .ds-primary { animation: none !important; transition: none !important; } }"
+      "description": "Full-width next action with hover, press, focus, and disabled states.",
+      "html": "<button class=\"ds-primary\">Create room</button>",
+      "css": ".ds-primary{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-width:44px;min-height:48px;padding:12px 18px;border:0;border-radius:var(--radius-small,12px);background:var(--brass, #D9B464);color:var(--canvas, #26131E);font-size:15px;font-weight:700;box-shadow:var(--shadow-button,inset 0 -3px 0 #89632955,0 4px 10px #160B1333);cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-primary:not(:disabled):hover{background:var(--action-hover, #EBCB86);transform:translateY(-1px)}.ds-primary:not(:disabled):active{background:var(--action-pressed, #C9A153);transform:translateY(2px) scale(.98);transition-duration:70ms}.ds-primary:focus-visible{outline:3px solid var(--brass,#D9B464);outline-offset:4px;}.ds-primary:disabled{background:var(--disabled-fill, #604858);color:var(--disabled-text, #E3CED9);box-shadow:none;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-primary{transition:none}}"
     },
     {
-      "name": "Text action",
+      "name": "Underlined text action",
       "kind": "button",
       "refersTo": "button-text",
-      "description": "The underlined alternative below the main entry action.",
-      "html": "<button class=\"ds-text-action\" type=\"button\">Have a code? Join a friend</button>",
-      "css": ".ds-text-action { display: block; background: transparent; color: var(--plum, #20102e); border: 0; cursor: pointer; margin: 12px auto 0; padding: 6px 8px; font-family: \"Space Grotesk\", sans-serif; font-size: 13px; font-weight: 500; min-height: 36px; text-decoration: underline; text-underline-offset: 4px; transition: background var(--quick, 180ms), transform var(--quick, 180ms) var(--ease, cubic-bezier(0.16, 1, 0.3, 1)), box-shadow var(--quick, 180ms); } .ds-text-action:hover { color: #79316d; } .ds-text-action:not(:disabled):active { transform: translateY(2px); } .ds-text-action:disabled { cursor: not-allowed; background: #dacdaf; color: #615067; box-shadow: none; } .ds-text-action:focus-visible { outline: 3px solid #602480; outline-offset: 4px; }@media (prefers-reduced-motion: reduce) { .ds-text-action { animation: none !important; transition: none !important; } }"
+      "description": "Secondary choice below the primary action.",
+      "html": "<button class=\"ds-text\">Join a friend</button>",
+      "css": ".ds-text{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:block;min-width:44px;min-height:44px;padding:6px 8px;margin:12px auto 0;border:0;background:transparent;color:var(--cream, #FFF3DF);font-size:13px;text-decoration:underline;text-underline-offset:4px;cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-text:hover{color:var(--brass, #D9B464)}.ds-text:active{transform:translateY(2px)}.ds-text:focus-visible{outline:3px solid var(--brass,#D9B464);outline-offset:4px;}"
     },
     {
-      "name": "Icon control",
+      "name": "Circular help control",
       "kind": "button",
       "refersTo": "button-icon",
-      "description": "The circular help control on the plum field; its SVG is decorative and its button has a label.",
-      "html": "<div class=\"ds-icon-field\"><button class=\"ds-icon-control\" type=\"button\" aria-label=\"How to play\"><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 8a3 3 0 1 1 4 3c-1 .5-1 1-1 3M12 18h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z\" /></svg></button></div>",
-      "css": ".ds-icon-field { background: var(--plum, #20102e); padding: 16px; } .ds-icon-control { display: inline-grid; place-items: center; width: 44px; height: 44px; background: #fff0ce0e; color: var(--cream, #fff0ce); border: 0; border-radius: 50%; cursor: pointer; font-family: \"Space Grotesk\", sans-serif;transition: background var(--quick, 180ms), transform var(--quick, 180ms) var(--ease, cubic-bezier(0.16, 1, 0.3, 1)), box-shadow var(--quick, 180ms); } .ds-icon-control:hover { background: #fff0ce22; } .ds-icon-control:active { transform: translateY(2px); } .ds-icon-control:focus-visible { outline: 3px solid var(--lime, #d8ff3e); outline-offset: 4px; }.ds-icon-control .ds-icon { width: 20px; height: 20px; flex: 0 0 auto; vertical-align: middle; }@media (prefers-reduced-motion: reduce) { .ds-icon-control { animation: none !important; transition: none !important; } }"
+      "description": "Header help with a stroke SVG and accessible name.",
+      "html": "<button class=\"ds-icon\" aria-label=\"How to play\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 8a3 3 0 1 1 4 3c-1 .5-1 1-1 3M12 18h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z\"/></svg></button>",
+      "css": ".ds-icon{display:inline-grid;place-items:center;width:44px;height:44px;min-width:44px;min-height:44px;border:0;border-radius:50%;background:var(--surface, #40263B);color:var(--cream, #FFF3DF);cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-icon svg{width:20px;height:20px;flex:0 0 auto}.ds-icon:hover{background:var(--surface-hover, #63465A)}.ds-icon:active{transform:translateY(2px)}.ds-icon:focus-visible{outline:3px solid var(--brass,#D9B464);outline-offset:4px;}"
     },
     {
-      "name": "Device control",
-      "kind": "button",
-      "refersTo": "button-device",
-      "description": "A labeled microphone control. The app supplies live on, off, paused, and enable states; this static preview shows on.",
-      "html": "<div class=\"ds-device-field\"><button class=\"ds-device\" type=\"button\" aria-pressed=\"true\"><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0V5ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8\" /></svg>Mic on</button></div>",
-      "css": ".ds-device-field { background: #1b0d27; padding: 16px; } .ds-device { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; background: #fff0ce0c; color: var(--cream, #fff0ce); padding: 10px 14px; border: 0; border-radius: 12px; cursor: pointer; font-family: \"Space Grotesk\", sans-serif; font-size: 13px; font-weight: 500; transition: background var(--quick, 180ms), transform var(--quick, 180ms) var(--ease, cubic-bezier(0.16, 1, 0.3, 1)), box-shadow var(--quick, 180ms); } .ds-device:not(:disabled):hover { background: #fff0ce22; } .ds-device:not(:disabled):active { transform: translateY(2px); } .ds-device:disabled { cursor: not-allowed; color: #bcabc5; } .ds-device.ds-device-muted { color: var(--warning, #ffca82); } .ds-device:focus-visible { outline: 3px solid var(--lime, #d8ff3e); outline-offset: 4px; }.ds-device .ds-icon { width: 20px; height: 20px; flex: 0 0 auto; vertical-align: middle; }@media (prefers-reduced-motion: reduce) { .ds-device { animation: none !important; transition: none !important; } }"
-    },
-    {
-      "name": "Room code",
-      "kind": "chip",
-      "refersTo": "room-code",
-      "description": "The invite-copy chip from the header. 1234 is sample preview content, not a live room.",
-      "html": "<div class=\"ds-code-field\"><button class=\"ds-room-code\" type=\"button\" aria-label=\"Copy invite link for room 1234\"><span>Room</span><b>1234</b><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 8h10v13H9zM15 8V3H4v13h5\" /></svg></button></div>",
-      "css": ".ds-code-field { background: var(--plum, #20102e); padding: 16px; } .ds-room-code { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border: 0; border-radius: 12px; background: #fff0ce0e; color: var(--cream, #fff0ce); cursor: pointer; font-family: \"Space Grotesk\", sans-serif; font-size: 13px; font-weight: 500; transition: background var(--quick, 180ms), transform var(--quick, 180ms) var(--ease, cubic-bezier(0.16, 1, 0.3, 1)), box-shadow var(--quick, 180ms); } .ds-room-code b { font-size: 20px; font-variant-numeric: tabular-nums; letter-spacing: .12em; } .ds-room-code:hover { background: #fff0ce22; } .ds-room-code:active { transform: translateY(2px); } .ds-room-code:focus-visible { outline: 3px solid var(--lime, #d8ff3e); outline-offset: 4px; }.ds-room-code .ds-icon { width: 20px; height: 20px; flex: 0 0 auto; vertical-align: middle; } @media (max-width: 700px) { .ds-room-code { padding: 8px 10px; gap: 8px; } .ds-room-code > span { display: none; } .ds-room-code b { font-size: 16px; } } @media (prefers-reduced-motion: reduce) { .ds-room-code { animation: none !important; transition: none !important; } }"
-    },
-    {
-      "name": "Name field",
+      "name": "Light input field",
       "kind": "input",
-      "refersTo": "input-name",
-      "description": "The labeled name input used by the entry form, with its actual placeholder and light-card focus treatment.",
-      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-player-name\">Your name</label><input class=\"ds-name-input\" id=\"ds-player-name\" autocomplete=\"nickname\" maxlength=\"20\" placeholder=\"What should Bonk call you?\" required /></div>",
-      "css": ".ds-field { color: var(--plum, #20102e); font-family: \"Space Grotesk\", sans-serif; font-size: 16px; font-weight: 500; } .ds-field-label { display: block; font-size: 14px; font-weight: 600; margin: 0 0 8px; } .ds-name-input { width: 100%; min-width: 0; padding: 12px 14px; border: 1.5px solid #9c8b9e; border-radius: var(--radius-small, 12px); color: var(--plum, #20102e); background: #fffaf0; caret-color: #762f79; color-scheme: light; font-family: \"Space Grotesk\", sans-serif; font-size: 16px; font-weight: 500; } .ds-name-input::placeholder { color: #706274; } .ds-name-input:focus-visible { outline: 3px solid #602480; outline-offset: 4px; }"
+      "refersTo": "input",
+      "description": "Light field within the plum form and a persistent visible label.",
+      "html": "<label class=\"ds-label\" for=\"ds-name\">Your name</label><input class=\"ds-input\" id=\"ds-name\" placeholder=\"Your name\" autocomplete=\"off\">",
+      "css": ".ds-label{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:block;color:var(--cream, #FFF3DF);font-size:14px;font-weight:600;margin:0 0 8px}.ds-input{font-family:var(--font-body,\"Nunito Sans\",sans-serif);width:100%;min-width:0;padding:12px 14px;border:1.5px solid var(--field-stroke, #956B80);border-radius:var(--radius-small,12px);background:var(--field, #FFF8EC);color:var(--canvas, #26131E);caret-color:var(--paper-copy, #654354);color-scheme:light;font-size:16px}.ds-input::placeholder{color:var(--paper-copy, #654354)}.ds-input:focus-visible{outline:3px solid var(--brass,#D9B464);outline-offset:4px;}"
     },
     {
-      "name": "Court header",
-      "kind": "nav",
-      "refersTo": "header",
-      "description": "The actual identity and help row. An active room also supplies the separate room-code primitive.",
-      "html": "<header class=\"ds-header\"><a class=\"ds-wordmark\" href=\"#\" aria-label=\"Hear Me Out\">HEAR ME OUT<span>The court of bad takes</span></a><button class=\"ds-header-help\" type=\"button\" aria-label=\"How to play\"><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 8a3 3 0 1 1 4 3c-1 .5-1 1-1 3M12 18h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z\" /></svg></button></header>",
-      "css": ".ds-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 32px; background: var(--plum, #20102e); color: var(--cream, #fff0ce); } .ds-wordmark { font-family: Bungee, sans-serif; font-size: 20px; font-weight: 500; line-height: 1; text-decoration: none; color: inherit; } .ds-wordmark span { display: block; font: 12px \"Space Grotesk\", sans-serif; margin-top: 6px; color: var(--muted, #d6c6dd); } .ds-header-help { display: inline-grid; place-items: center; width: 44px; height: 44px; background: #fff0ce0e; color: inherit; border: 0; border-radius: 50%; cursor: pointer; transition: background var(--quick, 180ms), transform var(--quick, 180ms) var(--ease, cubic-bezier(0.16, 1, 0.3, 1)), box-shadow var(--quick, 180ms); } .ds-header-help:hover { background: #fff0ce22; } .ds-header-help:active { transform: translateY(2px); } .ds-wordmark:focus-visible { outline: 3px solid var(--lime, #d8ff3e); outline-offset: 4px; }.ds-header-help:focus-visible { outline: 3px solid var(--lime, #d8ff3e); outline-offset: 4px; }.ds-header-help .ds-icon { width: 20px; height: 20px; flex: 0 0 auto; vertical-align: middle; } @media (max-width: 1119px) { .ds-header { padding: 16px 24px; } } @media (max-width: 700px) { .ds-header { padding: 14px 16px; } .ds-wordmark { font-size: 16px; } .ds-wordmark span { font-size: 10px; } } @media (prefers-reduced-motion: reduce) { .ds-header-help { animation: none !important; transition: none !important; } }"
+      "name": "Room code control",
+      "kind": "button",
+      "refersTo": "room-code",
+      "description": "Copyable room identity; the sample code is illustrative.",
+      "html": "<button class=\"ds-code\" aria-label=\"Copy room code 4821\"><span>Room</span><b>4821</b><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 8h10v13H9zM15 8V3H4v13h5\"/></svg></button>",
+      "css": ".ds-code{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:flex;align-items:center;gap:12px;min-width:44px;min-height:44px;padding:10px 16px;border:0;border-radius:12px;background:var(--surface, #40263B);color:var(--cream, #FFF3DF);font-size:13px;cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-code b{font-size:20px;font-variant-numeric:tabular-nums;letter-spacing:.12em}.ds-code svg{width:20px;height:20px;flex:0 0 auto}.ds-code:hover{background:var(--surface-hover, #63465A)}.ds-code:active{transform:translateY(2px)}.ds-code:focus-visible{outline:3px solid var(--brass,#D9B464);outline-offset:4px;}"
     },
     {
-      "name": "Phase card and coin",
+      "name": "Plum entry panel",
       "kind": "card",
-      "refersTo": "phase-card",
-      "description": "The coin assignment uses the cream phase surface. This is the implemented Tails variant, with matching T icon and text.",
-      "html": "<section class=\"ds-phase\"><div class=\"ds-coin\" aria-hidden=\"true\"><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0ZM8 8h8m-4 0v8\" /></svg></div><h2>You pick the topic.</h2><p>Tails. Choose the argument and your side.</p></section>",
-      "css": ".ds-phase { background: var(--cream, #fff0ce); color: var(--plum, #20102e); border-radius: var(--radius, 16px); padding: 22px; box-shadow: var(--shadow, 0 12px 30px #0b041a55); text-align: center; overflow-wrap: anywhere; font-family: \"Space Grotesk\", sans-serif; font-weight: 500; } .ds-phase h2 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.03em; line-height: 1.12; text-wrap: balance; } .ds-phase p { font-size: 14px; color: #64516b; margin: 10px 0 0; line-height: 1.45; } .ds-coin { display: grid; place-items: center; width: 58px; height: 58px; background: var(--lime, #d8ff3e); border-radius: 50%; margin: 0 auto 16px; animation: ds-coin-land .8s var(--ease, cubic-bezier(.16,1,.3,1)) both; } .ds-coin .ds-icon { width: 38px; height: 38px; } @keyframes ds-coin-land { from { transform: rotateY(180deg) translateY(-8px); } to { transform: rotateY(0) translateY(0); } } @media (max-height: 820px) and (min-width: 1120px) { .ds-phase { padding: 18px; } .ds-phase h2 { font-size: 22px; } .ds-phase p { font-size: 13px; } } @media (max-width: 1119px) { .ds-phase { padding: 20px; } } @media (max-width: 700px) { .ds-phase { padding: 22px; } } @media (prefers-reduced-motion: reduce) { .ds-coin { animation: none !important; transition: none !important; } }"
+      "refersTo": "card-entry",
+      "description": "Cream text on plum with soft depth; sample copy shows hierarchy.",
+      "html": "<section class=\"ds-entry\"><h2>Take your seat</h2><p>Start a room. Your friend joins with a code.</p></section>",
+      "css": ".ds-entry{font-family:var(--font-body,\"Nunito Sans\",sans-serif);background:var(--surface, #40263B);color:var(--cream, #FFF3DF);padding:32px;border-radius:var(--radius,16px);box-shadow:var(--shadow,0 12px 30px #160B1355)}.ds-entry h2{font-family:var(--font-display,\"Lilita One\",sans-serif);font-size:34px;font-weight:400;line-height:1.12;letter-spacing:0;margin:0}.ds-entry p{font-size:16px;font-weight:500;line-height:1.45;color:var(--muted, #D6BDCA);margin:12px 0 28px;max-width:32ch}@media(max-width:700px){.ds-entry{padding:20px}.ds-entry h2{font-size:26px}.ds-entry p{font-size:14px;margin:8px 0 20px}}"
     },
     {
-      "name": "Player media frame",
-      "kind": "custom",
-      "refersTo": "player-card-pink",
-      "description": "The pink seat shell and the real empty-seat fallback. Live video, status, scores, and ledger content are supplied by the app; this preview contains no synthetic player photo.",
-      "html": "<article class=\"ds-player\" aria-label=\"Empty seat\"><div class=\"ds-player-heading\"><h2>Your friend</h2></div><div class=\"ds-player-picture\"><div class=\"ds-avatar\"><span><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 5h11a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2ZM17 9l5-3v12l-5-3\" /></svg></span><small>A seat for your bad influence</small></div></div><div class=\"ds-player-bottom\"><p>Invite them with your room code</p></div></article>",
-      "css": ".ds-player { --ds-player-color: var(--pink, #ff4f9a); min-width: 0; color: var(--plum, #20102e); background: var(--ds-player-color); border-radius: var(--radius, 16px); padding: 5px; box-shadow: inset 0 2px 0 #ffffff66, 0 10px 24px #10031955; font-family: \"Space Grotesk\", sans-serif; font-weight: 500; } .ds-player.ds-player-cyan { --ds-player-color: var(--cyan, #39d8f2); } .ds-player-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px 12px; min-height: 48px; } .ds-player-heading h2 { margin: 0; font-size: 20px; line-height: 1.12; letter-spacing: -.03em; overflow-wrap: anywhere; } .ds-player-picture { aspect-ratio: 16/9; position: relative; border-radius: 12px; overflow: hidden; background: #35213f; contain: paint; } .ds-avatar { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; height: 100%; background: radial-gradient(ellipse at 50% 0%, #614071, #2d1a3b); color: var(--cream, #fff0ce); } .ds-avatar > span { font-family: Bungee, sans-serif; font-size: clamp(40px, 5vw, 72px); line-height: 1; color: var(--ds-player-color); } .ds-avatar .ds-icon { width: 44px; height: 44px; vertical-align: middle; } .ds-avatar small { font-size: 12px; color: #e0cde7; } .ds-player-bottom { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 12px 10px; } .ds-player-bottom p { margin: 0; font-size: 14px; line-height: 1.45; max-width: 67%; overflow-wrap: anywhere; } @media (max-width: 700px) { .ds-player { padding: 3px; } .ds-player-heading { padding: 8px; } .ds-player-heading h2 { font-size: 15px; } .ds-player-picture { aspect-ratio: auto; height: 128px; } .ds-avatar small { font-size: 11px; padding-inline: 8px; text-align: center; } .ds-player-bottom { padding: 10px 8px; } .ds-player-bottom p { max-width: 100%; font-size: 12px; } }"
+      "name": "Scoring eligibility badge",
+      "kind": "chip",
+      "refersTo": "status-eligible-seat0",
+      "description": "Noninteractive scoring badge; voice activity remains a separate signal.",
+      "html": "<span class=\"ds-eligible\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 9a6 6 0 0 1 12 0c0 4-4 4-4 7a4 4 0 0 1-8 0M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4\"/></svg><span>Bonk is scoring</span></span>",
+      "css": ".ds-eligible{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:inline-flex;align-items:center;gap:6px;min-height:22px;padding:3px 6px;border-radius:8px;background:var(--seat0, #A8D5F2);color:var(--canvas, #26131E);font-size:11px;line-height:1.3}.ds-eligible svg{width:14px;height:14px;flex-shrink:0}"
     },
     {
-      "name": "Dialog surface",
+      "name": "Player caption",
       "kind": "custom",
-      "refersTo": "dialog",
-      "description": "The native dialog visual surface, shown open for the preview. The React component supplies modal opening, focus wrapping, dismissal, and focus restoration.",
-      "html": "<dialog class=\"ds-dialog\" open aria-label=\"Make your case.\"><div class=\"ds-dialog-content\"><button class=\"ds-dialog-close\" type=\"button\" aria-label=\"Close dialog\"><svg class=\"ds-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m6 6 12 12M6 18 18 6\" /></svg></button><h2>Make your case.</h2><p>Two friends. One ridiculous proposition. First to two round wins.</p></div></dialog>",
-      "css": ".ds-dialog { position: relative; margin: 0 auto; padding: 0; width: min(510px, calc(100% - 32px)); max-height: calc(100svh - 48px); border: 0; border-radius: 16px; background: var(--cream, #fff0ce); color: var(--plum, #20102e); box-shadow: 0 20px 80px #08021099; color-scheme: light; font-family: \"Space Grotesk\", sans-serif; font-weight: 500; } .ds-dialog::backdrop { background: #14091fc4; } .ds-dialog-content { position: relative; padding: 32px; } .ds-dialog h2 { margin: 0 0 20px; padding-right: 32px; font-size: 30px; font-weight: 700; line-height: 1.12; letter-spacing: -.03em; text-wrap: balance; } .ds-dialog p { margin: 0; font-size: 14px; line-height: 1.45; } .ds-dialog-close { position: absolute; right: 16px; top: 16px; display: inline-grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: #20102e0b; color: inherit; cursor: pointer; transition: background var(--quick, 180ms), transform var(--quick, 180ms) var(--ease, cubic-bezier(0.16, 1, 0.3, 1)), box-shadow var(--quick, 180ms); } .ds-dialog-close:active { transform: translateY(2px); } .ds-dialog-close:focus-visible { outline: 3px solid #602480; outline-offset: 4px; }.ds-dialog-close .ds-icon { width: 20px; height: 20px; flex: 0 0 auto; vertical-align: middle; } @media (max-width: 700px) { .ds-dialog-content { padding: 28px 24px; } } @media (prefers-reduced-motion: reduce) { .ds-dialog-close { animation: none !important; transition: none !important; } }"
+      "refersTo": "caption",
+      "description": "Full wrapping caption with permanent seat identity; sample text is illustrative.",
+      "html": "<div class=\"ds-caption\"><span class=\"ds-speaker\">Alex</span><p>My argument is simple: every meeting needs a snack break.</p></div>",
+      "css": ".ds-caption{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:flex;align-items:flex-start;gap:16px;padding:16px 20px;border-radius:12px;background:var(--surface, #40263B);color:var(--cream, #FFF3DF)}.ds-speaker{font-size:13px;font-weight:700;color:var(--seat0, #A8D5F2);padding-top:2px;overflow-wrap:anywhere}.ds-caption p{font-size:15px;font-weight:500;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;min-width:0;margin:0}@media(max-width:700px){.ds-caption{padding:10px;gap:8px;flex-wrap:wrap}.ds-caption p{font-size:14px}}"
+    },
+    {
+      "name": "Device dock control",
+      "kind": "button",
+      "refersTo": "button-control",
+      "description": "Labeled mic privacy control independent of scoring eligibility.",
+      "html": "<button class=\"ds-control\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0V5ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8\"/></svg><span>Mic on</span></button>",
+      "css": ".ds-control{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:flex;align-items:center;justify-content:center;gap:8px;min-width:44px;min-height:44px;padding:10px 14px;border:0;border-radius:12px;background:var(--surface-raised, #513449);color:var(--cream, #FFF3DF);font-size:13px;cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-control svg{width:20px;height:20px;flex:0 0 auto}.ds-control:not(:disabled):hover{background:var(--surface-hover, #63465A)}.ds-control:active{transform:translateY(2px)}.ds-control:focus-visible{outline:3px solid var(--brass,#D9B464);outline-offset:4px;}.ds-control:disabled{color:var(--disabled-text, #E3CED9);cursor:not-allowed}@media(max-width:700px){.ds-control{flex-direction:column;gap:3px;padding:6px 4px;font-size:12px}.ds-control svg{width:16px;height:16px}}"
     }
   ],
   "narrative": {
-    "northStar": "The Toy Courtroom",
-    "overview": "Hear Me Out makes a courtroom feel like a friendly tabletop toy: a lavender gavel judge, cream painted surfaces, rounded player frames, and a deep plum setting. The Honorable Bonk supplies the mischievous personality. The two friends remain the largest social presence, while a compact task surface makes the next action clear.\n\nThe interface uses an expressive game stage with practical setup and recovery controls. Bungee carries the identity; Space Grotesk carries instructions, names, captions, and numbers. Soft lighting and shallow control edges give the scene and interface a shared material language. Readable state labels accompany the visual playfulness.",
+    "northStar": "Velvet Verdict",
+    "overview": "Velvet Verdict is a warm toy courtroom for two friends making ridiculous arguments. Burgundy holds the room, plum surfaces frame decisions, and cream keeps the conversation readable. Powder blue and apricot belong to the players; brass belongs to Bonk and the next action. The contrast between silly opinions and fair treatment is the enduring character.\n\nRounded painted frames, restrained velvet shading, Lilita One lettering, and Nunito Sans controls connect the live faces to the procedural courtroom. The scene supplies personality while the active speaker, full captions, and next action remain clear. PRODUCT.md governs behavior and claims; .impeccable/surfaces/src-app-tsx.md records the approved surface direction.",
     "keyCharacteristics": [
-      "Persistent player faces with stable pink and cyan seat identities.",
-      "Cream task surfaces and lime actions within a plum courtroom.",
-      "A procedural lavender Bonk with a matching static fallback.",
-      "Rounded SVG icons, soft shadows, and brief state-driven responses.",
-      "Separate space for the proposition, player media, captions, and controls."
+      "Six pinned palette roles with semantic state and material companions.",
+      "Stable player identities across clients, phase changes, and departures.",
+      "Live faces and readable decisions supported by a procedural brass host.",
+      "Decoration responds to play while media ownership and privacy remain stable."
     ],
     "rules": [
       {
-        "name": "The Seat Continuity Rule",
-        "body": "Pink belongs to server seat zero and cyan to server seat one. Local identity, the current speaker, and the winner never reorder those colors.",
+        "name": "One Source",
+        "body": "Change semantic values in src/design/tokens.ts. DOM custom properties, Three.js materials, the document theme color, and the generated favicon derive from that source; DESIGN.md records the implemented system.",
         "section": "colors"
       },
       {
-        "name": "The Action Lime Rule",
-        "body": "Use lime for the forward action and established judge/identity accents. Keep player identity in pink and cyan, with words and icons carrying state alongside color.",
+        "name": "Permanent Seats",
+        "body": "Seat 0 stays powder blue and seat 1 stays apricot on both clients. Color follows the server-assigned seat, never local/remote position, speaking order, score rank, or winner status.",
         "section": "colors"
       },
       {
-        "name": "The Two Voices Rule",
-        "body": "Keep Bungee on identity and celebratory moments; keep tasks, names, captions, and timed information in Space Grotesk.",
+        "name": "Readable Conversation",
+        "body": "Use Nunito Sans for user content, scores, timers, controls, and captions. Reserve Lilita One for the brand, short panel titles, initials, and celebratory lettering.",
         "section": "typography"
       },
       {
-        "name": "The Toy Material Rule",
-        "body": "Use soft cast shadows, rounded edges, and shallow inset highlights to join the interface to Bonk's physical world. Keep the established plum gradients and tactile button lip as native parts of that world.",
+        "name": "Quiet Depth",
+        "body": "Use soft ambient shadows and tonal plum layering around the content. Keep the small inset brass button shadow as a painted-material cue.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do keep pink on server seat zero and cyan on server seat one through every phase.",
-      "Do use cream task surfaces, lime forward actions, and plum surroundings as the established hierarchy.",
-      "Do preserve both live faces above the task when the desktop three-column stage collapses.",
-      "Do pair color and icons with clear labels for speaking, mute, connection, time, and results.",
-      "Do keep captions, controls, and expandable score reasons in their own readable space.",
-      "Do trigger score and verdict flourishes from fresh game events and honor reduced-motion settings.",
-      "Do keep Bonk's static fallback consistent with the rendered character and retain the usable interface around it."
+      "Do preserve the six pinned color roles and the shared semantic token source.",
+      "Do keep full names, propositions, positions, and captions visible; wrap or scroll long content.",
+      "Do preserve media nodes across layout and phase changes through CSS placement and stable seat components.",
+      "Do retain the visible Voice label on phones and distinguish activity, scoring eligibility, and mic privacy.",
+      "Do provide visible focus, at least 44px interactive targets, reduced motion, and usable controls when WebGL fails.",
+      "Do recapture the procedural fallback and preserve its provenance when the scene changes."
     ],
     "donts": [
-      "Don't swap seat colors to make the local player, active speaker, or winner a particular color.",
-      "Don't use synthetic test faces, captions, or scores as product content or customer evidence.",
-      "Don't make a missing camera or muted microphone look live; use the implemented initials and status treatments.",
-      "Don't replace the approved Bungee and Space Grotesk pairing or the toy-gavel identity as a routine extension.",
-      "Don't hide instructions, captions, or essential controls inside the decorative 3D scene.",
-      "Don't turn screenshot coverage or a local performance sample into a general accessibility, device-support, or frame-rate claim."
+      "Don't swap player identities when a player leaves, a turn changes, or the local client is the second seat.",
+      "Don't use cream as the general panel background; entry, task, caption, and dialog surfaces are plum.",
+      "Don't use display lettering for long arguments, infer scoring eligibility from audio level, or describe Mic on as permission to score.",
+      "Don't truncate user-authored content or cover live faces and controls with celebration.",
+      "Don't replace the procedural scene or live media with generated model imagery.",
+      "Don't present synthetic browser coverage as physical-device, live-provider, production, or statistical-fairness validation."
     ]
   }
 }

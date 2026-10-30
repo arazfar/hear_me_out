@@ -1,3 +1,4 @@
+import { playerColor } from "./identity";
 import type { Player, Snapshot } from "../../shared/domain";
 import { RecoveryCheck, currentReadinessPresentation } from "./DeviceCheck";
 import { client } from "../game/client";
@@ -25,6 +26,9 @@ export function ResultView({
   const series = `${winner?.wins ?? 0}–${opponent?.wins ?? 0}`;
   return (
     <section
+      style={
+        { "--winner": playerColor(state, winnerId) } as React.CSSProperties
+      }
       className={
         "phase-panel result-panel " +
         (celebrate ? "celebrating " : "") +
@@ -89,7 +93,7 @@ export function ResultView({
               style={
                 {
                   "--i": i,
-                  "--piece-color": i % 2 ? "var(--pink)" : "var(--cyan)",
+                  "--piece-color": i % 2 ? "var(--winner)" : "var(--brass)",
                 } as React.CSSProperties
               }
             />

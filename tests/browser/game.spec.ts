@@ -358,7 +358,9 @@ test("two players complete a scored match, recover media, and rematch", async ({
       for (const page of [speaker, listener]) {
         const label = `${page === speaker ? "Your" : name + "’s"} ${s.turn!.kind}`;
         await expect(page.locator(".turn-label")).toHaveText(label);
-        await expect(page.locator(".listening-badge")).toHaveText("Listening");
+        await expect(page.locator(".listening-badge")).toHaveText(
+          "Bonk is scoring",
+        );
         await expect(
           page.locator(".turn-label[aria-live], .turn-label[role=status]"),
         ).toHaveCount(0);
@@ -652,6 +654,16 @@ test("two players complete a scored match, recover media, and rematch", async ({
     .toBe("INTRO_COIN");
   const rematch = await snapshot(request, code);
   expect(rematch.matchId).not.toBe(result.matchId);
+  expect(rematch.players.map((p) => [p.id, p.seat])).toEqual(
+    result.players.map((p) => [p.id, p.seat]),
+  );
+  for (const page of [a, b]) {
+    for (const p of rematch.players)
+      await expect(page.locator(`[data-seat="${p.seat}"]`)).toHaveAttribute(
+        "data-player-id",
+        p.id,
+      );
+  }
   for (const page of [a, b]) {
     await expect
       .poll(() => {
@@ -1147,7 +1159,7 @@ test("phone layouts preserve full captions, user wording and a single status own
       );
       await expect(a.locator(".turn-label")).toHaveText("Your rebuttal");
       await expect(b.locator(".turn-label")).toHaveText("Alex’s rebuttal");
-      await expect(a.locator(".player-status")).toHaveText("Listening");
+      await expect(a.locator(".player-status")).toHaveText("Bonk is scoring");
       await expect(
         a.locator(".turn-label[aria-live], .turn-label[role=status]"),
       ).toHaveCount(0);
@@ -1357,7 +1369,7 @@ test("mandatory device setup, retries, cancellation, clipboard failure and missi
   ).toBeEnabled();
   await shot(page, "inline-setup");
   await expect(
-    page.getByRole("heading", { name: "Invite your friend" }),
+    page.getByRole("heading", { name: "Save a seat for your friend." }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Waiting for your friend", exact: true }),

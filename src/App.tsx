@@ -1,3 +1,4 @@
+import { playerAtSeat } from "./ui/identity";
 import { useEffect, useRef, useState } from "react";
 import type { Snapshot } from "../shared/domain";
 import { client } from "./game/client";
@@ -367,10 +368,10 @@ export function App() {
           </section>
           <div className="courtroom">
             <PlayerCard
-              player={state.players[0]}
+              player={playerAtSeat(state, 0)}
               index={0}
               state={state}
-              local={state.players[0]?.id === me?.id}
+              local={playerAtSeat(state, 0)?.id === me?.id}
               reduced={reduced}
             />
             <div className="center-stage">
@@ -413,10 +414,10 @@ export function App() {
               </div>
             </div>
             <PlayerCard
-              player={state.players[1]}
+              player={playerAtSeat(state, 1)}
               index={1}
               state={state}
-              local={state.players[1]?.id === me?.id}
+              local={playerAtSeat(state, 1)?.id === me?.id}
               reduced={reduced}
             />
           </div>

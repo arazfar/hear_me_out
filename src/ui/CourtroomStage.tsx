@@ -1,3 +1,5 @@
+import { colors as palette, materials, lighting } from "../design/tokens";
+import { playerSeat } from "./identity";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
@@ -6,15 +8,7 @@ import { judgeIsListening, type Snapshot } from "../../shared/domain";
 import { client } from "../game/client";
 
 type Vec = [number, number, number];
-const palette = {
-  ink: "#20102e",
-  cream: "#fff0ce",
-  lavender: "#b6a0e8",
-  lime: "#d8ff3e",
-  pink: "#ff4f9a",
-  cyan: "#39d8f2",
-  wood: "#ad724d",
-};
+
 function Block({
   at,
   size,
@@ -43,7 +37,7 @@ function Block({
       castShadow
       receiveShadow
     >
-      <meshStandardMaterial color={color} roughness={0.44} />
+      <meshStandardMaterial color={color} roughness={materials.painted} />
     </mesh>
   );
 }
@@ -77,7 +71,12 @@ function Bonk({
       : state?.judge?.status === "speaking"
         ? state.judge.targetPlayerId
         : null;
-    const index = state?.players.findIndex((p) => p.id === target);
+    const index = state
+      ? playerSeat(
+          state,
+          state.players.find((p) => p.id === target),
+        )
+      : undefined;
     const look = index === 0 ? -0.2 : index === 1 ? 0.2 : 0;
     const talking =
       state?.judge?.status === "speaking" &&
@@ -89,23 +88,17 @@ function Bonk({
       !reduced && since >= 0 && since < 1.2
         ? Math.sin(Math.min(1, since / 0.45) * Math.PI)
         : 0;
-    body.current.rotation.y = THREE.MathUtils.damp(
-      body.current.rotation.y,
-      look,
-      5,
-      delta,
-    );
+    body.current.rotation.y = reduced
+      ? look
+      : THREE.MathUtils.damp(body.current.rotation.y, look, 5, delta);
     body.current.rotation.z = reduced
       ? 0
       : Math.sin(t * 1.4) * 0.02 + bonk * 0.4;
     body.current.position.y =
       1.88 + (reduced ? 0 : Math.sin(t * 1.6) * 0.025 - bonk * 0.13);
-    pupils.current.position.x = THREE.MathUtils.damp(
-      pupils.current.position.x,
-      look * 0.16,
-      6,
-      delta,
-    );
+    pupils.current.position.x = reduced
+      ? look * 0.16
+      : THREE.MathUtils.damp(pupils.current.position.x, look * 0.16, 6, delta);
     const blink = !reduced && t % 5.7 > 5.55;
     pupils.current.scale.y = THREE.MathUtils.damp(
       pupils.current.scale.y,
@@ -140,25 +133,25 @@ function Bonk({
       </mesh>
       <mesh position={[0, -0.41, 0]} castShadow>
         <torusGeometry args={[0.17, 0.045, 8, 24]} />
-        <meshStandardMaterial color="#653849" roughness={0.65} />
+        <meshStandardMaterial color={palette.woodDark} roughness={0.65} />
       </mesh>
       <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
         <capsuleGeometry args={[0.43, 0.7, 12, 32]} />
         <meshStandardMaterial
-          color={palette.lavender}
-          roughness={0.3}
-          metalness={0.05}
+          color={palette.brass}
+          roughness={materials.brass}
+          metalness={materials.metalness}
         />
       </mesh>
       {[-0.72, 0.72].map((x) => (
         <group key={x} position={[x, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
           <mesh castShadow>
             <cylinderGeometry args={[0.46, 0.46, 0.16, 32]} />
-            <meshStandardMaterial color={palette.lime} roughness={0.32} />
+            <meshStandardMaterial color={palette.brassDark} roughness={0.32} />
           </mesh>
           <mesh position={[0, x < 0 ? 0.09 : -0.09, 0]}>
             <cylinderGeometry args={[0.37, 0.37, 0.03, 32]} />
-            <meshStandardMaterial color="#ecff94" roughness={0.4} />
+            <meshStandardMaterial color={palette.brassLight} roughness={0.4} />
           </mesh>
         </group>
       ))}
@@ -174,14 +167,14 @@ function Bonk({
               scale={[0.077, 0.113, 0.035]}
             >
               <sphereGeometry args={[1, 16, 12]} />
-              <meshStandardMaterial color={palette.ink} roughness={0.25} />
+              <meshStandardMaterial color={palette.canvas} roughness={0.25} />
             </mesh>
             <mesh
               position={[-0.005, 0.035, 0.088]}
               scale={[0.026, 0.035, 0.012]}
             >
               <sphereGeometry args={[1, 12, 8]} />
-              <meshBasicMaterial color="white" />
+              <meshBasicMaterial color={palette.cream} />
             </mesh>
           </group>
         ))}
@@ -192,7 +185,7 @@ function Bonk({
             key={x}
             at={[x, 0.31, 0.4]}
             size={[0.27, 0.064, 0.075]}
-            color={palette.ink}
+            color={palette.canvas}
             radius={0.022}
             rotation={[0, 0, i ? 0.15 : -0.15]}
           />
@@ -204,16 +197,16 @@ function Bonk({
         scale={[0.115, 0.01, 0.027]}
       >
         <sphereGeometry args={[1, 16, 12]} />
-        <meshStandardMaterial color={palette.ink} />
+        <meshStandardMaterial color={palette.canvas} />
       </mesh>
       <mesh ref={smile} position={[0, -0.13, 0.437]} rotation={[0, 0, Math.PI]}>
         <torusGeometry args={[0.115, 0.023, 8, 20, Math.PI]} />
-        <meshStandardMaterial color={palette.ink} />
+        <meshStandardMaterial color={palette.canvas} />
       </mesh>
       {[-0.38, 0.38].map((x) => (
         <mesh key={x} position={[x, -0.14, 0.355]} scale={[0.085, 0.037, 0.03]}>
           <sphereGeometry args={[1, 12, 8]} />
-          <meshStandardMaterial color="#e49abd" roughness={0.8} />
+          <meshStandardMaterial color={palette.seat1} roughness={0.8} />
         </mesh>
       ))}
       {[-2, -1, 0, 1, 2].map((n) => (
@@ -265,15 +258,22 @@ function Architecture({ hero }: { hero: boolean }) {
   return (
     <>
       <mesh geometry={arch} position={[0, 0.12, -1.3]} receiveShadow>
-        <meshStandardMaterial color="#91627c" roughness={0.9} />
+        <meshStandardMaterial
+          color={palette.surface}
+          roughness={materials.velvet}
+        />
       </mesh>
       <mesh position={[0, 1.92, -1.14]} castShadow>
         <torusGeometry args={[1.64, 0.105, 10, 48, Math.PI]} />
-        <meshStandardMaterial color="#ddbb9a" roughness={0.7} />
+        <meshStandardMaterial color={palette.brass} roughness={0.7} />
       </mesh>
       {[-1.64, 1.64].map((x) => (
         <group key={x}>
-          <Block at={[x, 1, -1.14]} size={[0.21, 1.83, 0.24]} color="#ddbb9a" />
+          <Block
+            at={[x, 1, -1.14]}
+            size={[0.21, 1.83, 0.24]}
+            color={palette.brass}
+          />
           <Block
             at={[x, 0.2, -1.08]}
             size={[0.4, 0.25, 0.4]}
@@ -282,44 +282,50 @@ function Architecture({ hero }: { hero: boolean }) {
         </group>
       ))}
       <mesh position={[0, 0.02, 0]} receiveShadow>
-        <cylinderGeometry args={[hero ? 4 : 2.1, hero ? 4 : 2.1, 0.12, 64]} />
-        <meshStandardMaterial color="#764958" roughness={0.8} />
+        <cylinderGeometry
+          args={[hero ? 3.45 : 2.1, hero ? 3.45 : 2.1, 0.12, 64]}
+        />
+        <meshStandardMaterial color={palette.surfaceRaised} roughness={0.8} />
       </mesh>
       <Block
         at={[0, 0.4, 0.05]}
         size={[1.85, 0.64, 0.9]}
-        color="#965c42"
+        color={palette.woodDark}
         radius={0.1}
       />
-      <Block at={[0, 0.78, 0.07]} size={[2.13, 0.2, 1.12]} color="#c99262" />
+      <Block
+        at={[0, 0.78, 0.07]}
+        size={[2.13, 0.2, 1.12]}
+        color={palette.woodLight}
+      />
       <Block
         at={[0, 0.35, 0.53]}
         size={[1.4, 0.32, 0.04]}
-        color="#5d3540"
+        color={palette.canvas}
         radius={0.03}
       />
       <Block
         at={[0, 0.39, 0.565]}
         size={[0.66, 0.22, 0.04]}
-        color="#e2b878"
+        color={palette.brass}
         radius={0.03}
       />
       <mesh position={[0, 0.89, 0.16]} castShadow>
         <cylinderGeometry args={[0.33, 0.38, 0.08, 32]} />
-        <meshStandardMaterial color="#704138" roughness={0.45} />
+        <meshStandardMaterial color={palette.woodDark} roughness={0.45} />
       </mesh>
       {[-1.3, 1.3].map((x) => (
         <group key={x}>
           <Block
             at={[x, 0.45, -0.7]}
             size={[0.19, 0.7, 0.19]}
-            color="#c99262"
+            color={palette.woodLight}
           />
           <mesh position={[x, 0.87, -0.7]}>
             <sphereGeometry args={[0.15, 16, 12]} />
             <meshStandardMaterial
               color={palette.cream}
-              emissive="#ffe29a"
+              emissive={palette.brassLight}
               emissiveIntensity={0.35}
               roughness={0.4}
             />
@@ -332,7 +338,7 @@ function Architecture({ hero }: { hero: boolean }) {
             <Block
               at={[x, 0.6, 0.35]}
               size={[1.45, 1.1, 1.05]}
-              color={i ? palette.cyan : palette.pink}
+              color={i ? palette.seat1 : palette.seat0}
               radius={0.15}
             />
             <Block
@@ -343,12 +349,12 @@ function Architecture({ hero }: { hero: boolean }) {
             <Block
               at={[x, 0.62, 0.9]}
               size={[0.87, 0.6, 0.035]}
-              color={palette.ink}
+              color={palette.canvas}
               radius={0.012}
             />
             <mesh position={[x, 0.63, 0.94]} rotation={[0, 0, Math.PI]}>
               <torusGeometry args={[0.2, 0.04, 8, 24, Math.PI]} />
-              <meshStandardMaterial color={i ? palette.cyan : palette.pink} />
+              <meshStandardMaterial color={i ? palette.seat1 : palette.seat0} />
             </mesh>
           </group>
         ))}
@@ -361,13 +367,13 @@ function Architecture({ hero }: { hero: boolean }) {
           <Block
             at={[0, 0, 0]}
             size={[0.34, 0.09, 0.34]}
-            color={side < 0 ? palette.lavender : palette.cream}
+            color={side < 0 ? palette.brass : palette.cream}
             radius={0.025}
           />
           <Block
             at={[0, 0.1, 0]}
             size={[0.31, 0.08, 0.3]}
-            color={side < 0 ? palette.cream : palette.lavender}
+            color={side < 0 ? palette.cream : palette.brass}
             radius={0.025}
           />
         </group>
@@ -417,12 +423,14 @@ function Scene({
   });
   return (
     <>
-      <ambientLight intensity={0.8} />
-      <hemisphereLight args={["#fff0ce", "#51295b", 1.45]} />
+      <ambientLight intensity={lighting.ambient} />
+      <hemisphereLight
+        args={[palette.cream, palette.canvas, lighting.hemisphere]}
+      />
       <directionalLight
         position={[-3, 6, 6]}
-        intensity={3.2}
-        color="#ffe9cc"
+        intensity={lighting.key}
+        color={palette.cream}
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-5}
@@ -431,17 +439,37 @@ function Scene({
         shadow-camera-bottom={-5}
         shadow-bias={-0.0005}
       />
-      <directionalLight position={[3, 2, -2]} intensity={1.8} color="#bbacf1" />
+      <directionalLight
+        position={[3, 2, -2]}
+        intensity={lighting.rim}
+        color={palette.brassLight}
+      />
       <pointLight
         position={[-3, 2, 2]}
-        intensity={state?.turn?.playerId === state?.players[0]?.id ? 9 : 4}
-        color={palette.pink}
+        intensity={
+          !!state?.turn &&
+          playerSeat(
+            state,
+            state.players.find((p) => p.id === state.turn?.playerId),
+          ) === 0
+            ? 9
+            : 4
+        }
+        color={palette.seat0}
         distance={8}
       />
       <pointLight
         position={[3, 2, 2]}
-        intensity={state?.turn?.playerId === state?.players[1]?.id ? 9 : 4}
-        color={palette.cyan}
+        intensity={
+          !!state?.turn &&
+          playerSeat(
+            state,
+            state.players.find((p) => p.id === state.turn?.playerId),
+          ) === 1
+            ? 9
+            : 4
+        }
+        color={palette.seat1}
         distance={8}
       />
       <Architecture hero={hero} />
@@ -473,7 +501,7 @@ const CourtroomStage = memo(function CourtroomStage({
         dpr={low ? 1 : [1, 1.5]}
         shadows={low ? false : "percentage"}
         gl={{ antialias: true, alpha: true, powerPreference: "default" }}
-        onCreated={({ gl }) => gl.setClearColor(0x20102e, 0)}
+        onCreated={({ gl }) => gl.setClearColor(palette.canvas, 0)}
       >
         <Scene
           state={state}
