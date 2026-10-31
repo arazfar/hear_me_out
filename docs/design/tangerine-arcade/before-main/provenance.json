@@ -1,0 +1,58 @@
+{
+  "baselineRef": "origin/main",
+  "baselineCommit": "c19a0e71b32d74ff0e58b44f6cb1e77ef0ea0d47",
+  "baselineTrackedWorktreeClean": true,
+  "source": "Fresh isolated detached checkout; no application or tracked-file changes",
+  "tooling": {
+    "node": "24.21.0",
+    "pnpm": "10.12.1",
+    "browser": "headless Chrome",
+    "automation": "Playwright CLI",
+    "browserVersion": "156.0.8078.79"
+  },
+  "build": [
+    "pnpm install --frozen-lockfile",
+    "pnpm build"
+  ],
+  "fixture": "Baseline scripts/browser-fixture.ts, port 3231; existing /__test/present route",
+  "capture": {
+    "fullPage": true,
+    "scrollPosition": "document top",
+    "reducedMotion": "reduce",
+    "media": "Chrome synthetic camera/microphone; Alex and Sam are test players",
+    "settling": "Font readiness plus rendering settle before capture",
+    "afterImplementationCommit": "df1060e7d652c6b0d295835485cc9b5c344fdf99",
+    "matchingContent": "Alex/Sam, hot dog proposition, for/against sides, 8.25/6.50 points, Alex 2\u20130 verdict, same caption and verdict reason",
+    "expectedDifferences": "Room codes, clock progress and generated camera frames vary between runs"
+  },
+  "images": [
+    {
+      "file": "debate-1280.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "b263d174a6b0b62e3f28f2ef8f1619a82a45aac03a68560966a7d47e5c8b2a02",
+      "capturedAt": "2026-10-31T02:07:29.451985+00:00"
+    },
+    {
+      "file": "debate-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "d56335e647d0445e82282bcbad2b1e3b20105bf5feee0aa65acb70c05ee05f31",
+      "capturedAt": "2026-10-31T02:07:29.804008+00:00"
+    },
+    {
+      "file": "title-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d838cb44c770e2b3095a78281ed2395c8d7e1f9be8fc8c35b17dd60df59f5712",
+      "capturedAt": "2026-10-31T02:07:23.427167+00:00"
+    },
+    {
+      "file": "verdict-1280.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "cd68a8971cbcac87befee176cedc330249919a504959b488d0e830fc56fafbcf",
+      "capturedAt": "2026-10-31T02:07:30.169712+00:00"
+    }
+  ]
+}

@@ -4,9 +4,26 @@ Presentation-only follow-up to `d79aeb26cda930a7fed57e8b24989dd8f22e9e90`, the h
 
 ## Before and after
 
-These are fresh screenshots of running builds. Before uses the rebuilt `d79aeb2` frontend; after uses Tangerine Arcade. Green feeds are **synthetic test players**, not human participants. Room codes, clocks, and generated camera frames vary between captures.
+These are fresh screenshots of running builds. Two baselines are shown separately: unchanged `main` and the intermediate Velvet Verdict redesign. Green feeds are **synthetic test players**, not human participants. Room codes, clocks, and generated camera frames vary between captures.
 
-| Surface | Before | After |
+### Unchanged main → Tangerine Arcade
+
+`origin/main` was verified at `c19a0e71b32d74ff0e58b44f6cb1e77ef0ea0d47`. These new captures use an isolated detached checkout, its own frozen-lockfile dependencies, production build, and fixture server. No baseline application or tracked files were changed; the checkout was clean after capture. The existing mock presentation route supplied matching Alex/Sam players, proposition, sides, scores, captions, and verdict. Capture settings match the after views: headless Chrome, synthetic devices, reduced motion, identical viewport dimensions, and full-page capture from the document top after fonts/rendering settled. [Capture provenance and image hashes](before-main/provenance.json).
+
+| Surface | Unchanged main (`c19a0e7`) | Tangerine Arcade |
+| --- | --- | --- |
+| Entry, 1440×900 | ![Main entry](before-main/title-1440.png) | ![Tangerine entry](after/title-1440.png) |
+| Debate, 1280×720 | ![Main debate](before-main/debate-1280.png) | ![Tangerine debate](after/debate-1280.png) |
+| Verdict, 1280×720 | ![Main verdict](before-main/verdict-1280.png) | ![Tangerine verdict](after/verdict-1280.png) |
+| Debate, 390×844 | ![Main phone debate](before-main/debate-390.png) | ![Tangerine phone debate](after/debate-390.png) |
+
+All four captures were opened and checked for the intended state, loaded scene/media, complete content, and matching dimensions. The baseline build passed with the existing bundle-size advisory. This follow-up changes only screenshot evidence and documentation; the implementation validation below remains associated with `df1060e`.
+
+### Velvet Verdict → Tangerine Arcade
+
+This comparison retains the rebuilt intermediate redesign at `d79aeb2`.
+
+| Surface | Velvet Verdict (`d79aeb2`) | Tangerine Arcade |
 | --- | --- | --- |
 | Entry, 1440×900 | ![Before entry](before/title-1440.png) | ![Tangerine entry](after/title-1440.png) |
 | Debate, 1280×720 | ![Before debate](before/debate-1280.png) | ![Tangerine debate](after/debate-1280.png) |
