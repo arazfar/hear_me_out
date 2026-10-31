@@ -1,0 +1,41 @@
+{
+  "scope": "Local headless Chrome title scene, 300 animation frames after 2s warmup. No physical device or acoustic claim.",
+  "results": [
+    {
+      "label": "before",
+      "viewport": "1280x720",
+      "frames": {
+        "medianMs": 16.699999999999818,
+        "p95Ms": 16.700000000000728,
+        "maxMs": 16.800000000000182,
+        "samples": 300
+      },
+      "resources": {
+        "transferBytes": 1515899,
+        "requests": 9,
+        "canvases": 1,
+        "quality": "normal"
+      },
+      "heapBytes": 10942972,
+      "taskSeconds": 0.425447
+    },
+    {
+      "label": "after",
+      "viewport": "1280x720",
+      "frames": {
+        "medianMs": 16.699999999999818,
+        "p95Ms": 16.799999999999272,
+        "maxMs": 16.800000000000182,
+        "samples": 300
+      },
+      "resources": {
+        "transferBytes": 1516121,
+        "requests": 9,
+        "canvases": 1,
+        "quality": "normal"
+      },
+      "heapBytes": 11805952,
+      "taskSeconds": 0.532707
+    }
+  ]
+}

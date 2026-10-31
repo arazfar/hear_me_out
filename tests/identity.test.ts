@@ -12,7 +12,7 @@ test("server seats survive departure, replacement, reconnect and a new match", (
   game.removePlayer(a.id);
   assert.equal(playerAtSeat(game.state, 0), undefined);
   assert.equal(playerAtSeat(game.state, 1)?.id, b.id);
-  assert.equal(playerColor(game.state, b.id), "var(--seat1)");
+  assert.equal(playerColor(game.state, b.id), "var(--identity-seat1-base)");
   const c = game.addPlayer("Taylor");
   assert.equal(c.seat, 0);
   assert.equal(playerAtSeat(game.state, 0)?.id, c.id);
@@ -22,8 +22,14 @@ test("server seats survive departure, replacement, reconnect and a new match", (
   for (const p of game.state.players) p.mediaReady = true;
   game.ready(b.id, true);
   game.ready(c.id, true);
-  assert.equal(playerColor(game.snapshot(), b.id), "var(--seat1)");
-  assert.equal(playerColor(game.snapshot(), c.id), "var(--seat0)");
+  assert.equal(
+    playerColor(game.snapshot(), b.id),
+    "var(--identity-seat1-base)",
+  );
+  assert.equal(
+    playerColor(game.snapshot(), c.id),
+    "var(--identity-seat0-base)",
+  );
 });
 
 test("identity follows each winner, not client perspective or result order", () => {
@@ -44,7 +50,7 @@ test("identity follows each winner, not client perspective or result order", () 
       playerAtSeat(viewB, winner.seat!)?.id,
     );
   }
-  assert.equal(playerColor(game.state, "missing"), "var(--brass)");
+  assert.equal(playerColor(game.state, "missing"), "var(--action-primary)");
 });
 
 test("legacy player snapshots retain their ordered seat mapping", () => {

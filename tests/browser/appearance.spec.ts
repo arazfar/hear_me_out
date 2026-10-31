@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import type { Snapshot } from "../../shared/domain";
 
-const root = "output/playwright/velvet-verdict/after";
+const root = "output/playwright/tangerine-arcade/after";
 const sizes = [
   [1440, 900],
   [1280, 720],
@@ -136,7 +136,7 @@ async function inspectSurface(page: Page) {
   });
 }
 
-test("Velvet Verdict state atlas, stable identities and accessible surfaces", async ({
+test("Tangerine Arcade state atlas, stable identities and accessible surfaces", async ({
   browser,
   baseURL,
   request,
@@ -158,6 +158,7 @@ test("Velvet Verdict state atlas, stable identities and accessible surfaces", as
   const a = await ca.newPage(),
     b = await cb.newPage();
   const checks: unknown[] = [];
+  const vision = await ca.newCDPSession(a);
   const interactionChecks: unknown[] = [];
   let roomCode = "";
   let originalPlayers: Snapshot["players"] = [];
@@ -192,7 +193,7 @@ test("Velvet Verdict state atlas, stable identities and accessible surfaces", as
         const stage = a.locator(".stage");
         await stage.evaluate((el: HTMLElement) => {
           el.style.cssText =
-            "position:fixed;left:0;top:0;width:876px;height:570px;z-index:999;background:var(--canvas)";
+            "position:fixed;left:0;top:0;width:876px;height:570px;z-index:999;background:var(--surface-canvas)";
         });
         await a.waitForTimeout(250);
         await stage.screenshot({ path: "public/bonk-fallback.png" });
@@ -225,8 +226,14 @@ test("Velvet Verdict state atlas, stable identities and accessible surfaces", as
     await a.keyboard.press("Tab");
     await expect(primary).toBeFocused();
     await inspectInteraction("keyboard focus");
+    await expect(primary).toHaveCSS("outline-color", "rgb(246, 248, 255)");
+    await expect(primary).toHaveCSS("outline-width", "3px");
     await primary.hover();
     await inspectInteraction("hover");
+    await expect(primary).toHaveCSS(
+      "box-shadow",
+      "rgb(21, 30, 50) 0px 0px 0px 2px",
+    );
     await a.mouse.down();
     await inspectInteraction("pressed");
     await a.mouse.move(0, 0);
@@ -256,6 +263,29 @@ test("Velvet Verdict state atlas, stable identities and accessible surfaces", as
     const [p0, p1] = state.players;
     expect([p0.seat, p1.seat]).toEqual([0, 1]);
     await capture("lobby");
+    await request.post("/__test/voice/" + code);
+    await expect(a.locator(".caption-status")).toHaveText("Speaking");
+    await expect(a.locator(".caption-status")).toHaveCSS(
+      "color",
+      "rgb(191, 203, 224)",
+    );
+    await capture("judge-speaking");
+    await a.getByRole("button", { name: "Audio", exact: true }).click();
+    await a.getByRole("button", { name: /Bonk & effects/ }).click();
+    await a.keyboard.press("Escape");
+    await expect(a.locator(".caption-status")).toHaveText("Sound off");
+    await capture("judge-muted");
+    await a.getByRole("button", { name: "Audio", exact: true }).click();
+    await a.getByRole("button", { name: /Bonk & effects/ }).click();
+    await a.keyboard.press("Escape");
+    await expect
+      .poll(
+        async () =>
+          (await (await request.post("/__test/state/" + code)).json()).judge
+            ?.status,
+        { timeout: 20000 },
+      )
+      .toBe("silent");
     const topic = {
       proposition: "A hot dog is a sandwich.",
       positions: {
@@ -398,6 +428,38 @@ test("Velvet Verdict state atlas, stable identities and accessible surfaces", as
     ] as [string, Partial<Snapshot>][]) {
       await present(patch);
       await capture(name);
+      if (name === "debate" || name === "verdict") {
+        for (const type of [
+          "achromatopsia",
+          "protanopia",
+          "deuteranopia",
+          "tritanopia",
+        ] as const) {
+          await vision.send("Emulation.setEmulatedVisionDeficiency", { type });
+          for (const [width, height] of [
+            [1440, 900],
+            [390, 844],
+          ]) {
+            await a.setViewportSize({ width, height });
+            // Let Chromium repaint after a viewport/emulation change before capture.
+            await a.evaluate(
+              () =>
+                new Promise<void>((resolve) =>
+                  requestAnimationFrame(() =>
+                    requestAnimationFrame(() => resolve()),
+                  ),
+                ),
+            );
+            await a.screenshot({
+              path: `${root}/${name}-${type}-${width}.png`,
+              fullPage: true,
+            });
+          }
+        }
+        await vision.send("Emulation.setEmulatedVisionDeficiency", {
+          type: "none",
+        });
+      }
       if (name === "topic") {
         await a.getByRole("button", { name: "Write your own" }).click();
         await capture("custom-topic");
@@ -421,12 +483,12 @@ test("Velvet Verdict state atlas, stable identities and accessible surfaces", as
             page.locator(`[data-seat="${player.seat}"] .face-heading`),
           ).toHaveCSS(
             "color",
-            player.seat === 0 ? "rgb(168, 213, 242)" : "rgb(247, 179, 140)",
+            player.seat === 0 ? "rgb(85, 214, 203)" : "rgb(195, 164, 255)",
           );
         }
         await expect(page.locator(".result-panel h2")).toHaveCSS(
           "color",
-          winner.seat === 0 ? "rgb(168, 213, 242)" : "rgb(247, 179, 140)",
+          winner.seat === 0 ? "rgb(85, 214, 203)" : "rgb(195, 164, 255)",
         );
       }
     }

@@ -93,7 +93,8 @@ export function ResultView({
               style={
                 {
                   "--i": i,
-                  "--piece-color": i % 2 ? "var(--winner)" : "var(--brass)",
+                  "--piece-color":
+                    i % 2 ? "var(--winner)" : "var(--action-primary)",
                 } as React.CSSProperties
               }
             />

@@ -23,5 +23,7 @@ export function playerColor(
     state,
     state.players.find((p) => p.id === id),
   );
-  return seat === undefined ? "var(--brass)" : `var(--seat${seat})`;
+  return seat === undefined
+    ? "var(--action-primary)"
+    : `var(--identity-seat${seat}-base)`;
 }

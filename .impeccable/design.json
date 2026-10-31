@@ -1,371 +1,553 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-30T20:33:59.155354Z",
-  "title": "Design System: Hear Me Out — Velvet Verdict",
+  "generatedAt": "2026-10-31T01:33:01.550786Z",
+  "title": "Design System: Hear Me Out — Tangerine Arcade",
   "extensions": {
     "colorMeta": {
-      "canvas": {
+      "surface-canvas": {
         "role": "neutral",
-        "displayName": "Burgundy Canvas",
+        "displayName": "Midnight Canvas",
         "tonalRamp": [
-          "oklch(15% 0.03629 344.84)",
-          "oklch(26% 0.03629 344.84)",
-          "oklch(38% 0.03629 344.84)",
-          "oklch(49% 0.03629 344.84)",
-          "oklch(61% 0.03629 344.84)",
-          "oklch(72% 0.03629 344.84)",
-          "oklch(84% 0.03629 344.84)",
-          "oklch(95% 0.03629 344.84)"
+          "oklch(15% 0.04088 265.01)",
+          "oklch(26% 0.04088 265.01)",
+          "oklch(38% 0.04088 265.01)",
+          "oklch(49% 0.04088 265.01)",
+          "oklch(61% 0.04088 265.01)",
+          "oklch(72% 0.04088 265.01)",
+          "oklch(84% 0.04088 265.01)",
+          "oklch(95% 0.04088 265.01)"
         ]
       },
-      "surface": {
+      "surface-panel": {
         "role": "neutral",
-        "displayName": "Velvet Plum",
+        "displayName": "Slate Panel",
         "tonalRamp": [
-          "oklch(15% 0.05147 333.97)",
-          "oklch(26% 0.05147 333.97)",
-          "oklch(38% 0.05147 333.97)",
-          "oklch(49% 0.05147 333.97)",
-          "oklch(61% 0.05147 333.97)",
-          "oklch(72% 0.05147 333.97)",
-          "oklch(84% 0.05147 333.97)",
-          "oklch(95% 0.05147 333.97)"
-        ]
-      },
-      "cream": {
-        "role": "neutral",
-        "displayName": "Warm Cream",
-        "tonalRamp": [
-          "oklch(15% 0.02931 80.66)",
-          "oklch(26% 0.02931 80.66)",
-          "oklch(38% 0.02931 80.66)",
-          "oklch(49% 0.02931 80.66)",
-          "oklch(61% 0.02931 80.66)",
-          "oklch(72% 0.02931 80.66)",
-          "oklch(84% 0.02931 80.66)",
-          "oklch(95% 0.02931 80.66)"
-        ]
-      },
-      "seat0": {
-        "role": "secondary",
-        "displayName": "Powder Blue Seat",
-        "tonalRamp": [
-          "oklch(15% 0.06214 236.73)",
-          "oklch(26% 0.06214 236.73)",
-          "oklch(38% 0.06214 236.73)",
-          "oklch(49% 0.06214 236.73)",
-          "oklch(61% 0.06214 236.73)",
-          "oklch(72% 0.06214 236.73)",
-          "oklch(84% 0.06214 236.73)",
-          "oklch(95% 0.06214 236.73)"
-        ]
-      },
-      "seat1": {
-        "role": "secondary",
-        "displayName": "Apricot Seat",
-        "tonalRamp": [
-          "oklch(15% 0.09522 50.81)",
-          "oklch(26% 0.09522 50.81)",
-          "oklch(38% 0.09522 50.81)",
-          "oklch(49% 0.09522 50.81)",
-          "oklch(61% 0.09522 50.81)",
-          "oklch(72% 0.09522 50.81)",
-          "oklch(84% 0.09522 50.81)",
-          "oklch(95% 0.09522 50.81)"
-        ]
-      },
-      "brass": {
-        "role": "primary",
-        "displayName": "Bonk Brass",
-        "tonalRamp": [
-          "oklch(15% 0.10791 85.06)",
-          "oklch(26% 0.10791 85.06)",
-          "oklch(38% 0.10791 85.06)",
-          "oklch(49% 0.10791 85.06)",
-          "oklch(61% 0.10791 85.06)",
-          "oklch(72% 0.10791 85.06)",
-          "oklch(84% 0.10791 85.06)",
-          "oklch(95% 0.10791 85.06)"
+          "oklch(15% 0.05015 263.46)",
+          "oklch(26% 0.05015 263.46)",
+          "oklch(38% 0.05015 263.46)",
+          "oklch(49% 0.05015 263.46)",
+          "oklch(61% 0.05015 263.46)",
+          "oklch(72% 0.05015 263.46)",
+          "oklch(84% 0.05015 263.46)",
+          "oklch(95% 0.05015 263.46)"
         ]
       },
       "surface-raised": {
         "role": "neutral",
-        "displayName": "Surface Raised",
+        "displayName": "Raised Blue",
         "tonalRamp": [
-          "oklch(15% 0.05270 337.28)",
-          "oklch(26% 0.05270 337.28)",
-          "oklch(38% 0.05270 337.28)",
-          "oklch(49% 0.05270 337.28)",
-          "oklch(61% 0.05270 337.28)",
-          "oklch(72% 0.05270 337.28)",
-          "oklch(84% 0.05270 337.28)",
-          "oklch(95% 0.05270 337.28)"
+          "oklch(15% 0.05453 261.85)",
+          "oklch(26% 0.05453 261.85)",
+          "oklch(38% 0.05453 261.85)",
+          "oklch(49% 0.05453 261.85)",
+          "oklch(61% 0.05453 261.85)",
+          "oklch(72% 0.05453 261.85)",
+          "oklch(84% 0.05453 261.85)",
+          "oklch(95% 0.05453 261.85)"
         ]
       },
       "surface-hover": {
         "role": "neutral",
-        "displayName": "Surface Hover",
+        "displayName": "Hover Blue",
         "tonalRamp": [
-          "oklch(15% 0.04978 338.38)",
-          "oklch(26% 0.04978 338.38)",
-          "oklch(38% 0.04978 338.38)",
-          "oklch(49% 0.04978 338.38)",
-          "oklch(61% 0.04978 338.38)",
-          "oklch(72% 0.04978 338.38)",
-          "oklch(84% 0.04978 338.38)",
-          "oklch(95% 0.04978 338.38)"
+          "oklch(15% 0.05426 258.66)",
+          "oklch(26% 0.05426 258.66)",
+          "oklch(38% 0.05426 258.66)",
+          "oklch(49% 0.05426 258.66)",
+          "oklch(61% 0.05426 258.66)",
+          "oklch(72% 0.05426 258.66)",
+          "oklch(84% 0.05426 258.66)",
+          "oklch(95% 0.05426 258.66)"
         ]
       },
-      "muted": {
+      "surface-input": {
         "role": "neutral",
-        "displayName": "Muted Rose Cream",
+        "displayName": "Dark Input",
         "tonalRamp": [
-          "oklch(15% 0.03322 345.12)",
-          "oklch(26% 0.03322 345.12)",
-          "oklch(38% 0.03322 345.12)",
-          "oklch(49% 0.03322 345.12)",
-          "oklch(61% 0.03322 345.12)",
-          "oklch(72% 0.03322 345.12)",
-          "oklch(84% 0.03322 345.12)",
-          "oklch(95% 0.03322 345.12)"
+          "oklch(15% 0.04681 261.28)",
+          "oklch(26% 0.04681 261.28)",
+          "oklch(38% 0.04681 261.28)",
+          "oklch(49% 0.04681 261.28)",
+          "oklch(61% 0.04681 261.28)",
+          "oklch(72% 0.04681 261.28)",
+          "oklch(84% 0.04681 261.28)",
+          "oklch(95% 0.04681 261.28)"
         ]
       },
-      "stroke": {
+      "surface-media": {
         "role": "neutral",
-        "displayName": "Stroke",
+        "displayName": "Midnight Media Ground",
         "tonalRamp": [
-          "oklch(15% 0.05068 343.31)",
-          "oklch(26% 0.05068 343.31)",
-          "oklch(38% 0.05068 343.31)",
-          "oklch(49% 0.05068 343.31)",
-          "oklch(61% 0.05068 343.31)",
-          "oklch(72% 0.05068 343.31)",
-          "oklch(84% 0.05068 343.31)",
-          "oklch(95% 0.05068 343.31)"
+          "oklch(15% 0.04088 265.01)",
+          "oklch(26% 0.04088 265.01)",
+          "oklch(38% 0.04088 265.01)",
+          "oklch(49% 0.04088 265.01)",
+          "oklch(61% 0.04088 265.01)",
+          "oklch(72% 0.04088 265.01)",
+          "oklch(84% 0.04088 265.01)",
+          "oklch(95% 0.04088 265.01)"
+        ]
+      },
+      "surface-inverse": {
+        "role": "neutral",
+        "displayName": "Ice-white Toast",
+        "tonalRamp": [
+          "oklch(15% 0.00955 273.36)",
+          "oklch(26% 0.00955 273.36)",
+          "oklch(38% 0.00955 273.36)",
+          "oklch(49% 0.00955 273.36)",
+          "oklch(61% 0.00955 273.36)",
+          "oklch(72% 0.00955 273.36)",
+          "oklch(84% 0.00955 273.36)",
+          "oklch(95% 0.00955 273.36)"
+        ]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Ice-white Reading Text",
+        "tonalRamp": [
+          "oklch(15% 0.00955 273.36)",
+          "oklch(26% 0.00955 273.36)",
+          "oklch(38% 0.00955 273.36)",
+          "oklch(49% 0.00955 273.36)",
+          "oklch(61% 0.00955 273.36)",
+          "oklch(72% 0.00955 273.36)",
+          "oklch(84% 0.00955 273.36)",
+          "oklch(95% 0.00955 273.36)"
+        ]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Mist Secondary Text",
+        "tonalRamp": [
+          "oklch(15% 0.03217 261.73)",
+          "oklch(26% 0.03217 261.73)",
+          "oklch(38% 0.03217 261.73)",
+          "oklch(49% 0.03217 261.73)",
+          "oklch(61% 0.03217 261.73)",
+          "oklch(72% 0.03217 261.73)",
+          "oklch(84% 0.03217 261.73)",
+          "oklch(95% 0.03217 261.73)"
+        ]
+      },
+      "text-accent": {
+        "role": "primary",
+        "displayName": "Tangerine Accent Text",
+        "tonalRamp": [
+          "oklch(15% 0.14979 69.98)",
+          "oklch(26% 0.14979 69.98)",
+          "oklch(38% 0.14979 69.98)",
+          "oklch(49% 0.14979 69.98)",
+          "oklch(61% 0.14979 69.98)",
+          "oklch(72% 0.14979 69.98)",
+          "oklch(84% 0.14979 69.98)",
+          "oklch(95% 0.14979 69.98)"
+        ]
+      },
+      "text-on-accent": {
+        "role": "neutral",
+        "displayName": "Midnight Accent Ink",
+        "tonalRamp": [
+          "oklch(15% 0.04088 265.01)",
+          "oklch(26% 0.04088 265.01)",
+          "oklch(38% 0.04088 265.01)",
+          "oklch(49% 0.04088 265.01)",
+          "oklch(61% 0.04088 265.01)",
+          "oklch(72% 0.04088 265.01)",
+          "oklch(84% 0.04088 265.01)",
+          "oklch(95% 0.04088 265.01)"
+        ]
+      },
+      "text-inverse": {
+        "role": "neutral",
+        "displayName": "Midnight Toast Ink",
+        "tonalRamp": [
+          "oklch(15% 0.04088 265.01)",
+          "oklch(26% 0.04088 265.01)",
+          "oklch(38% 0.04088 265.01)",
+          "oklch(49% 0.04088 265.01)",
+          "oklch(61% 0.04088 265.01)",
+          "oklch(72% 0.04088 265.01)",
+          "oklch(84% 0.04088 265.01)",
+          "oklch(95% 0.04088 265.01)"
+        ]
+      },
+      "text-placeholder": {
+        "role": "neutral",
+        "displayName": "Mist Placeholder",
+        "tonalRamp": [
+          "oklch(15% 0.03217 261.73)",
+          "oklch(26% 0.03217 261.73)",
+          "oklch(38% 0.03217 261.73)",
+          "oklch(49% 0.03217 261.73)",
+          "oklch(61% 0.03217 261.73)",
+          "oklch(72% 0.03217 261.73)",
+          "oklch(84% 0.03217 261.73)",
+          "oklch(95% 0.03217 261.73)"
+        ]
+      },
+      "border-control": {
+        "role": "neutral",
+        "displayName": "Blue-gray Control Border",
+        "tonalRamp": [
+          "oklch(15% 0.04613 259.16)",
+          "oklch(26% 0.04613 259.16)",
+          "oklch(38% 0.04613 259.16)",
+          "oklch(49% 0.04613 259.16)",
+          "oklch(61% 0.04613 259.16)",
+          "oklch(72% 0.04613 259.16)",
+          "oklch(84% 0.04613 259.16)",
+          "oklch(95% 0.04613 259.16)"
+        ]
+      },
+      "border-focus": {
+        "role": "neutral",
+        "displayName": "Ice-white Focus Ring",
+        "tonalRamp": [
+          "oklch(15% 0.00955 273.36)",
+          "oklch(26% 0.00955 273.36)",
+          "oklch(38% 0.00955 273.36)",
+          "oklch(49% 0.00955 273.36)",
+          "oklch(61% 0.00955 273.36)",
+          "oklch(72% 0.00955 273.36)",
+          "oklch(84% 0.00955 273.36)",
+          "oklch(95% 0.00955 273.36)"
+        ]
+      },
+      "border-focus-gap": {
+        "role": "neutral",
+        "displayName": "Midnight Focus Gap",
+        "tonalRamp": [
+          "oklch(15% 0.04088 265.01)",
+          "oklch(26% 0.04088 265.01)",
+          "oklch(38% 0.04088 265.01)",
+          "oklch(49% 0.04088 265.01)",
+          "oklch(61% 0.04088 265.01)",
+          "oklch(72% 0.04088 265.01)",
+          "oklch(84% 0.04088 265.01)",
+          "oklch(95% 0.04088 265.01)"
+        ]
+      },
+      "action-primary": {
+        "role": "primary",
+        "displayName": "Tangerine Action",
+        "tonalRamp": [
+          "oklch(15% 0.14979 69.98)",
+          "oklch(26% 0.14979 69.98)",
+          "oklch(38% 0.14979 69.98)",
+          "oklch(49% 0.14979 69.98)",
+          "oklch(61% 0.14979 69.98)",
+          "oklch(72% 0.14979 69.98)",
+          "oklch(84% 0.14979 69.98)",
+          "oklch(95% 0.14979 69.98)"
         ]
       },
       "action-hover": {
         "role": "primary",
-        "displayName": "Action Hover",
+        "displayName": "Light Tangerine Hover",
         "tonalRamp": [
-          "oklch(15% 0.09447 85.60)",
-          "oklch(26% 0.09447 85.60)",
-          "oklch(38% 0.09447 85.60)",
-          "oklch(49% 0.09447 85.60)",
-          "oklch(61% 0.09447 85.60)",
-          "oklch(72% 0.09447 85.60)",
-          "oklch(84% 0.09447 85.60)",
-          "oklch(95% 0.09447 85.60)"
+          "oklch(15% 0.12336 74.43)",
+          "oklch(26% 0.12336 74.43)",
+          "oklch(38% 0.12336 74.43)",
+          "oklch(49% 0.12336 74.43)",
+          "oklch(61% 0.12336 74.43)",
+          "oklch(72% 0.12336 74.43)",
+          "oklch(84% 0.12336 74.43)",
+          "oklch(95% 0.12336 74.43)"
         ]
       },
       "action-pressed": {
         "role": "primary",
-        "displayName": "Action Pressed",
+        "displayName": "Deep Tangerine Press",
         "tonalRamp": [
-          "oklch(15% 0.10744 82.37)",
-          "oklch(26% 0.10744 82.37)",
-          "oklch(38% 0.10744 82.37)",
-          "oklch(49% 0.10744 82.37)",
-          "oklch(61% 0.10744 82.37)",
-          "oklch(72% 0.10744 82.37)",
-          "oklch(84% 0.10744 82.37)",
-          "oklch(95% 0.10744 82.37)"
+          "oklch(15% 0.15103 68.15)",
+          "oklch(26% 0.15103 68.15)",
+          "oklch(38% 0.15103 68.15)",
+          "oklch(49% 0.15103 68.15)",
+          "oklch(61% 0.15103 68.15)",
+          "oklch(72% 0.15103 68.15)",
+          "oklch(84% 0.15103 68.15)",
+          "oklch(95% 0.15103 68.15)"
         ]
       },
-      "field": {
-        "role": "neutral",
-        "displayName": "Field",
-        "tonalRamp": [
-          "oklch(15% 0.01751 81.33)",
-          "oklch(26% 0.01751 81.33)",
-          "oklch(38% 0.01751 81.33)",
-          "oklch(49% 0.01751 81.33)",
-          "oklch(61% 0.01751 81.33)",
-          "oklch(72% 0.01751 81.33)",
-          "oklch(84% 0.01751 81.33)",
-          "oklch(95% 0.01751 81.33)"
-        ]
-      },
-      "paper-copy": {
-        "role": "neutral",
-        "displayName": "Paper Copy",
-        "tonalRamp": [
-          "oklch(15% 0.05308 348.17)",
-          "oklch(26% 0.05308 348.17)",
-          "oklch(38% 0.05308 348.17)",
-          "oklch(49% 0.05308 348.17)",
-          "oklch(61% 0.05308 348.17)",
-          "oklch(72% 0.05308 348.17)",
-          "oklch(84% 0.05308 348.17)",
-          "oklch(95% 0.05308 348.17)"
-        ]
-      },
-      "field-stroke": {
-        "role": "neutral",
-        "displayName": "Field Stroke",
-        "tonalRamp": [
-          "oklch(15% 0.06081 347.72)",
-          "oklch(26% 0.06081 347.72)",
-          "oklch(38% 0.06081 347.72)",
-          "oklch(49% 0.06081 347.72)",
-          "oklch(61% 0.06081 347.72)",
-          "oklch(72% 0.06081 347.72)",
-          "oklch(84% 0.06081 347.72)",
-          "oklch(95% 0.06081 347.72)"
-        ]
-      },
-      "disabled-fill": {
-        "role": "neutral",
-        "displayName": "Disabled Fill",
-        "tonalRamp": [
-          "oklch(15% 0.04072 339.06)",
-          "oklch(26% 0.04072 339.06)",
-          "oklch(38% 0.04072 339.06)",
-          "oklch(49% 0.04072 339.06)",
-          "oklch(61% 0.04072 339.06)",
-          "oklch(72% 0.04072 339.06)",
-          "oklch(84% 0.04072 339.06)",
-          "oklch(95% 0.04072 339.06)"
-        ]
-      },
-      "disabled-text": {
-        "role": "neutral",
-        "displayName": "Disabled Text",
-        "tonalRamp": [
-          "oklch(15% 0.02752 344.71)",
-          "oklch(26% 0.02752 344.71)",
-          "oklch(38% 0.02752 344.71)",
-          "oklch(49% 0.02752 344.71)",
-          "oklch(61% 0.02752 344.71)",
-          "oklch(72% 0.02752 344.71)",
-          "oklch(84% 0.02752 344.71)",
-          "oklch(95% 0.02752 344.71)"
-        ]
-      },
-      "danger": {
-        "role": "tertiary",
-        "displayName": "Danger",
-        "tonalRamp": [
-          "oklch(15% 0.08644 15.49)",
-          "oklch(26% 0.08644 15.49)",
-          "oklch(38% 0.08644 15.49)",
-          "oklch(49% 0.08644 15.49)",
-          "oklch(61% 0.08644 15.49)",
-          "oklch(72% 0.08644 15.49)",
-          "oklch(84% 0.08644 15.49)",
-          "oklch(95% 0.08644 15.49)"
-        ]
-      },
-      "danger-ink": {
-        "role": "tertiary",
-        "displayName": "Danger Ink",
-        "tonalRamp": [
-          "oklch(15% 0.12009 8.91)",
-          "oklch(26% 0.12009 8.91)",
-          "oklch(38% 0.12009 8.91)",
-          "oklch(49% 0.12009 8.91)",
-          "oklch(61% 0.12009 8.91)",
-          "oklch(72% 0.12009 8.91)",
-          "oklch(84% 0.12009 8.91)",
-          "oklch(95% 0.12009 8.91)"
-        ]
-      },
-      "wood": {
-        "role": "tertiary",
-        "displayName": "Wood",
-        "tonalRamp": [
-          "oklch(15% 0.08633 46.77)",
-          "oklch(26% 0.08633 46.77)",
-          "oklch(38% 0.08633 46.77)",
-          "oklch(49% 0.08633 46.77)",
-          "oklch(61% 0.08633 46.77)",
-          "oklch(72% 0.08633 46.77)",
-          "oklch(84% 0.08633 46.77)",
-          "oklch(95% 0.08633 46.77)"
-        ]
-      },
-      "wood-light": {
-        "role": "tertiary",
-        "displayName": "Wood Light",
-        "tonalRamp": [
-          "oklch(15% 0.07774 60.30)",
-          "oklch(26% 0.07774 60.30)",
-          "oklch(38% 0.07774 60.30)",
-          "oklch(49% 0.07774 60.30)",
-          "oklch(61% 0.07774 60.30)",
-          "oklch(72% 0.07774 60.30)",
-          "oklch(84% 0.07774 60.30)",
-          "oklch(95% 0.07774 60.30)"
-        ]
-      },
-      "wood-dark": {
-        "role": "tertiary",
-        "displayName": "Wood Dark",
-        "tonalRamp": [
-          "oklch(15% 0.05906 26.05)",
-          "oklch(26% 0.05906 26.05)",
-          "oklch(38% 0.05906 26.05)",
-          "oklch(49% 0.05906 26.05)",
-          "oklch(61% 0.05906 26.05)",
-          "oklch(72% 0.05906 26.05)",
-          "oklch(84% 0.05906 26.05)",
-          "oklch(95% 0.05906 26.05)"
-        ]
-      },
-      "brass-light": {
+      "action-text": {
         "role": "primary",
-        "displayName": "Brass Light",
+        "displayName": "Midnight Action Ink",
         "tonalRamp": [
-          "oklch(15% 0.08097 86.88)",
-          "oklch(26% 0.08097 86.88)",
-          "oklch(38% 0.08097 86.88)",
-          "oklch(49% 0.08097 86.88)",
-          "oklch(61% 0.08097 86.88)",
-          "oklch(72% 0.08097 86.88)",
-          "oklch(84% 0.08097 86.88)",
-          "oklch(95% 0.08097 86.88)"
+          "oklch(15% 0.04088 265.01)",
+          "oklch(26% 0.04088 265.01)",
+          "oklch(38% 0.04088 265.01)",
+          "oklch(49% 0.04088 265.01)",
+          "oklch(61% 0.04088 265.01)",
+          "oklch(72% 0.04088 265.01)",
+          "oklch(84% 0.04088 265.01)",
+          "oklch(95% 0.04088 265.01)"
         ]
       },
-      "brass-dark": {
-        "role": "primary",
-        "displayName": "Brass Dark",
+      "identity-seat0-base": {
+        "role": "secondary",
+        "displayName": "Turquoise Seat 0",
         "tonalRamp": [
-          "oklch(15% 0.08899 75.00)",
-          "oklch(26% 0.08899 75.00)",
-          "oklch(38% 0.08899 75.00)",
-          "oklch(49% 0.08899 75.00)",
-          "oklch(61% 0.08899 75.00)",
-          "oklch(72% 0.08899 75.00)",
-          "oklch(84% 0.08899 75.00)",
-          "oklch(95% 0.08899 75.00)"
+          "oklch(15% 0.11395 187.33)",
+          "oklch(26% 0.11395 187.33)",
+          "oklch(38% 0.11395 187.33)",
+          "oklch(49% 0.11395 187.33)",
+          "oklch(61% 0.11395 187.33)",
+          "oklch(72% 0.11395 187.33)",
+          "oklch(84% 0.11395 187.33)",
+          "oklch(95% 0.11395 187.33)"
         ]
       },
-      "velvet-light": {
+      "identity-seat0-tint": {
+        "role": "secondary",
+        "displayName": "Dark Turquoise Avatar",
+        "tonalRamp": [
+          "oklch(15% 0.04551 208.63)",
+          "oklch(26% 0.04551 208.63)",
+          "oklch(38% 0.04551 208.63)",
+          "oklch(49% 0.04551 208.63)",
+          "oklch(61% 0.04551 208.63)",
+          "oklch(72% 0.04551 208.63)",
+          "oklch(84% 0.04551 208.63)",
+          "oklch(95% 0.04551 208.63)"
+        ]
+      },
+      "identity-seat0-on-base": {
+        "role": "secondary",
+        "displayName": "Midnight Turquoise Ink",
+        "tonalRamp": [
+          "oklch(15% 0.04088 265.01)",
+          "oklch(26% 0.04088 265.01)",
+          "oklch(38% 0.04088 265.01)",
+          "oklch(49% 0.04088 265.01)",
+          "oklch(61% 0.04088 265.01)",
+          "oklch(72% 0.04088 265.01)",
+          "oklch(84% 0.04088 265.01)",
+          "oklch(95% 0.04088 265.01)"
+        ]
+      },
+      "identity-seat1-base": {
+        "role": "secondary",
+        "displayName": "Lilac Seat 1",
+        "tonalRamp": [
+          "oklch(15% 0.13036 299.03)",
+          "oklch(26% 0.13036 299.03)",
+          "oklch(38% 0.13036 299.03)",
+          "oklch(49% 0.13036 299.03)",
+          "oklch(61% 0.13036 299.03)",
+          "oklch(72% 0.13036 299.03)",
+          "oklch(84% 0.13036 299.03)",
+          "oklch(95% 0.13036 299.03)"
+        ]
+      },
+      "identity-seat1-tint": {
+        "role": "secondary",
+        "displayName": "Dark Lilac Avatar",
+        "tonalRamp": [
+          "oklch(15% 0.06593 294.78)",
+          "oklch(26% 0.06593 294.78)",
+          "oklch(38% 0.06593 294.78)",
+          "oklch(49% 0.06593 294.78)",
+          "oklch(61% 0.06593 294.78)",
+          "oklch(72% 0.06593 294.78)",
+          "oklch(84% 0.06593 294.78)",
+          "oklch(95% 0.06593 294.78)"
+        ]
+      },
+      "identity-seat1-on-base": {
+        "role": "secondary",
+        "displayName": "Midnight Lilac Ink",
+        "tonalRamp": [
+          "oklch(15% 0.04088 265.01)",
+          "oklch(26% 0.04088 265.01)",
+          "oklch(38% 0.04088 265.01)",
+          "oklch(49% 0.04088 265.01)",
+          "oklch(61% 0.04088 265.01)",
+          "oklch(72% 0.04088 265.01)",
+          "oklch(84% 0.04088 265.01)",
+          "oklch(95% 0.04088 265.01)"
+        ]
+      },
+      "status-warning-text": {
         "role": "tertiary",
-        "displayName": "Velvet Light",
+        "displayName": "Amber Low-time Warning",
         "tonalRamp": [
-          "oklch(15% 0.06499 345.33)",
-          "oklch(26% 0.06499 345.33)",
-          "oklch(38% 0.06499 345.33)",
-          "oklch(49% 0.06499 345.33)",
-          "oklch(61% 0.06499 345.33)",
-          "oklch(72% 0.06499 345.33)",
-          "oklch(84% 0.06499 345.33)",
-          "oklch(95% 0.06499 345.33)"
+          "oklch(15% 0.11755 82.16)",
+          "oklch(26% 0.11755 82.16)",
+          "oklch(38% 0.11755 82.16)",
+          "oklch(49% 0.11755 82.16)",
+          "oklch(61% 0.11755 82.16)",
+          "oklch(72% 0.11755 82.16)",
+          "oklch(84% 0.11755 82.16)",
+          "oklch(95% 0.11755 82.16)"
         ]
       },
-      "shadow": {
-        "role": "neutral",
-        "displayName": "Shadow Tint",
+      "status-error-text": {
+        "role": "tertiary",
+        "displayName": "Rose Error",
         "tonalRamp": [
-          "oklch(15% 0.02431 337.15)",
-          "oklch(26% 0.02431 337.15)",
-          "oklch(38% 0.02431 337.15)",
-          "oklch(49% 0.02431 337.15)",
-          "oklch(61% 0.02431 337.15)",
-          "oklch(72% 0.02431 337.15)",
-          "oklch(84% 0.02431 337.15)",
-          "oklch(95% 0.02431 337.15)"
+          "oklch(15% 0.09717 9.78)",
+          "oklch(26% 0.09717 9.78)",
+          "oklch(38% 0.09717 9.78)",
+          "oklch(49% 0.09717 9.78)",
+          "oklch(61% 0.09717 9.78)",
+          "oklch(72% 0.09717 9.78)",
+          "oklch(84% 0.09717 9.78)",
+          "oklch(95% 0.09717 9.78)"
+        ]
+      },
+      "status-error-surface": {
+        "role": "tertiary",
+        "displayName": "Dark Rose Notice",
+        "tonalRamp": [
+          "oklch(15% 0.05979 353.60)",
+          "oklch(26% 0.05979 353.60)",
+          "oklch(38% 0.05979 353.60)",
+          "oklch(49% 0.05979 353.60)",
+          "oklch(61% 0.05979 353.60)",
+          "oklch(72% 0.05979 353.60)",
+          "oklch(84% 0.05979 353.60)",
+          "oklch(95% 0.05979 353.60)"
+        ]
+      },
+      "status-privacy-text": {
+        "role": "neutral",
+        "displayName": "Mist Privacy Text",
+        "tonalRamp": [
+          "oklch(15% 0.03217 261.73)",
+          "oklch(26% 0.03217 261.73)",
+          "oklch(38% 0.03217 261.73)",
+          "oklch(49% 0.03217 261.73)",
+          "oklch(61% 0.03217 261.73)",
+          "oklch(72% 0.03217 261.73)",
+          "oklch(84% 0.03217 261.73)",
+          "oklch(95% 0.03217 261.73)"
+        ]
+      },
+      "status-privacy-surface": {
+        "role": "neutral",
+        "displayName": "Dark Privacy Control",
+        "tonalRamp": [
+          "oklch(15% 0.04681 261.28)",
+          "oklch(26% 0.04681 261.28)",
+          "oklch(38% 0.04681 261.28)",
+          "oklch(49% 0.04681 261.28)",
+          "oklch(61% 0.04681 261.28)",
+          "oklch(72% 0.04681 261.28)",
+          "oklch(84% 0.04681 261.28)",
+          "oklch(95% 0.04681 261.28)"
+        ]
+      },
+      "status-disabled-text": {
+        "role": "neutral",
+        "displayName": "Muted Disabled Text",
+        "tonalRamp": [
+          "oklch(15% 0.03421 261.02)",
+          "oklch(26% 0.03421 261.02)",
+          "oklch(38% 0.03421 261.02)",
+          "oklch(49% 0.03421 261.02)",
+          "oklch(61% 0.03421 261.02)",
+          "oklch(72% 0.03421 261.02)",
+          "oklch(84% 0.03421 261.02)",
+          "oklch(95% 0.03421 261.02)"
+        ]
+      },
+      "status-disabled-surface": {
+        "role": "neutral",
+        "displayName": "Muted Disabled Fill",
+        "tonalRamp": [
+          "oklch(15% 0.04735 260.41)",
+          "oklch(26% 0.04735 260.41)",
+          "oklch(38% 0.04735 260.41)",
+          "oklch(49% 0.04735 260.41)",
+          "oklch(61% 0.04735 260.41)",
+          "oklch(72% 0.04735 260.41)",
+          "oklch(84% 0.04735 260.41)",
+          "oklch(95% 0.04735 260.41)"
+        ]
+      },
+      "scene-furniture": {
+        "role": "neutral",
+        "displayName": "Painted Blue Furniture",
+        "tonalRamp": [
+          "oklch(15% 0.05204 257.19)",
+          "oklch(26% 0.05204 257.19)",
+          "oklch(38% 0.05204 257.19)",
+          "oklch(49% 0.05204 257.19)",
+          "oklch(61% 0.05204 257.19)",
+          "oklch(72% 0.05204 257.19)",
+          "oklch(84% 0.05204 257.19)",
+          "oklch(95% 0.05204 257.19)"
+        ]
+      },
+      "scene-bonk-body": {
+        "role": "primary",
+        "displayName": "Matte Tangerine Bonk",
+        "tonalRamp": [
+          "oklch(15% 0.14979 69.98)",
+          "oklch(26% 0.14979 69.98)",
+          "oklch(38% 0.14979 69.98)",
+          "oklch(49% 0.14979 69.98)",
+          "oklch(61% 0.14979 69.98)",
+          "oklch(72% 0.14979 69.98)",
+          "oklch(84% 0.14979 69.98)",
+          "oklch(95% 0.14979 69.98)"
+        ]
+      },
+      "scene-bonk-highlight": {
+        "role": "tertiary",
+        "displayName": "Warm Bonk Highlight",
+        "tonalRamp": [
+          "oklch(15% 0.08670 74.79)",
+          "oklch(26% 0.08670 74.79)",
+          "oklch(38% 0.08670 74.79)",
+          "oklch(49% 0.08670 74.79)",
+          "oklch(61% 0.08670 74.79)",
+          "oklch(72% 0.08670 74.79)",
+          "oklch(84% 0.08670 74.79)",
+          "oklch(95% 0.08670 74.79)"
+        ]
+      },
+      "scene-bonk-shade": {
+        "role": "tertiary",
+        "displayName": "Deep Bonk Shade",
+        "tonalRamp": [
+          "oklch(15% 0.13180 62.61)",
+          "oklch(26% 0.13180 62.61)",
+          "oklch(38% 0.13180 62.61)",
+          "oklch(49% 0.13180 62.61)",
+          "oklch(61% 0.13180 62.61)",
+          "oklch(72% 0.13180 62.61)",
+          "oklch(84% 0.13180 62.61)",
+          "oklch(95% 0.13180 62.61)"
+        ]
+      },
+      "scene-bonk-features": {
+        "role": "neutral",
+        "displayName": "Midnight Bonk Features",
+        "tonalRamp": [
+          "oklch(15% 0.04088 265.01)",
+          "oklch(26% 0.04088 265.01)",
+          "oklch(38% 0.04088 265.01)",
+          "oklch(49% 0.04088 265.01)",
+          "oklch(61% 0.04088 265.01)",
+          "oklch(72% 0.04088 265.01)",
+          "oklch(84% 0.04088 265.01)",
+          "oklch(95% 0.04088 265.01)"
+        ]
+      },
+      "scene-bonk-wig": {
+        "role": "neutral",
+        "displayName": "Ice-white Wig",
+        "tonalRamp": [
+          "oklch(15% 0.00955 273.36)",
+          "oklch(26% 0.00955 273.36)",
+          "oklch(38% 0.00955 273.36)",
+          "oklch(49% 0.00955 273.36)",
+          "oklch(61% 0.00955 273.36)",
+          "oklch(72% 0.00955 273.36)",
+          "oklch(84% 0.00955 273.36)",
+          "oklch(95% 0.00955 273.36)"
         ]
       }
     },
@@ -414,22 +596,22 @@
     "shadows": [
       {
         "name": "surface",
-        "value": "0 12px 30px #160B1355",
+        "value": "0 12px 30px #151E3255",
         "purpose": "Entry/task panels and toast."
       },
       {
         "name": "dialog",
-        "value": "0 20px 80px #160B1399",
-        "purpose": "Dialog above a #26131Edf backdrop."
+        "value": "0 20px 80px #151E3299",
+        "purpose": "Dialog above a #151E32df backdrop."
       },
       {
         "name": "button",
-        "value": "inset 0 -3px 0 #89632955, 0 4px 10px #160B1333",
-        "purpose": "Painted brass action edge."
+        "value": "inset 0 -3px 0 #B86D1555, 0 4px 10px #151E3233",
+        "purpose": "Painted tangerine action edge."
       },
       {
         "name": "frame",
-        "value": "0 8px 24px #160B1355",
+        "value": "0 8px 24px #151E3255",
         "purpose": "Persistent player cards."
       }
     ],
@@ -495,12 +677,12 @@
   },
   "components": [
     {
-      "name": "Brass primary action",
+      "name": "Tangerine primary action",
       "kind": "button",
       "refersTo": "button-primary",
       "description": "Full-width next action with hover, press, focus, and disabled states.",
       "html": "<button class=\"ds-primary\">Create room</button>",
-      "css": ".ds-primary{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-width:44px;min-height:48px;padding:12px 18px;border:0;border-radius:var(--radius-small,12px);background:var(--brass, #D9B464);color:var(--canvas, #26131E);font-size:15px;font-weight:700;box-shadow:var(--shadow-button,inset 0 -3px 0 #89632955,0 4px 10px #160B1333);cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-primary:not(:disabled):hover{background:var(--action-hover, #EBCB86);transform:translateY(-1px)}.ds-primary:not(:disabled):active{background:var(--action-pressed, #C9A153);transform:translateY(2px) scale(.98);transition-duration:70ms}.ds-primary:focus-visible{outline:3px solid var(--brass,#D9B464);outline-offset:4px;}.ds-primary:disabled{background:var(--disabled-fill, #604858);color:var(--disabled-text, #E3CED9);box-shadow:none;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-primary{transition:none}}"
+      "css": ".ds-primary{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-width:44px;min-height:48px;padding:12px 18px;border:0;border-radius:var(--radius-small,12px);background:var(--action-primary, #FFAF45);color:var(--action-text, #151E32);font-size:15px;font-weight:700;box-shadow:var(--shadow-button,inset 0 -3px 0 #B86D1555,0 4px 10px #151E3233);cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-primary:not(:disabled):hover{background:var(--action-hover, #FFC36E);transform:translateY(-1px)}.ds-primary:not(:disabled):active{background:var(--action-pressed, #E99728);transform:translateY(2px) scale(.98);transition-duration:70ms}.ds-primary:focus-visible{outline:3px solid var(--border-focus, #F6F8FF);outline-offset:2px;box-shadow:0 0 0 2px var(--border-focus-gap, #151E32) !important;}.ds-primary:disabled{background:var(--status-disabled-surface, #33425B);color:var(--status-disabled-text, #B5C2D8);box-shadow:none;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-primary{transition:none}}"
     },
     {
       "name": "Underlined text action",
@@ -508,7 +690,7 @@
       "refersTo": "button-text",
       "description": "Secondary choice below the primary action.",
       "html": "<button class=\"ds-text\">Join a friend</button>",
-      "css": ".ds-text{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:block;min-width:44px;min-height:44px;padding:6px 8px;margin:12px auto 0;border:0;background:transparent;color:var(--cream, #FFF3DF);font-size:13px;text-decoration:underline;text-underline-offset:4px;cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-text:hover{color:var(--brass, #D9B464)}.ds-text:active{transform:translateY(2px)}.ds-text:focus-visible{outline:3px solid var(--brass,#D9B464);outline-offset:4px;}"
+      "css": ".ds-text{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:block;min-width:44px;min-height:44px;padding:6px 8px;margin:12px auto 0;border:0;background:transparent;color:var(--text-primary, #F6F8FF);font-size:13px;text-decoration:underline;text-underline-offset:4px;cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-text:hover{color:var(--text-accent, #FFAF45)}.ds-text:active{transform:translateY(2px)}.ds-text:focus-visible{outline:3px solid var(--border-focus, #F6F8FF);outline-offset:2px;box-shadow:0 0 0 2px var(--border-focus-gap, #151E32) !important;}"
     },
     {
       "name": "Circular help control",
@@ -516,15 +698,15 @@
       "refersTo": "button-icon",
       "description": "Header help with a stroke SVG and accessible name.",
       "html": "<button class=\"ds-icon\" aria-label=\"How to play\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 8a3 3 0 1 1 4 3c-1 .5-1 1-1 3M12 18h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z\"/></svg></button>",
-      "css": ".ds-icon{display:inline-grid;place-items:center;width:44px;height:44px;min-width:44px;min-height:44px;border:0;border-radius:50%;background:var(--surface, #40263B);color:var(--cream, #FFF3DF);cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-icon svg{width:20px;height:20px;flex:0 0 auto}.ds-icon:hover{background:var(--surface-hover, #63465A)}.ds-icon:active{transform:translateY(2px)}.ds-icon:focus-visible{outline:3px solid var(--brass,#D9B464);outline-offset:4px;}"
+      "css": ".ds-icon{display:inline-grid;place-items:center;width:44px;height:44px;min-width:44px;min-height:44px;border:0;border-radius:50%;background:var(--surface-panel, #24314B);color:var(--text-primary, #F6F8FF);cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-icon svg{width:20px;height:20px;flex:0 0 auto}.ds-icon:hover{background:var(--surface-hover, #3B4E6B)}.ds-icon:active{transform:translateY(2px)}.ds-icon:focus-visible{outline:3px solid var(--border-focus, #F6F8FF);outline-offset:2px;box-shadow:0 0 0 2px var(--border-focus-gap, #151E32) !important;}"
     },
     {
-      "name": "Light input field",
+      "name": "Dark input field",
       "kind": "input",
       "refersTo": "input",
-      "description": "Light field within the plum form and a persistent visible label.",
+      "description": "Dark field within the slate form and a persistent visible label.",
       "html": "<label class=\"ds-label\" for=\"ds-name\">Your name</label><input class=\"ds-input\" id=\"ds-name\" placeholder=\"Your name\" autocomplete=\"off\">",
-      "css": ".ds-label{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:block;color:var(--cream, #FFF3DF);font-size:14px;font-weight:600;margin:0 0 8px}.ds-input{font-family:var(--font-body,\"Nunito Sans\",sans-serif);width:100%;min-width:0;padding:12px 14px;border:1.5px solid var(--field-stroke, #956B80);border-radius:var(--radius-small,12px);background:var(--field, #FFF8EC);color:var(--canvas, #26131E);caret-color:var(--paper-copy, #654354);color-scheme:light;font-size:16px}.ds-input::placeholder{color:var(--paper-copy, #654354)}.ds-input:focus-visible{outline:3px solid var(--brass,#D9B464);outline-offset:4px;}"
+      "css": ".ds-label{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:block;color:var(--text-primary, #F6F8FF);font-size:14px;font-weight:600;margin:0 0 8px}.ds-input{font-family:var(--font-body,\"Nunito Sans\",sans-serif);width:100%;min-width:0;min-height:44px;padding:12px 14px;border:1.5px solid var(--border-control, #8B9DB9);border-radius:var(--radius-small,12px);background:var(--surface-input, #19263D);color:var(--text-primary, #F6F8FF);caret-color:var(--text-placeholder, #BFCBE0);color-scheme:dark;font-size:16px}.ds-input::placeholder{color:var(--text-placeholder, #BFCBE0)}.ds-input:focus-visible{outline:3px solid var(--border-focus, #F6F8FF);outline-offset:2px;box-shadow:0 0 0 2px var(--border-focus-gap, #151E32) !important;}"
     },
     {
       "name": "Room code control",
@@ -532,15 +714,15 @@
       "refersTo": "room-code",
       "description": "Copyable room identity; the sample code is illustrative.",
       "html": "<button class=\"ds-code\" aria-label=\"Copy room code 4821\"><span>Room</span><b>4821</b><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 8h10v13H9zM15 8V3H4v13h5\"/></svg></button>",
-      "css": ".ds-code{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:flex;align-items:center;gap:12px;min-width:44px;min-height:44px;padding:10px 16px;border:0;border-radius:12px;background:var(--surface, #40263B);color:var(--cream, #FFF3DF);font-size:13px;cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-code b{font-size:20px;font-variant-numeric:tabular-nums;letter-spacing:.12em}.ds-code svg{width:20px;height:20px;flex:0 0 auto}.ds-code:hover{background:var(--surface-hover, #63465A)}.ds-code:active{transform:translateY(2px)}.ds-code:focus-visible{outline:3px solid var(--brass,#D9B464);outline-offset:4px;}"
+      "css": ".ds-code{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:flex;align-items:center;gap:12px;min-width:44px;min-height:44px;padding:10px 16px;border:0;border-radius:12px;background:var(--surface-panel, #24314B);color:var(--text-primary, #F6F8FF);font-size:13px;cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-code b{font-size:20px;font-variant-numeric:tabular-nums;letter-spacing:.12em}.ds-code svg{width:20px;height:20px;flex:0 0 auto}.ds-code:hover{background:var(--surface-hover, #3B4E6B)}.ds-code:active{transform:translateY(2px)}.ds-code:focus-visible{outline:3px solid var(--border-focus, #F6F8FF);outline-offset:2px;box-shadow:0 0 0 2px var(--border-focus-gap, #151E32) !important;}"
     },
     {
-      "name": "Plum entry panel",
+      "name": "Slate entry panel",
       "kind": "card",
       "refersTo": "card-entry",
-      "description": "Cream text on plum with soft depth; sample copy shows hierarchy.",
+      "description": "Ice-white text on slate with soft depth; sample copy shows hierarchy.",
       "html": "<section class=\"ds-entry\"><h2>Take your seat</h2><p>Start a room. Your friend joins with a code.</p></section>",
-      "css": ".ds-entry{font-family:var(--font-body,\"Nunito Sans\",sans-serif);background:var(--surface, #40263B);color:var(--cream, #FFF3DF);padding:32px;border-radius:var(--radius,16px);box-shadow:var(--shadow,0 12px 30px #160B1355)}.ds-entry h2{font-family:var(--font-display,\"Lilita One\",sans-serif);font-size:34px;font-weight:400;line-height:1.12;letter-spacing:0;margin:0}.ds-entry p{font-size:16px;font-weight:500;line-height:1.45;color:var(--muted, #D6BDCA);margin:12px 0 28px;max-width:32ch}@media(max-width:700px){.ds-entry{padding:20px}.ds-entry h2{font-size:26px}.ds-entry p{font-size:14px;margin:8px 0 20px}}"
+      "css": ".ds-entry{font-family:var(--font-body,\"Nunito Sans\",sans-serif);background:var(--surface-panel, #24314B);color:var(--text-primary, #F6F8FF);padding:32px;border-radius:var(--radius,16px);box-shadow:var(--shadow,0 12px 30px #151E3255)}.ds-entry h2{font-family:var(--font-display,\"Lilita One\",sans-serif);font-size:34px;font-weight:400;line-height:1.12;letter-spacing:0;margin:0}.ds-entry p{font-size:16px;font-weight:500;line-height:1.45;color:var(--text-secondary, #BFCBE0);margin:12px 0 28px;max-width:32ch}@media(max-width:700px){.ds-entry{padding:20px}.ds-entry h2{font-size:26px}.ds-entry p{font-size:14px;margin:8px 0 20px}}"
     },
     {
       "name": "Scoring eligibility badge",
@@ -548,7 +730,7 @@
       "refersTo": "status-eligible-seat0",
       "description": "Noninteractive scoring badge; voice activity remains a separate signal.",
       "html": "<span class=\"ds-eligible\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 9a6 6 0 0 1 12 0c0 4-4 4-4 7a4 4 0 0 1-8 0M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4\"/></svg><span>Bonk is scoring</span></span>",
-      "css": ".ds-eligible{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:inline-flex;align-items:center;gap:6px;min-height:22px;padding:3px 6px;border-radius:8px;background:var(--seat0, #A8D5F2);color:var(--canvas, #26131E);font-size:11px;line-height:1.3}.ds-eligible svg{width:14px;height:14px;flex-shrink:0}"
+      "css": ".ds-eligible{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:inline-flex;align-items:center;gap:6px;min-height:22px;padding:3px 6px;border-radius:8px;background:var(--identity-seat0-base, #55D6CB);color:var(--identity-seat0-on-base, #151E32);font-size:11px;line-height:1.3}.ds-eligible svg{width:14px;height:14px;flex-shrink:0}"
     },
     {
       "name": "Player caption",
@@ -556,61 +738,75 @@
       "refersTo": "caption",
       "description": "Full wrapping caption with permanent seat identity; sample text is illustrative.",
       "html": "<div class=\"ds-caption\"><span class=\"ds-speaker\">Alex</span><p>My argument is simple: every meeting needs a snack break.</p></div>",
-      "css": ".ds-caption{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:flex;align-items:flex-start;gap:16px;padding:16px 20px;border-radius:12px;background:var(--surface, #40263B);color:var(--cream, #FFF3DF)}.ds-speaker{font-size:13px;font-weight:700;color:var(--seat0, #A8D5F2);padding-top:2px;overflow-wrap:anywhere}.ds-caption p{font-size:15px;font-weight:500;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;min-width:0;margin:0}@media(max-width:700px){.ds-caption{padding:10px;gap:8px;flex-wrap:wrap}.ds-caption p{font-size:14px}}"
+      "css": ".ds-caption{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:flex;align-items:flex-start;gap:16px;padding:16px 20px;border-radius:12px;background:var(--surface-panel, #24314B);color:var(--text-primary, #F6F8FF)}.ds-speaker{font-size:13px;font-weight:700;color:var(--identity-seat0-base, #55D6CB);padding-top:2px;overflow-wrap:anywhere}.ds-caption p{font-size:15px;font-weight:500;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;min-width:0;margin:0}@media(max-width:700px){.ds-caption{padding:10px;gap:8px;flex-wrap:wrap}.ds-caption p{font-size:14px}}"
     },
     {
       "name": "Device dock control",
       "kind": "button",
       "refersTo": "button-control",
-      "description": "Labeled mic privacy control independent of scoring eligibility.",
+      "description": "Labeled mic privacy control independent of scoring eligibility; ds-muted represents deliberate mic-off.",
       "html": "<button class=\"ds-control\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0V5ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8\"/></svg><span>Mic on</span></button>",
-      "css": ".ds-control{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:flex;align-items:center;justify-content:center;gap:8px;min-width:44px;min-height:44px;padding:10px 14px;border:0;border-radius:12px;background:var(--surface-raised, #513449);color:var(--cream, #FFF3DF);font-size:13px;cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-control svg{width:20px;height:20px;flex:0 0 auto}.ds-control:not(:disabled):hover{background:var(--surface-hover, #63465A)}.ds-control:active{transform:translateY(2px)}.ds-control:focus-visible{outline:3px solid var(--brass,#D9B464);outline-offset:4px;}.ds-control:disabled{color:var(--disabled-text, #E3CED9);cursor:not-allowed}@media(max-width:700px){.ds-control{flex-direction:column;gap:3px;padding:6px 4px;font-size:12px}.ds-control svg{width:16px;height:16px}}"
+      "css": ".ds-control{font-family:var(--font-body,\"Nunito Sans\",sans-serif);display:flex;align-items:center;justify-content:center;gap:8px;min-width:44px;min-height:44px;padding:10px 14px;border:0;border-radius:12px;background:var(--surface-raised, #2F3F5C);color:var(--text-primary, #F6F8FF);font-size:13px;cursor:pointer;transition:background var(--quick,160ms),transform var(--quick,160ms) var(--ease,cubic-bezier(0.16,1,0.3,1)),box-shadow var(--quick,160ms);}.ds-control svg{width:20px;height:20px;flex:0 0 auto}.ds-control:not(:disabled):hover{background:var(--surface-hover, #3B4E6B)}.ds-control:active{transform:translateY(2px)}.ds-control:focus-visible{outline:3px solid var(--border-focus, #F6F8FF);outline-offset:2px;box-shadow:0 0 0 2px var(--border-focus-gap, #151E32) !important;}.ds-control:disabled{color:var(--status-disabled-text, #B5C2D8);cursor:not-allowed}@media(max-width:700px){.ds-control{flex-direction:column;gap:3px;padding:6px 4px;font-size:12px}.ds-control svg{width:16px;height:16px}}.ds-control.ds-muted{color:var(--status-privacy-text, #BFCBE0);background:var(--status-privacy-surface, #19263D)}"
+    },
+    {
+      "name": "Dark device selector",
+      "kind": "input",
+      "description": "Native device selection inside expandable device help; dark browser controls retain readable options.",
+      "html": "<label class=\"ds-device-label\" for=\"ds-device\">Microphone</label><select class=\"ds-device-select\" id=\"ds-device\"><option>Default microphone</option><option>External microphone</option></select>",
+      "css": ".ds-device-label{display:block;font-family:var(--font-body,\"Nunito Sans\",sans-serif);font-size:14px;font-weight:600;color:var(--text-primary,#F6F8FF);margin-bottom:4px}.ds-device-select{width:100%;min-width:0;min-height:44px;color:var(--text-primary,#F6F8FF);background:var(--surface-input,#19263D);border:1px solid var(--border-control,#8B9DB9);color-scheme:dark;border-radius:8px;padding:8px;font:14px \"Nunito Sans\",sans-serif}.ds-device-select:focus-visible{outline:3px solid var(--border-focus,#F6F8FF);outline-offset:2px;box-shadow:0 0 0 2px var(--border-focus-gap,#151E32) !important;}"
     }
   ],
   "narrative": {
-    "northStar": "Velvet Verdict",
-    "overview": "Velvet Verdict is a warm toy courtroom for two friends making ridiculous arguments. Burgundy holds the room, plum surfaces frame decisions, and cream keeps the conversation readable. Powder blue and apricot belong to the players; brass belongs to Bonk and the next action. The contrast between silly opinions and fair treatment is the enduring character.\n\nRounded painted frames, restrained velvet shading, Lilita One lettering, and Nunito Sans controls connect the live faces to the procedural courtroom. The scene supplies personality while the active speaker, full captions, and next action remain clear. PRODUCT.md governs behavior and claims; .impeccable/surfaces/src-app-tsx.md records the approved surface direction.",
+    "northStar": "Tangerine Arcade",
+    "overview": "Tangerine Arcade is a midnight toy courtroom for two friends making ridiculous arguments. Slate panels carry the conversation, ice-white text keeps it readable, and equally prominent turquoise and lilac identify the players. Tangerine belongs to Bonk and shared primary actions. The contrast between silly opinions and fair treatment remains the enduring character.\n\nRounded painted frames, Lilita One lettering, and Nunito Sans controls connect the live faces to the procedural courtroom. The approved change replaces color roles and scene materials while retaining composition, type, geometry, motion, media ownership, and behavior. PRODUCT.md governs behavior and claims; .impeccable/surfaces/src-app-tsx.md records the approved direction. Validation scope and remaining release work are recorded in docs/design/tangerine-arcade/README.md; this system document does not certify test or CI completion.",
     "keyCharacteristics": [
-      "Six pinned palette roles with semantic state and material companions.",
-      "Stable player identities across clients, phase changes, and departures.",
-      "Live faces and readable decisions supported by a procedural brass host.",
-      "Decoration responds to play while media ownership and privacy remain stable."
+      "Midnight and slate reading surfaces with ice-white text and dark form controls.",
+      "Permanent turquoise/lilac player identities, independent of shared tangerine actions and labeled statuses.",
+      "A matte tangerine procedural host with painted-blue furniture and restrained lighting.",
+      "Existing composition, typography, motion, and media behavior retained."
     ],
     "rules": [
       {
-        "name": "One Source",
-        "body": "Change semantic values in src/design/tokens.ts. DOM custom properties, Three.js materials, the document theme color, and the generated favicon derive from that source; DESIGN.md records the implemented system.",
+        "name": "The One Source Rule",
+        "body": "Change semantic values in src/design/tokens.ts. DOM custom properties, React identity helpers, Three.js materials and lighting, the document theme color, and generated favicon consume that source; DESIGN.md records the implemented system.",
         "section": "colors"
       },
       {
-        "name": "Permanent Seats",
-        "body": "Seat 0 stays powder blue and seat 1 stays apricot on both clients. Color follows the server-assigned seat, never local/remote position, speaking order, score rank, or winner status.",
+        "name": "The Permanent Seats Rule",
+        "body": "Seat 0 stays turquoise and seat 1 stays lilac on both clients. Color follows the server-assigned seat, never local/remote position, speaking order, score rank, or winner status.",
         "section": "colors"
       },
       {
-        "name": "Readable Conversation",
+        "name": "The Separate Meanings Rule",
+        "body": "Keep player identity, shared actions, and labeled status on their own semantic roles. Deliberate mic/camera privacy is neutral; failures use error styling. Low-time clocks use warning text.",
+        "section": "colors"
+      },
+      {
+        "name": "The Readable Conversation Rule",
         "body": "Use Nunito Sans for user content, scores, timers, controls, and captions. Reserve Lilita One for the brand, short panel titles, initials, and celebratory lettering.",
         "section": "typography"
       },
       {
-        "name": "Quiet Depth",
-        "body": "Use soft ambient shadows and tonal plum layering around the content. Keep the small inset brass button shadow as a painted-material cue.",
+        "name": "The Quiet Depth Rule",
+        "body": "Use soft ambient shadows and tonal slate layering around the content. Keep the shallow inset tangerine button shadow as a painted-material cue.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do preserve the six pinned color roles and the shared semantic token source.",
+      "Do preserve the pinned pigments through separate semantic roles and the shared token source.",
       "Do keep full names, propositions, positions, and captions visible; wrap or scroll long content.",
       "Do preserve media nodes across layout and phase changes through CSS placement and stable seat components.",
       "Do retain the visible Voice label on phones and distinguish activity, scoring eligibility, and mic privacy.",
+      "Do keep deliberate mic/camera privacy neutral and use explicit labels/icons alongside status color.",
       "Do provide visible focus, at least 44px interactive targets, reduced motion, and usable controls when WebGL fails.",
       "Do recapture the procedural fallback and preserve its provenance when the scene changes."
     ],
     "donts": [
       "Don't swap player identities when a player leaves, a turn changes, or the local client is the second seat.",
-      "Don't use cream as the general panel background; entry, task, caption, and dialog surfaces are plum.",
+      "Don't use ice-white as the general panel or field background; reading surfaces stay slate and fields stay dark.",
       "Don't use display lettering for long arguments, infer scoring eligibility from audio level, or describe Mic on as permission to score.",
       "Don't truncate user-authored content or cover live faces and controls with celebration.",
+      "Don't add emissive glow, tint live video, or make identity colors stand in for shared actions.",
       "Don't replace the procedural scene or live media with generated model imagery.",
       "Don't present synthetic browser coverage as physical-device, live-provider, production, or statistical-fairness validation."
     ]

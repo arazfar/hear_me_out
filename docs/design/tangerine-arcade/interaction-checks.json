@@ -1,0 +1,88 @@
+[
+  {
+    "state": "disabled",
+    "failures": [],
+    "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 4.716229956896922,
+        "control": "input"
+      }
+    ],
+    "minText": 5.636117649984458,
+    "overflow": false
+  },
+  {
+    "state": "keyboard focus",
+    "failures": [],
+    "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 4.716229956896922,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 7.097994076034423,
+        "control": "Create room"
+      },
+      {
+        "kind": "focus outline",
+        "ratio": 12.246459043746611,
+        "control": "Create room"
+      }
+    ],
+    "minText": 7.942140065162816,
+    "overflow": false
+  },
+  {
+    "state": "hover",
+    "failures": [],
+    "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 4.716229956896922,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 8.220114273825525,
+        "control": "Create room"
+      },
+      {
+        "kind": "focus outline",
+        "ratio": 12.246459043746611,
+        "control": "Create room"
+      }
+    ],
+    "minText": 7.942140065162816,
+    "overflow": false
+  },
+  {
+    "state": "pressed",
+    "failures": [],
+    "smallTargets": [],
+    "indicators": [
+      {
+        "kind": "control boundary",
+        "ratio": 4.716229956896922,
+        "control": "input"
+      },
+      {
+        "kind": "control boundary",
+        "ratio": 5.521256174916495,
+        "control": "Create room"
+      },
+      {
+        "kind": "focus outline",
+        "ratio": 12.246459043746611,
+        "control": "Create room"
+      }
+    ],
+    "minText": 7.060491282473303,
+    "overflow": false
+  }
+]

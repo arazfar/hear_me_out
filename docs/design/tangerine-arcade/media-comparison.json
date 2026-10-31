@@ -1,0 +1,1205 @@
+{
+  "scope": "Fresh d79aeb2 frontend versus Tangerine frontend; same unchanged local mock-provider server, Chrome RTC with synthetic camera/audio. Full judge tail, asymmetric delivery, mute, channel repair, friend-output continuity. No physical speaker or provider claim.",
+  "runs": [
+    {
+      "label": "before",
+      "status": "expected",
+      "durationMs": 27876,
+      "friendOutput": [
+        {
+          "frequencyHz": 550.0,
+          "samples": 189,
+          "silentSamples": 0,
+          "minRms": 0.08512032175372519,
+          "maxFrequencyErrorHz": 0.78125
+        },
+        {
+          "frequencyHz": 330.0,
+          "samples": 195,
+          "silentSamples": 0,
+          "minRms": 0.08486884413986986,
+          "maxFrequencyErrorHz": 1.875
+        }
+      ],
+      "judgeTimeline": [
+        {
+          "stage": "tts_first_generated",
+          "at": 1793410092379,
+          "speechEpoch": 1
+        },
+        {
+          "stage": "tts_first_packet",
+          "at": 1793410092379,
+          "speechEpoch": 1
+        },
+        {
+          "stage": "tts_eof",
+          "at": 1793410092380,
+          "speechEpoch": 1,
+          "samples": 396913
+        },
+        {
+          "stage": "first_render_metric",
+          "at": 1793410092543,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "connectionEpoch": 1,
+          "mediaMode": "rtc",
+          "prepared": true,
+          "latencyMs": 2.874755859375,
+          "cueToRenderMs": 164.874755859375
+        },
+        {
+          "stage": "first_render_metric",
+          "at": 1793410092544,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "connectionEpoch": 1,
+          "mediaMode": "rtc",
+          "prepared": true,
+          "latencyMs": 0.512451171875,
+          "cueToRenderMs": 162.512451171875
+        },
+        {
+          "stage": "render_first",
+          "at": 1793410092544,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 70
+        },
+        {
+          "stage": "render_first",
+          "at": 1793410092545,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 56
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410092795,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 11111
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410092795,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 11125
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410093045,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 22179
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410093045,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 22165
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410093296,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 33220
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410093298,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 33233
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410093546,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 44274
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410093546,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 39689
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410093796,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 55328
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410094047,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 66383
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410094298,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 77437
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410094298,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 49802
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410094548,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 88492
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410094549,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 60857
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410094799,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 99546
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410094800,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 71911
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410095050,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 110600
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410095050,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 82965
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410095301,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 121655
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410095301,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 94020
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410095551,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 132709
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410095551,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 105074
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410095802,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 143764
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410095802,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 116129
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410096053,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 154818
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410096053,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 127183
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410096303,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 165872
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410096303,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 138237
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410096554,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 176927
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410096554,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 149292
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410096804,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 187981
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410096805,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 160346
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410097055,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 199036
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410097055,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 171401
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410097306,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 182455
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410097306,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 210090
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410097556,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 221144
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410097557,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 193509
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410097807,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 232199
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410097807,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 204564
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410098058,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 243253
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410098058,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 215618
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410098309,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 254308
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410098309,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 226673
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410098559,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 265362
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410098559,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 237727
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410098810,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 276416
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410098810,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 248781
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410099060,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 287471
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410099061,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 259836
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410099311,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 298525
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410099311,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 270890
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410099562,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 309580
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410099562,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 281945
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410099812,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 320634
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410099812,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 292999
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410100063,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 331688
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410100063,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 304053
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410100314,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 342743
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410100314,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 315108
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410100565,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 353797
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410100565,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 326162
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410100815,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 364852
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410100815,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 337217
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410101066,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 375906
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410101066,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 348271
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410101317,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 386960
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410101317,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 359325
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410101541,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 396913
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410101567,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 370380
+        },
+        {
+          "stage": "render_complete",
+          "at": 1793410101584,
+          "playerId": "53bcb566-44f1-47c5-ac04-cb2406529ea0",
+          "speechEpoch": 1,
+          "samples": 396913
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410101818,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 381434
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410102069,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 392489
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410102170,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 396913
+        },
+        {
+          "stage": "render_complete",
+          "at": 1793410102213,
+          "playerId": "294ee78d-930e-44ed-9c7e-37af028b5de2",
+          "speechEpoch": 1,
+          "samples": 396913
+        }
+      ]
+    },
+    {
+      "label": "after",
+      "status": "expected",
+      "durationMs": 30427,
+      "friendOutput": [
+        {
+          "frequencyHz": 550.0,
+          "samples": 188,
+          "silentSamples": 0,
+          "minRms": 0.08515033462705339,
+          "maxFrequencyErrorHz": 0.78125
+        },
+        {
+          "frequencyHz": 330.0,
+          "samples": 195,
+          "silentSamples": 0,
+          "minRms": 0.08483114689062773,
+          "maxFrequencyErrorHz": 1.875
+        }
+      ],
+      "judgeTimeline": [
+        {
+          "stage": "tts_first_generated",
+          "at": 1793410121810,
+          "speechEpoch": 1
+        },
+        {
+          "stage": "tts_first_packet",
+          "at": 1793410121811,
+          "speechEpoch": 1
+        },
+        {
+          "stage": "tts_eof",
+          "at": 1793410121811,
+          "speechEpoch": 1,
+          "samples": 396913
+        },
+        {
+          "stage": "first_render_metric",
+          "at": 1793410121974,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "connectionEpoch": 1,
+          "mediaMode": "rtc",
+          "prepared": true,
+          "latencyMs": 1.0751953125,
+          "cueToRenderMs": 162.0751953125
+        },
+        {
+          "stage": "first_render_metric",
+          "at": 1793410121974,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "connectionEpoch": 1,
+          "mediaMode": "rtc",
+          "prepared": true,
+          "latencyMs": 0,
+          "cueToRenderMs": 159.608154296875
+        },
+        {
+          "stage": "render_first",
+          "at": 1793410121975,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 108
+        },
+        {
+          "stage": "render_first",
+          "at": 1793410121975,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 34
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410122225,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 11089
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410122225,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 11162
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410122476,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 22143
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410122476,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 22217
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410122727,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 33198
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410122728,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 33271
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410122977,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 39689
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410122978,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 44326
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410123228,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 55380
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410123480,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 66434
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410123729,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 50155
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410123729,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 77489
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410123980,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 61209
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410123980,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 88543
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410124230,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 72264
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410124230,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 99598
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410124481,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 83318
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410124481,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 110652
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410124732,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 94373
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410124733,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 121706
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410124985,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 105427
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410124985,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 132761
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410125233,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 116481
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410125233,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 143815
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410125484,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 154870
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410125484,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 127536
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410125734,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 138590
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410125734,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 165924
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410125985,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 149645
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410125985,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 176978
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410126236,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 160699
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410126236,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 188033
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410126486,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 171753
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410126486,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 199087
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410126737,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 182808
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410126737,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 210142
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410126988,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 193862
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410126988,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 221196
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410127238,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 204917
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410127238,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 232250
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410127489,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 215971
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410127489,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 243305
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410127739,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 227025
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410127740,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 254359
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410127990,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 238080
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410127990,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 265414
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410128241,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 249134
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410128241,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 276468
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410128492,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 260189
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410128492,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 287522
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410128742,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 271243
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410128742,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 298577
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410128993,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 309631
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410128993,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 282297
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410129244,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 293352
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410129244,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 320686
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410129495,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 304406
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410129495,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 331740
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410129745,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 315461
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410129745,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 342794
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410129996,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 326515
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410129996,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 353849
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410130246,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 337569
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410130246,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 364903
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410130497,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 348624
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410130497,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 375958
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410130748,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 359678
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410130748,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 387012
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410130977,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 396913
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410130999,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 370733
+        },
+        {
+          "stage": "render_complete",
+          "at": 1793410131021,
+          "playerId": "d985fa3f-954e-4e11-873f-0bf7c23e383b",
+          "speechEpoch": 1,
+          "samples": 396913
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410131249,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 381787
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410131499,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 392841
+        },
+        {
+          "stage": "render_progress",
+          "at": 1793410131590,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 396913
+        },
+        {
+          "stage": "render_complete",
+          "at": 1793410131633,
+          "playerId": "818e70c0-ddf1-4421-8068-911f946f5f61",
+          "speechEpoch": 1,
+          "samples": 396913
+        }
+      ]
+    }
+  ]
+}

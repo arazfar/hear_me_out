@@ -1,19 +1,19 @@
-import { colors, tokenCSS, favicon } from "./src/design/tokens";
+import { theme, tokenCSS, favicon } from "./src/design/tokens";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [
     react(),
     {
-      name: "velvet-verdict-tokens",
+      name: "semantic-theme-tokens",
       resolveId(id) {
-        if (id === "virtual:velvet-tokens.css") return "\0" + id;
+        if (id === "virtual:theme-tokens.css") return "\0" + id;
       },
       load(id) {
-        if (id === "\0virtual:velvet-tokens.css") return tokenCSS;
+        if (id === "\0virtual:theme-tokens.css") return tokenCSS;
       },
       transformIndexHtml(html) {
-        return html.replace("__CANVAS__", colors.canvas);
+        return html.replace("__CANVAS__", theme.surface.canvas);
       },
       configureServer(server) {
         server.middlewares.use("/favicon.svg", (_req, res) => {

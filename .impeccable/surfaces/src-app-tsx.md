@@ -5,17 +5,17 @@ primary_target: "src/App.tsx"
 related_targets: ["src/style.css", "src/ui/CourtroomStage.tsx"]
 ---
 
-# Velvet Verdict
+# Tangerine Arcade
 
-Mode: Experience, with Operate conventions for joining, device setup, decisions, and recovery.
+Mode: Experience, with Operate conventions for joining, setup, decisions, and recovery.
 
-The user explicitly approved Velvet Verdict, the six palette roles, Lilita One/Nunito Sans, the responsive composition, and independent implementation through browser review. The reference branch supplies palette assets only. Runtime media and the procedural scene are the implementation authority; historical alpha comps are superseded. Use a code-led implementation of this explicitly approved plan, not a raster reconstruction.
+The user explicitly approved the complete Tangerine Arcade implementation plan as a presentation-only follow-up to d79aeb2. This replaces the former palette authority. Typography, composition, geometry, gameplay, and media ownership remain established. Use the approved code-led implementation; no new concept or palette selection is needed.
 
 ## Direction contract
 
-THESIS: Two live friends make ridiculous arguments in a warm toy court that treats both sides fairly; the active speaker and next action remain unmistakable.
-OWN-WORLD: Burgundy canvas, velvet plum surfaces, cream text, permanent powder-blue/apricot player identities, brass Bonk and actions. Rounded painted frames, restrained velvet shading, Lilita One lettering and Nunito Sans controls.
-STORY: Reserve a seat, privately check devices, invite a friend, agree on a proposition, argue in equal turns, understand Bonk's verdict, and rematch.
-FIRST VIEWPORT: A generous title and brass courtroom beside a concise plum entry form; phones stack them. In rooms, a proposition above two persistent faces flanking Bonk/task; phones place the faces together above the task, followed by full captions and a reserved control dock.
-FORM: User-pinned Velvet Verdict overrides direction seed 13c920d8 and the former comp default. Existing media ownership and the scene stay live. The signature interaction is Bonk's verdict strike with an identity-colored result and a clear rematch action.
-FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
+THESIS: Two friends make ridiculous arguments on a midnight game-show stage, with equally prominent turquoise/lilac identities and a warm, mischievous tangerine toy judge.
+OWN-WORLD: Midnight #151E32, slate #24314B, ice-white #F6F8FF, permanent server seat 0 turquoise #55D6CB and seat 1 lilac #C3A4FF; Bonk and shared primary actions #FFAF45. Matte painted-blue furniture, shallow pressed buttons, no glow or video tint. Lilita One and Nunito Sans remain.
+STORY: Reserve a seat, privately check devices, invite a friend, agree on a proposition, argue in equal turns, understand the verdict, and rematch.
+FIRST VIEWPORT: Preserve the title/courtroom beside the concise form, and the responsive two-face composition. Captions and long user content remain complete. Neutral surfaces carry reading; color identifies ownership, shared actions, and labeled statuses independently.
+FORM: User-pinned palette and explicit implementation plan replace the prior color contract. Semantic roles, not hue aliases, link DOM, Three.js, identity assets, favicon, and fallback. Dark native form controls. Ice-white focus rings with a midnight gap. Deliberate mic/camera privacy is neutral, not an error.
+FINISH: Test all six browser projects, capture desktop/phone/landscape and color-vision simulations, compare baseline performance and media, complete independent finish review and documentation verification, and deliver a stacked draft PR. No merge or deployment.

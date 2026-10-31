@@ -1,4 +1,4 @@
-import { colors as palette, materials, lighting } from "../design/tokens";
+import { theme, materials, lighting } from "../design/tokens";
 import { playerSeat } from "./identity";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
@@ -129,17 +129,17 @@ function Bonk({
     <group ref={body} position={[0, 1.88, 0.35]}>
       <mesh position={[0, -0.65, 0]} rotation={[0, 0, -0.08]} castShadow>
         <capsuleGeometry args={[0.15, 0.73, 8, 16]} />
-        <meshStandardMaterial color={palette.wood} roughness={0.38} />
+        <meshStandardMaterial color={theme.scene.bonk.robe} roughness={0.38} />
       </mesh>
       <mesh position={[0, -0.41, 0]} castShadow>
         <torusGeometry args={[0.17, 0.045, 8, 24]} />
-        <meshStandardMaterial color={palette.woodDark} roughness={0.65} />
+        <meshStandardMaterial color={theme.scene.bonk.shade} roughness={0.65} />
       </mesh>
       <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
         <capsuleGeometry args={[0.43, 0.7, 12, 32]} />
         <meshStandardMaterial
-          color={palette.brass}
-          roughness={materials.brass}
+          color={theme.scene.bonk.body}
+          roughness={materials.host}
           metalness={materials.metalness}
         />
       </mesh>
@@ -147,11 +147,17 @@ function Bonk({
         <group key={x} position={[x, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
           <mesh castShadow>
             <cylinderGeometry args={[0.46, 0.46, 0.16, 32]} />
-            <meshStandardMaterial color={palette.brassDark} roughness={0.32} />
+            <meshStandardMaterial
+              color={theme.scene.bonk.shade}
+              roughness={0.32}
+            />
           </mesh>
           <mesh position={[0, x < 0 ? 0.09 : -0.09, 0]}>
             <cylinderGeometry args={[0.37, 0.37, 0.03, 32]} />
-            <meshStandardMaterial color={palette.brassLight} roughness={0.4} />
+            <meshStandardMaterial
+              color={theme.scene.bonk.highlight}
+              roughness={0.4}
+            />
           </mesh>
         </group>
       ))}
@@ -160,21 +166,27 @@ function Bonk({
           <group key={x} position={[x, 0.05, 0.398]}>
             <mesh scale={[0.14, 0.18, 0.065]}>
               <sphereGeometry args={[1, 20, 16]} />
-              <meshStandardMaterial color={palette.cream} roughness={0.45} />
+              <meshStandardMaterial
+                color={theme.scene.lightPaint}
+                roughness={0.45}
+              />
             </mesh>
             <mesh
               position={[0.015, -0.012, 0.06]}
               scale={[0.077, 0.113, 0.035]}
             >
               <sphereGeometry args={[1, 16, 12]} />
-              <meshStandardMaterial color={palette.canvas} roughness={0.25} />
+              <meshStandardMaterial
+                color={theme.scene.bonk.features}
+                roughness={0.25}
+              />
             </mesh>
             <mesh
               position={[-0.005, 0.035, 0.088]}
               scale={[0.026, 0.035, 0.012]}
             >
               <sphereGeometry args={[1, 12, 8]} />
-              <meshBasicMaterial color={palette.cream} />
+              <meshBasicMaterial color={theme.scene.lightPaint} />
             </mesh>
           </group>
         ))}
@@ -185,7 +197,7 @@ function Bonk({
             key={x}
             at={[x, 0.31, 0.4]}
             size={[0.27, 0.064, 0.075]}
-            color={palette.canvas}
+            color={theme.scene.bonk.features}
             radius={0.022}
             rotation={[0, 0, i ? 0.15 : -0.15]}
           />
@@ -197,16 +209,19 @@ function Bonk({
         scale={[0.115, 0.01, 0.027]}
       >
         <sphereGeometry args={[1, 16, 12]} />
-        <meshStandardMaterial color={palette.canvas} />
+        <meshStandardMaterial color={theme.scene.bonk.features} />
       </mesh>
       <mesh ref={smile} position={[0, -0.13, 0.437]} rotation={[0, 0, Math.PI]}>
         <torusGeometry args={[0.115, 0.023, 8, 20, Math.PI]} />
-        <meshStandardMaterial color={palette.canvas} />
+        <meshStandardMaterial color={theme.scene.bonk.features} />
       </mesh>
       {[-0.38, 0.38].map((x) => (
         <mesh key={x} position={[x, -0.14, 0.355]} scale={[0.085, 0.037, 0.03]}>
           <sphereGeometry args={[1, 12, 8]} />
-          <meshStandardMaterial color={palette.seat1} roughness={0.8} />
+          <meshStandardMaterial
+            color={theme.scene.bonk.cheek}
+            roughness={0.8}
+          />
         </mesh>
       ))}
       {[-2, -1, 0, 1, 2].map((n) => (
@@ -217,7 +232,7 @@ function Bonk({
           castShadow
         >
           <sphereGeometry args={[1, 16, 12]} />
-          <meshStandardMaterial color={palette.cream} roughness={0.78} />
+          <meshStandardMaterial color={theme.scene.bonk.wig} roughness={0.78} />
         </mesh>
       ))}
       {[-1, 1].flatMap((side) =>
@@ -229,7 +244,10 @@ function Bonk({
             castShadow
           >
             <torusGeometry args={[0.086, 0.051, 8, 16]} />
-            <meshStandardMaterial color={palette.cream} roughness={0.75} />
+            <meshStandardMaterial
+              color={theme.scene.bonk.wig}
+              roughness={0.75}
+            />
           </mesh>
         )),
       )}
@@ -259,25 +277,25 @@ function Architecture({ hero }: { hero: boolean }) {
     <>
       <mesh geometry={arch} position={[0, 0.12, -1.3]} receiveShadow>
         <meshStandardMaterial
-          color={palette.surface}
-          roughness={materials.velvet}
+          color={theme.scene.backdrop}
+          roughness={materials.backdrop}
         />
       </mesh>
       <mesh position={[0, 1.92, -1.14]} castShadow>
         <torusGeometry args={[1.64, 0.105, 10, 48, Math.PI]} />
-        <meshStandardMaterial color={palette.brass} roughness={0.7} />
+        <meshStandardMaterial color={theme.scene.accent} roughness={0.7} />
       </mesh>
       {[-1.64, 1.64].map((x) => (
         <group key={x}>
           <Block
             at={[x, 1, -1.14]}
             size={[0.21, 1.83, 0.24]}
-            color={palette.brass}
+            color={theme.scene.accent}
           />
           <Block
             at={[x, 0.2, -1.08]}
             size={[0.4, 0.25, 0.4]}
-            color={palette.cream}
+            color={theme.scene.lightPaint}
           />
         </group>
       ))}
@@ -285,47 +303,47 @@ function Architecture({ hero }: { hero: boolean }) {
         <cylinderGeometry
           args={[hero ? 3.45 : 2.1, hero ? 3.45 : 2.1, 0.12, 64]}
         />
-        <meshStandardMaterial color={palette.surfaceRaised} roughness={0.8} />
+        <meshStandardMaterial color={theme.scene.floor} roughness={0.8} />
       </mesh>
       <Block
         at={[0, 0.4, 0.05]}
         size={[1.85, 0.64, 0.9]}
-        color={palette.woodDark}
+        color={theme.scene.furniture}
         radius={0.1}
       />
       <Block
         at={[0, 0.78, 0.07]}
         size={[2.13, 0.2, 1.12]}
-        color={palette.woodLight}
+        color={theme.scene.furnitureTop}
       />
       <Block
         at={[0, 0.35, 0.53]}
         size={[1.4, 0.32, 0.04]}
-        color={palette.canvas}
+        color={theme.scene.furnitureInset}
         radius={0.03}
       />
       <Block
         at={[0, 0.39, 0.565]}
         size={[0.66, 0.22, 0.04]}
-        color={palette.brass}
+        color={theme.scene.accent}
         radius={0.03}
       />
       <mesh position={[0, 0.89, 0.16]} castShadow>
         <cylinderGeometry args={[0.33, 0.38, 0.08, 32]} />
-        <meshStandardMaterial color={palette.woodDark} roughness={0.45} />
+        <meshStandardMaterial color={theme.scene.furniture} roughness={0.45} />
       </mesh>
       {[-1.3, 1.3].map((x) => (
         <group key={x}>
           <Block
             at={[x, 0.45, -0.7]}
             size={[0.19, 0.7, 0.19]}
-            color={palette.woodLight}
+            color={theme.scene.furnitureTop}
           />
           <mesh position={[x, 0.87, -0.7]}>
             <sphereGeometry args={[0.15, 16, 12]} />
             <meshStandardMaterial
-              color={palette.cream}
-              emissive={palette.brassLight}
+              color={theme.scene.lightPaint}
+              emissive={theme.scene.bonk.highlight}
               emissiveIntensity={0.35}
               roughness={0.4}
             />
@@ -338,23 +356,27 @@ function Architecture({ hero }: { hero: boolean }) {
             <Block
               at={[x, 0.6, 0.35]}
               size={[1.45, 1.1, 1.05]}
-              color={i ? palette.seat1 : palette.seat0}
+              color={i ? theme.identity.seat1.base : theme.identity.seat0.base}
               radius={0.15}
             />
             <Block
               at={[x, 1.22, 0.36]}
               size={[1.65, 0.2, 1.2]}
-              color={palette.cream}
+              color={theme.scene.lightPaint}
             />
             <Block
               at={[x, 0.62, 0.9]}
               size={[0.87, 0.6, 0.035]}
-              color={palette.canvas}
+              color={theme.scene.furnitureInset}
               radius={0.012}
             />
             <mesh position={[x, 0.63, 0.94]} rotation={[0, 0, Math.PI]}>
               <torusGeometry args={[0.2, 0.04, 8, 24, Math.PI]} />
-              <meshStandardMaterial color={i ? palette.seat1 : palette.seat0} />
+              <meshStandardMaterial
+                color={
+                  i ? theme.identity.seat1.base : theme.identity.seat0.base
+                }
+              />
             </mesh>
           </group>
         ))}
@@ -367,13 +389,13 @@ function Architecture({ hero }: { hero: boolean }) {
           <Block
             at={[0, 0, 0]}
             size={[0.34, 0.09, 0.34]}
-            color={side < 0 ? palette.brass : palette.cream}
+            color={side < 0 ? theme.scene.accent : theme.scene.lightPaint}
             radius={0.025}
           />
           <Block
             at={[0, 0.1, 0]}
             size={[0.31, 0.08, 0.3]}
-            color={side < 0 ? palette.cream : palette.brass}
+            color={side < 0 ? theme.scene.lightPaint : theme.scene.accent}
             radius={0.025}
           />
         </group>
@@ -425,12 +447,12 @@ function Scene({
     <>
       <ambientLight intensity={lighting.ambient} />
       <hemisphereLight
-        args={[palette.cream, palette.canvas, lighting.hemisphere]}
+        args={[theme.lighting.sky, theme.lighting.ground, lighting.hemisphere]}
       />
       <directionalLight
         position={[-3, 6, 6]}
         intensity={lighting.key}
-        color={palette.cream}
+        color={theme.lighting.key}
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-5}
@@ -442,7 +464,7 @@ function Scene({
       <directionalLight
         position={[3, 2, -2]}
         intensity={lighting.rim}
-        color={palette.brassLight}
+        color={theme.lighting.rim}
       />
       <pointLight
         position={[-3, 2, 2]}
@@ -455,7 +477,7 @@ function Scene({
             ? 9
             : 4
         }
-        color={palette.seat0}
+        color={theme.identity.seat0.base}
         distance={8}
       />
       <pointLight
@@ -469,7 +491,7 @@ function Scene({
             ? 9
             : 4
         }
-        color={palette.seat1}
+        color={theme.identity.seat1.base}
         distance={8}
       />
       <Architecture hero={hero} />
@@ -501,7 +523,7 @@ const CourtroomStage = memo(function CourtroomStage({
         dpr={low ? 1 : [1, 1.5]}
         shadows={low ? false : "percentage"}
         gl={{ antialias: true, alpha: true, powerPreference: "default" }}
-        onCreated={({ gl }) => gl.setClearColor(palette.canvas, 0)}
+        onCreated={({ gl }) => gl.setClearColor(theme.scene.canvas, 0)}
       >
         <Scene
           state={state}

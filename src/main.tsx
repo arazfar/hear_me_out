@@ -6,6 +6,6 @@ import "@fontsource/nunito-sans/latin-700.css";
 import "@fontsource/nunito-sans/latin-800.css";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
-import "virtual:velvet-tokens.css";
+import "virtual:theme-tokens.css";
 import "./style.css";
 createRoot(document.getElementById("root")!).render(<App />);
