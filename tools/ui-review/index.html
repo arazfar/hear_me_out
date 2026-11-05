@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Hear Me Out · UI review</title>
+    <link rel="stylesheet" href="board.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Hear Me Out <span>UI review</span></h1>
+      <div class="header-actions">
+        <span id="save-status" role="status">Loading review…</span
+        ><button id="retry" hidden>Retry save</button
+        ><button
+          id="comments-toggle"
+          aria-expanded="false"
+          aria-controls="comments"
+        >
+          Comments <span id="comment-count">0</span>
+        </button>
+        <details id="more">
+          <summary>More</summary>
+          <div class="menu">
+            <label
+              ><input type="checkbox" id="linked" checked /> Link panning</label
+            ><button id="export-json">Export JSON</button
+            ><button id="export-md">Export Markdown</button
+            ><button id="remaining">Next unreviewed</button>
+            <details>
+              <summary>Help & capture details</summary>
+              <p>
+                Click an image to pin feedback. With an image focused, press
+                Enter to add a pin. Arrow keys move a focused pin; elsewhere,
+                Left/Right step through the review. At 100%, scroll or drag to
+                pan.
+              </p>
+              <p>
+                Views are marked automatically after 500ms. Reviewed means
+                viewed, not approved. All continuations and both sizes count;
+                comments stay open until you resolve them.
+              </p>
+              <p id="capture-details"></p>
+            </details>
+          </div>
+        </details>
+      </div>
+    </header>
+    <section id="load-error" class="message" hidden role="alert">
+      <h2>Couldn’t load the review</h2>
+      <p id="load-message"></p>
+      <button id="reload">Try again</button>
+    </section>
+    <div id="app" class="layout" hidden>
+      <nav aria-label="Player journey">
+        <div class="nav-title">Flows <span id="overall"></span></div>
+        <div id="flows"></div>
+        <label class="compact-flow" for="flow-select"
+          >Flow<select id="flow-select"></select
+        ></label>
+      </nav>
+      <main>
+        <div class="review-toolbar">
+          <div class="state-picker">
+            <label for="state-select" id="flow-label">State</label
+            ><select id="state-select"></select>
+          </div>
+          <div class="navigation">
+            <button id="previous">Previous</button
+            ><button id="next" class="primary">Next</button>
+          </div>
+        </div>
+        <section id="review">
+          <div class="context-row">
+            <div class="segmented" aria-label="Viewport">
+              <button id="desktop" aria-pressed="true">
+                Desktop <span></span></button
+              ><button id="phone" aria-pressed="false">
+                Phone <span></span>
+              </button>
+            </div>
+            <span id="state-progress" role="status"></span>
+            <div class="view-tools">
+              <div class="segmented" aria-label="Image size">
+                <button id="fit" aria-pressed="true">Fit</button
+                ><button id="actual" aria-pressed="false">100%</button>
+              </div>
+              <button id="add">Add comment</button>
+            </div>
+          </div>
+          <div class="frame-row">
+            <p id="note"></p>
+            <label id="frame-label" hidden
+              >Content<select id="frame-select"></select
+            ></label>
+          </div>
+          <div class="comparison" id="comparison"></div>
+        </section>
+        <section id="completion" class="message" hidden>
+          <h2 id="completion-title"></h2>
+          <p id="completion-copy"></p>
+          <button id="review-remaining" class="primary">Review remaining</button
+          ><button id="completion-comments">Read comments</button>
+        </section>
+      </main>
+      <aside id="comments" aria-label="Comments" hidden>
+        <div class="aside-title">
+          <h2>Comments</h2>
+          <button id="close-comments">Close</button>
+        </div>
+        <label class="filter"
+          ><input id="all-comments" type="checkbox" /> All states</label
+        >
+        <div id="comment-list"></div>
+        <section id="editor" hidden>
+          <div class="aside-title">
+            <h3 id="editor-title"></h3>
+            <button id="close-editor">Done</button>
+          </div>
+          <p id="attachment"></p>
+          <label for="comment-text">Your feedback</label
+          ><textarea
+            id="comment-text"
+            rows="6"
+            maxlength="20000"
+            placeholder="What should improve here?"
+          ></textarea>
+          <p class="muted">Saved as you type.</p>
+          <div class="editor-actions">
+            <button id="resolve">Resolve</button
+            ><button id="delete" class="danger">Delete</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+    <script type="module" src="board.mjs"></script>
+  </body>
+</html>

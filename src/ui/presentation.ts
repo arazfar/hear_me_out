@@ -142,7 +142,7 @@ export function lobbyPresentation(state: Snapshot, playerId?: string) {
   const name = other?.name || "your friend";
   return {
     actionLabel: me?.ready
-      ? "Ready · undo"
+      ? "Ready"
       : !other?.connected
         ? "Waiting for your friend"
         : "Ready to argue",

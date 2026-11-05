@@ -13,7 +13,9 @@ function deviceCheckStatus() {
       : "Allow mic & camera";
   if (setup.phase === "connecting") return "Connecting…";
   if (setup.phase === "testing")
-    return setup.listening ? "Say ‘Bonk, hear me out.’" : "Connecting to Bonk…";
+    return setup.listening
+      ? "Say anything to test your mic."
+      : "Connecting to Bonk…";
   if (setup.phase === "ready" && setup.busy)
     return "Mic works. Checking video…";
   return "Check mic & camera";
@@ -105,7 +107,6 @@ export function DeviceCheck({
           className="primary setup-action"
           onClick={() => void setup.run(repair)}
         >
-          <Icon name={repair === "camera" ? "camera" : "refresh"} />
           {setup.error ? "Try again" : actionLabel}
         </button>
       )}
@@ -121,33 +122,40 @@ export function DeviceCheck({
           }}
         >
           <summary>Device help</summary>
-          <p>
-            Allow both devices in your browser’s site settings. Close other apps
-            using them, then retry.
-          </p>
-          {["audioinput", "videoinput"].map((kind) => (
-            <label key={kind}>
-              {kind === "audioinput" ? "Microphone" : "Camera"}
-              <select
-                defaultValue=""
-                onChange={(e) => {
-                  if (kind === "audioinput")
-                    client.capture.micDevice = e.target.value;
-                  else client.capture.cameraDevice = e.target.value;
-                }}
-              >
-                <option value="">System default</option>
-                {devices
-                  .filter((d) => d.kind === kind)
-                  .map((d, i) => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {d.label ||
-                        `${kind === "audioinput" ? "Microphone" : "Camera"} ${i + 1}`}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          ))}
+          <div
+            className="device-help-body"
+            tabIndex={0}
+            role="region"
+            aria-label="Device instructions"
+          >
+            <p>
+              Allow both devices in your browser’s site settings. Close other
+              apps using them, then retry.
+            </p>
+            {["audioinput", "videoinput"].map((kind) => (
+              <label key={kind}>
+                {kind === "audioinput" ? "Microphone" : "Camera"}
+                <select
+                  defaultValue=""
+                  onChange={(e) => {
+                    if (kind === "audioinput")
+                      client.capture.micDevice = e.target.value;
+                    else client.capture.cameraDevice = e.target.value;
+                  }}
+                >
+                  <option value="">System default</option>
+                  {devices
+                    .filter((d) => d.kind === kind)
+                    .map((d, i) => (
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label ||
+                          `${kind === "audioinput" ? "Microphone" : "Camera"} ${i + 1}`}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            ))}
+          </div>
         </details>
       )}
       {(!compact || setup.busy) && (
@@ -219,7 +227,6 @@ export function RecoveryCheck({ heading = false }: { heading?: boolean }) {
             if (client.capture.cameraOff) client.capture.muteCamera();
           }}
         >
-          <Icon name={client.capture.micMuted ? "mic" : "camera"} />
           {presentation.label}
         </button>
       )}
@@ -256,7 +263,6 @@ export function ConnectionCheck({
           className="primary"
           onClick={() => void client.retryConnection()}
         >
-          <Icon name="refresh" />
           {presentation.label}
         </button>
       )}

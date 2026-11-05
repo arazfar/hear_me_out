@@ -299,7 +299,7 @@ export class Readiness {
         r.listening = true;
         if (!r.listened) r.checkDeadline = now + 15000;
         r.listened = true;
-        this.result(p.id, "listening", "Say ‘Bonk, hear me out.’");
+        this.result(p.id, "listening", "Say anything to test your mic.");
       }
       const mic =
         fresh &&

@@ -1,4 +1,4 @@
-import type { Snapshot } from "../../shared/domain";
+import { completedOutcome, type Snapshot } from "../../shared/domain";
 import type { GameEvent } from "../../shared/protocol";
 
 export type FeedbackCue =
@@ -19,11 +19,12 @@ export type FeedbackCue =
       at: number;
     }
   | {
-      kind: "coin" | "turn" | "round" | "match";
+      kind: "coin" | "turn";
       id: string;
       playerId: string | null;
       at: number;
-    };
+    }
+  | { kind: "round" | "match"; id: string; playerIds: string[]; at: number };
 
 /** Presentation consumes live events once. Snapshots are recovery, never rewards. */
 export class FeedbackController {
@@ -126,15 +127,24 @@ export class FeedbackController {
         event.type === "round_result" &&
         state.phase === "ROUND_RESOLVE" &&
         event.payload.roundId === state.roundId &&
-        state.players.find((p) => p.id === event.payload.winnerId)!.wins < 2
+        !state.players.some((p) => p.wins >= 2)
       ) {
-        cue = { kind: "round", id, playerId: event.payload.winnerId, at };
+        cue = {
+          kind: "round",
+          id,
+          playerIds: completedOutcome(state)!.playerIds,
+          at,
+        };
       } else if (
         event.type === "match_result" &&
-        state.phase === "MATCH_RESULT" &&
-        state.winnerId
+        state.phase === "MATCH_RESULT"
       ) {
-        cue = { kind: "match", id, playerId: state.winnerId, at };
+        cue = {
+          kind: "match",
+          id,
+          playerIds: completedOutcome(state)!.playerIds,
+          at,
+        };
       }
     }
     for (const award of state.ledger) this.awards.add(award.id);

@@ -1,3 +1,4 @@
+import { CaptionClock } from "./caption-clock";
 import { decodeJudgeAudio, JUDGE_MAX_SAMPLES } from "../../shared/media";
 import type { Client } from "../game/client";
 
@@ -16,6 +17,19 @@ export class JudgePlayback {
   activeEpoch = 0;
   rendering = false;
   finished = false;
+  private captionClock = new CaptionClock();
+  renderedSamples(epoch: number) {
+    const context = this.client.sound.context;
+    if (!context || epoch !== this.activeEpoch || this.cancelled.has(epoch))
+      return 0;
+    const output = context.getOutputTimestamp?.();
+    const time =
+      output?.contextTime && output.performanceTime
+        ? output.contextTime
+        : context.currentTime -
+          Math.max(context.outputLatency || 0, context.baseLatency || 0);
+    return this.captionClock.at(time);
+  }
   private started = false;
   private firstRender = false;
   private drainTimer: ReturnType<typeof setTimeout> | undefined;
@@ -71,6 +85,9 @@ export class JudgePlayback {
         this.cancelled.has(s.epoch)
       )
         return;
+      if (["cursor", "rendering", "buffering", "drained"].includes(data.type))
+        this.captionClock.record(data.samples, data.contextTime);
+      if (data.type === "cursor") return;
       if (data.type === "ready") {
         if (
           this.client.sound.context?.state !== "running" ||
@@ -204,6 +221,7 @@ export class JudgePlayback {
     }
   }
   stopJudge() {
+    this.captionClock.reset();
     clearTimeout(this.drainTimer);
     this.client.sound.judgePlayback?.port.postMessage({
       type: "reset",

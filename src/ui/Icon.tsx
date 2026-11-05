@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 export type IconName =
+  | "connection"
   | "ear"
   | "mic"
   | "mic-off"
@@ -24,6 +25,8 @@ export type IconName =
   | "coin-tails"
   | "trophy";
 const paths: Record<IconName, string> = {
+  connection:
+    "M3 9a14 14 0 0 1 18 0M6 13a9 9 0 0 1 12 0M9 17a4 4 0 0 1 6 0M12 21h.01",
   ear: "M6 9a6 6 0 0 1 12 0c0 4-4 4-4 7a4 4 0 0 1-8 0M9 9a3 3 0 0 1 6 0c0 2-3 2-3 4",
   mic: "M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0V5ZM5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8",
   "mic-off":

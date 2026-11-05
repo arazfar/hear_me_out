@@ -1,0 +1,11 @@
+{
+  "reviewId": "synthetic-review",
+  "sealedAt": "2026-01-01T00:00:00Z",
+  "hashes": {
+    "manifest.json": "906a53bad48cd90d1d2ed95e31d3eb5378ea71203be6798f4d083db9f7501807",
+    "images/desktop-after.png": "d2a43d8de93a22364055619a263e78b5e8a5ccf66ceb9faadb1248e613c97e00",
+    "images/desktop-before.png": "8b2a55732f45e77f3185b48104053cf6efa64f19403c356528e472a40a4b310a",
+    "images/phone-after.png": "55592f4d962219d89f23ea62c120574a3d6753ef788d492835743d79a274ae5a",
+    "images/phone-before.png": "8d94842e1ba1a519a65d16796ca8512432d49e765417bf2ab4c543ebe6e7a81c"
+  }
+}

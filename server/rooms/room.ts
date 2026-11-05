@@ -70,7 +70,6 @@ export class RoomController {
   }
   services: RoomServices;
   timers = new Set<ReturnType<typeof setTimeout>>();
-  topicRequest: AbortController | null = null;
   constructor(
     code: string,
     services: Partial<RoomServices> = {},
@@ -123,8 +122,6 @@ export class RoomController {
     if (event.type === "phase_changed") {
       for (const cue of this.playback.hostCues) cue.source?.cancel();
       this.playback.hostCues = [];
-      this.topicRequest?.abort();
-      this.topicRequest = null;
       if (this.game.state.phase === "RECOVERING")
         this.judging.cancelJudgment(true);
       if (["LOBBY", "ABORTED", "INTRO_COIN"].includes(this.game.state.phase)) {
@@ -247,10 +244,11 @@ export class RoomController {
       this.playback.pendingHandoff = null;
       this.playback.hostCues = [];
       const r = this.game.state.results.at(-1)!;
-      if (this.game.player(r.winnerId).wins >= 2) this.game.finishMatch();
+      if (this.game.state.players.some((p) => p.wins >= 2))
+        this.game.finishMatch();
       else
         void this.playback.say(
-          `${this.game.player(r.winnerId).name} takes it. ${r.reason} ${this.playback.host.pick("round")}`,
+          `${r.winnerId ? this.game.player(r.winnerId).name + " takes it." : "Round tied."} ${r.reason} ${this.playback.host.pick("round")}`,
           r.winnerId,
           false,
         );
@@ -259,7 +257,7 @@ export class RoomController {
       this.playback.pendingHandoff = null;
       this.playback.hostCues = [];
       void this.playback.say(
-        `${this.game.player(this.game.state.winnerId!).name} wins the match. ${this.game.state.results.at(-1)?.reason || ""} Case closed.`,
+        `${this.game.state.winnerId ? this.game.player(this.game.state.winnerId).name + " wins the match." : "The match is a draw. Two wins each."} ${this.game.state.results.at(-1)?.reason || ""} Case closed.`,
         this.game.state.winnerId,
         false,
       );
@@ -338,7 +336,6 @@ export class RoomController {
     const actions: Array<() => unknown> = [
       () => this.transcription.resetEvidence(),
       () => this.clearTimers(),
-      () => this.topicRequest?.abort(),
       () => this.judging.cancelJudgment(),
       () => {
         if (this.playback.topicNudge)

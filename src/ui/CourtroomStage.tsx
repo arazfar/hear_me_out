@@ -1,3 +1,4 @@
+import { heroCameraPosition, HERO_TARGET } from "./hero-camera";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
@@ -388,19 +389,29 @@ function Scene({
   onSlow: () => void;
   onLost: () => void;
 }) {
-  const { camera, gl, invalidate } = useThree();
+  const { camera, gl, invalidate, size } = useThree();
   const elapsed = useRef(0),
     slow = useRef(0);
   useEffect(() => {
-    camera.position.set(0, hero ? 3.15 : 2.7, hero ? 8.4 : 5.8);
-    camera.lookAt(0, hero ? 1.15 : 1.75, 0);
+    if (hero) {
+      camera.position.set(
+        ...heroCameraPosition(size.width / Math.max(1, size.height)),
+      );
+      camera.lookAt(...HERO_TARGET);
+    } else {
+      camera.position.set(0, 2.7, 5.8);
+      camera.lookAt(0, 1.75, 0);
+    }
+    invalidate();
+  }, [camera, hero, size.width, size.height, invalidate]);
+  useEffect(() => {
     const lost = (e: Event) => {
       e.preventDefault();
       onLost();
     };
     gl.domElement.addEventListener("webglcontextlost", lost);
     return () => gl.domElement.removeEventListener("webglcontextlost", lost);
-  }, [camera, gl, hero, onLost]);
+  }, [gl, onLost]);
   useFrame((_, delta) => {
     elapsed.current += delta;
     if (elapsed.current > 3 && document.visibilityState === "visible") {

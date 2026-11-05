@@ -26,13 +26,15 @@ export function TitleView({
   setJoining: (v: boolean) => void;
   action: (fn: () => Promise<void>) => Promise<void>;
 }) {
+  const setup =
+    !!client.session && (client.setup.inline || client.reconnecting);
   return (
-    <section className="title-layout">
+    <section className={"title-layout" + (setup ? " title-setup" : "")}>
       <div className="title-world">
         <h1>
           HEAR ME <span>OUT.</span>
         </h1>
-        <p className="title-tagline">Two friends. One terrible take.</p>
+        <p className="title-tagline">Two friends. Zero chill.</p>
         <StageLoader state={null} reduced={reduced} hero />
         <p className="host-credit">
           <strong>The Honorable Bonk</strong>
@@ -87,6 +89,7 @@ export function TitleView({
             <button
               className="primary"
               disabled={busy || !name.trim() || (joining && code.length !== 4)}
+              aria-busy={busy}
             >
               {busy
                 ? joining
@@ -95,11 +98,10 @@ export function TitleView({
                 : joining
                   ? "Join room"
                   : "Create room"}
-              <Icon name="arrow" />
             </button>
             <button
               type="button"
-              className="text-button"
+              className={busy ? "text-button" : "secondary"}
               onClick={() => {
                 if (busy) {
                   client.leave();

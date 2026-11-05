@@ -112,7 +112,7 @@ function fixture() {
       eligible: false,
       source: "voice",
       stableAt: now,
-      text: "Bonk, hear me out.",
+      text: "Testing my microphone with entirely different words.",
     });
   }
   function refresh(ms = 0) {
@@ -163,7 +163,7 @@ function fixture() {
 test("start and rematch require measured capabilities; legacy readiness and typed commands are rejected", () => {
   const f = fixture();
   assert.throws(() => f.room.game.startMatch());
-  assert.throws(() => f.room.game.ready(f.players[0].id, true));
+  assert.throws(() => f.room.game.ready(f.players[0].id));
   assert(
     !commandSchema.safeParse({
       type: "media_status",
@@ -189,7 +189,7 @@ test("transport selection must complete before either player can commit to Ready
   f.room.game.state.mediaMode = "connecting";
   f.refresh();
   assert(!f.room.game.allMediaReady());
-  assert.throws(() => f.room.game.ready(f.players[0].id, true));
+  assert.throws(() => f.room.game.ready(f.players[0].id));
   f.room.game.state.mediaMode = "wss";
   f.refresh();
   assert(f.room.game.allMediaReady());
@@ -244,7 +244,9 @@ test("private speech proof requires captured audio and a final transcript; it ca
   assert.equal(f.room.judging.queue.length, 0);
   assert(
     f.messages.some(
-      (m) => m.status === "passed" && m.text === "Bonk, hear me out.",
+      (m) =>
+        m.status === "passed" &&
+        m.text === "Testing my microphone with entirely different words.",
     ),
   );
   f.room.close();
@@ -511,13 +513,13 @@ test("a private check owns reconnect transcription; private callbacks never beco
   const current = f.callbacks.get(id)!;
   f.audio(id);
   current.caption("Bonk, hear", false);
-  current.caption("Bonk, hear me out.", true);
+  current.caption("Testing my microphone with entirely different words.", true);
   current.start();
   current.end();
   // Purpose owns eligibility, even if an adapter supplies turn-shaped data.
   current.segment({
     ...evidence(room.game, "private"),
-    text: "Bonk, hear me out.",
+    text: "Testing my microphone with entirely different words.",
   });
   assert.equal(room.readiness.get(id).passed, true);
   assert.deepEqual(room.game.state.captions, {});
@@ -637,7 +639,10 @@ test("lost private results replay without providers or deadlines and source fail
   f.room.game.state.phase = "ROUND";
   f.room.readiness.start(id, checkId, id + ":mic");
   assert.equal(f.messages.at(-1).status, "passed");
-  assert.equal(f.messages.at(-1).text, "Bonk, hear me out.");
+  assert.equal(
+    f.messages.at(-1).text,
+    "Testing my microphone with entirely different words.",
+  );
   assert.equal(f.room.transcription.ink.get(id), stream);
   assert.equal(r.attempts.length, count);
   assert.equal(r.checkDeadline, 0);

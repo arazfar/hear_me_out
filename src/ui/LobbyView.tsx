@@ -24,8 +24,18 @@ export function LobbyView({
   const presentation = lobbyPresentation(state, me?.id);
   const inviting =
     !other && me?.readiness?.blockers.every((b) => b === "peer_video");
+  const peerMessage =
+    !blocked && other && !other.mediaReady && readiness.message;
+  const recovery = blocked && !inviting;
+  const status = state.matchId && state.status;
+  const readyAction = other && (!blocked || inviting);
+  const actionOnly =
+    readyAction && !peerMessage && !recovery && !status && !error;
   return (
-    <section className="phase-panel lobby" aria-label="Lobby">
+    <section
+      className={"phase-panel lobby" + (actionOnly ? " lobby-action-only" : "")}
+      aria-label="Lobby"
+    >
       {!other && <h2>Invite your friend</h2>}
       {!other && (
         <button
@@ -37,30 +47,33 @@ export function LobbyView({
           <Icon name="copy" />
         </button>
       )}
-      {!blocked && other && !other.mediaReady && readiness.message && (
-        <p>{readiness.message}</p>
+      {peerMessage && <p>{peerMessage}</p>}
+      {recovery && <RecoveryCheck />}
+      {status && <p>{status}</p>}
+      {readyAction && (
+        <button
+          className={
+            "primary " + (me?.ready && !pending ? "accepted-button" : "")
+          }
+          disabled={
+            !!me?.ready ||
+            !me?.mediaReady ||
+            !other?.connected ||
+            busy ||
+            !!pending
+          }
+          aria-describedby={error ? "ready-error" : undefined}
+          aria-busy={!!pending}
+          onClick={() => submit({ type: "ready" })}
+        >
+          {pending ? "Readying…" : presentation.actionLabel}
+          {!pending && <Icon name={me?.ready ? "check" : "arrow"} />}
+        </button>
       )}
-      {blocked && !inviting && <RecoveryCheck />}
-      {state.matchId && state.status && <p>{state.status}</p>}
       {error && (
-        <p className="decision-error" role="alert">
+        <p id="ready-error" className="decision-error" role="alert">
           {error}
         </p>
-      )}
-      {other && (!blocked || inviting) && (
-        <button
-          className={"primary " + (me?.ready ? "ready-button" : "")}
-          disabled={!me?.mediaReady || !other?.connected || busy || !!pending}
-          aria-busy={!!pending}
-          onClick={() => submit({ type: "ready", value: !me?.ready })}
-        >
-          {pending?.type === "ready"
-            ? pending.value
-              ? "Readying…"
-              : "Undoing…"
-            : presentation.actionLabel}
-          <Icon name={me?.ready ? "check" : "arrow"} />
-        </button>
       )}
     </section>
   );

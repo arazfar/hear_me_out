@@ -15,12 +15,6 @@ const runtime = createApp({
   providersReady: () => true,
   services: services({
     transcriptionAvailable: () => true,
-    normalizeTopic: async (text) => ({
-      safe: true,
-      proposition: text,
-      positive: "For the proposition",
-      negative: "Against the proposition",
-    }),
     createTranscription: (playerId, roundId, turnId, handlers) => {
       let heard = false,
         closed = false;
@@ -142,14 +136,26 @@ runtime.app.post("/__test/voice/:code", (req, res) => {
   }
   const samples = 44100 * 9 + 13;
   const text = "Every last syllable gets its day in court. Case closed.";
-  const voice = new PreparedVoice(text, 20, async (_text, receive) => {
-    const pcm = new Int16Array(samples);
-    for (let i = 0; i < samples; i++)
-      pcm[i] = Math.round(Math.sin((i * 2 * Math.PI * 330) / 44100) * 3000);
-    pcm.fill(20000, samples - 13);
-    receive(new Uint8Array(pcm.buffer));
-    return samples / 44100;
-  });
+  const voice = new PreparedVoice(
+    text,
+    20,
+    async (_text, receive, _cancel, _budget, aligned) => {
+      if (req.body?.aligned)
+        aligned?.(
+          text.split(" ").map((word, i, words) => ({
+            text: word,
+            start: Math.floor((i * samples) / words.length),
+            end: Math.floor(((i + 1) * samples) / words.length),
+          })),
+        );
+      const pcm = new Int16Array(samples);
+      for (let i = 0; i < samples; i++)
+        pcm[i] = Math.round(Math.sin((i * 2 * Math.PI * 330) / 44100) * 3000);
+      pcm.fill(20000, samples - 13);
+      receive(new Uint8Array(pcm.buffer));
+      return samples / 44100;
+    },
+  );
   void room.playback.say(text, null, false, 20, voice);
   res.json({ epoch: room.playback.speech!.epoch, samples });
 });
@@ -317,6 +323,13 @@ runtime.app.post("/__test/present/:code", (req, res) => {
   // normal readiness monitor replaces the intended capture with recovery before
   // the screenshot settles. Real journey tests never use this route.
   const turn = room.game.state.turn;
+  if (turn && room.game.state.roundId)
+    room.game.turns.set(turn.id, {
+      turn,
+      roundId: room.game.state.roundId,
+      validUntil: Infinity,
+      segments: new Map(),
+    });
   if (room.game.state.phase === "ROUND" && turn?.inputState === "open")
     room.transcription.rotate(turn.playerId, turn.id);
   if (room.game.state.turn?.sealing) room.game.sealAt = Date.now();

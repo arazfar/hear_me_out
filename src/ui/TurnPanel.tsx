@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { judgeIsListening, type Snapshot } from "../../shared/domain";
 import { client } from "../game/client";
 import { Icon } from "./Icon";
@@ -43,7 +43,6 @@ export function TurnPanel({
     privateCheck: client.capture.privateCheck(),
   });
   const listening = !pending && judgeIsListening(state, playerId || null);
-  const next = `${mine ? "Your" : state.players.find((p) => p.id === turn.playerId)?.name + "’s"} ${turn.kind} next`;
   return (
     <section
       className={
@@ -61,23 +60,109 @@ export function TurnPanel({
       }
       aria-label="Current turn"
     >
-      <div key={handoff} className={"turn-label " + (handoff ? "handoff" : "")}>
-        {presentation.kind !== "player" && (
-          <Icon
-            name={
-              presentation.kind === "judge" && client.playback.rendering
-                ? "volume"
-                : "clock"
-            }
-          />
-        )}
-        {presentation.label}
-      </div>
       <div
-        className="timer"
+        className="turn-context"
+        tabIndex={0}
+        role="region"
+        aria-label="Turn status"
+      >
+        <div
+          key={handoff}
+          className={
+            "turn-label " +
+            (presentation.kind === "player" ? "sr-only " : "") +
+            (handoff ? "handoff" : "")
+          }
+        >
+          {presentation.kind !== "player" && (
+            <Icon
+              name={
+                presentation.kind === "judge" && client.playback.rendering
+                  ? "volume"
+                  : "clock"
+              }
+            />
+          )}
+          {presentation.label}
+        </div>
+        <TurnTimer
+          turnId={turn.id}
+          seconds={seconds}
+          duration={turn.durationMs}
+          paused={paused}
+          settling={turn.sealing || pending}
+        />
+        {mine && client.capture.micMuted && !paused && (
+          <p className="turn-guidance">Your mic is off.</p>
+        )}
+      </div>
+      {mine && listening && (
+        <div className="turn-action">
+          <button
+            className="primary yield-button"
+            onClick={() => client.capture.finishTurn()}
+          >
+            I’m done
+            {!pending && <Icon name="check" />}
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TurnTimer({
+  turnId,
+  seconds,
+  duration,
+  paused,
+  settling,
+}: {
+  turnId: string;
+  seconds: number;
+  duration: number;
+  paused: boolean;
+  settling: boolean;
+}) {
+  const previous = useRef<{
+    id: string;
+    seconds: number;
+    at: number;
+    paused: boolean;
+  } | null>(null);
+  const [bounce, setBounce] = useState(false);
+  useEffect(() => {
+    const clear = () => {
+      previous.current = null;
+      setBounce(false);
+    };
+    document.addEventListener("visibilitychange", clear);
+    return () => document.removeEventListener("visibilitychange", clear);
+  }, []);
+  useEffect(() => {
+    const old = previous.current,
+      at = performance.now();
+    previous.current = { id: turnId, seconds, at, paused };
+    const milestone =
+      !paused &&
+      !document.hidden &&
+      seconds > 0 &&
+      seconds % 5 === 0 &&
+      old?.id === turnId &&
+      !old.paused &&
+      old.seconds === seconds + 1 &&
+      at - old.at < 1500;
+    setBounce(!!milestone);
+    const timer = setTimeout(() => setBounce(false), 420);
+    return () => clearTimeout(timer);
+  }, [seconds, paused, turnId]);
+  return (
+    <div className="turn-timer">
+      <div
+        className={"timer " + (bounce ? "timer-milestone" : "")}
         aria-label={paused ? "Clock paused" : seconds + " seconds remaining"}
       >
-        {turn.sealing || pending ? (
+        {settling ? (
           <Icon name="gavel" />
         ) : (
           <>
@@ -89,27 +174,10 @@ export function TurnPanel({
       <div className="timer-track" aria-hidden="true">
         <i
           style={{
-            transform:
-              "scaleX(" + Math.min(1, (seconds * 1000) / turn.durationMs) + ")",
+            transform: `scaleX(${Math.min(1, (seconds * 1000) / duration)})`,
           }}
         />
       </div>
-      {mine && client.capture.micMuted && !paused && (
-        <p className="turn-guidance">Your mic is off.</p>
-      )}
-      <div className="turn-action">
-        {mine && listening ? (
-          <button
-            className="primary yield-button"
-            onClick={() => client.capture.finishTurn()}
-          >
-            I’m done
-            <Icon name="arrow" />
-          </button>
-        ) : ["judge", "buffering", "captions"].includes(presentation.kind) ? (
-          <p className="turn-next">{next}</p>
-        ) : null}
-      </div>
-    </section>
+    </div>
   );
 }

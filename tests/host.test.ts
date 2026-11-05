@@ -235,7 +235,9 @@ test("fixed voice cache reuses synthesis with unchanged Fish settings", async ()
   process.env.FISH_AUDIO_API_KEY = "test";
   globalThis.fetch = async () => {
     calls++;
-    return new Response(new Uint8Array([0, 64, 0, 32]));
+    return new Response(
+      'data: {"audio_base64":"AEAAIA==","alignment":null}\n\n',
+    );
   };
   try {
     const first = fixedVoice(PHRASES.coin[2])!;

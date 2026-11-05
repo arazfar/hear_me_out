@@ -123,6 +123,23 @@ test("output timing becoming unavailable still requires the conservative drain g
   client.playback.activeEpoch = 1;
   client.playback.bind(node);
   node.port.onmessage({
+    data: { type: "cursor", epoch: 1, samples: 4410, contextTime: 9.9 },
+  });
+  node.port.onmessage({
+    data: { type: "cursor", epoch: 1, samples: 8820, contextTime: 10 },
+  });
+  assert(Math.abs(client.playback.renderedSamples(1) - 6615) <= 1);
+  assert.equal(client.playback.renderedSamples(2), 0);
+  node.port.onmessage({
+    data: { type: "cursor", epoch: 0, samples: 44000, contextTime: 10.1 },
+  });
+  assert(Math.abs(client.playback.renderedSamples(1) - 6615) <= 1);
+  assert.equal(
+    commands.length,
+    0,
+    "local caption cursor adds no server acknowledgements",
+  );
+  node.port.onmessage({
     data: { type: "drained", epoch: 1, samples: 44100, contextTime: 10 },
   });
   timing = false;
@@ -229,7 +246,15 @@ test("Fish retains all native int16 samples beyond old limits and frames oversiz
   t.mock.method(
     globalThis,
     "fetch",
-    async () => new Response(new Uint8Array(pcm.buffer)),
+    async () =>
+      new Response(
+        "data: " +
+          JSON.stringify({
+            audio_base64: Buffer.from(pcm.buffer).toString("base64"),
+            alignment: null,
+          }) +
+          "\n\n",
+      ),
   );
   const chunks: Uint8Array[] = [];
   await streamVoice(
@@ -439,9 +464,21 @@ test("TURN credentials expire and are scoped without returning the shared secret
 test("a complete cached utterance retries once, rejects an obsolete connection, then falls back with its full caption", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   let now = 100000;
+  const cues = [{ text: "These syrup pockets", start: 0, end: 15876 }];
+  let lateAlignment: ((value: typeof cues) => void) | undefined;
   const room = new RoomController(
     "1234",
-    services({ now: () => now, setTimeout, clearTimeout }),
+    services({
+      now: () => now,
+      setTimeout,
+      clearTimeout,
+      streamVoice: async (_text, audio, _cancel, _budget, aligned) => {
+        lateAlignment = aligned;
+        aligned?.(cues);
+        audio(new Uint8Array(new Int16Array(15876).fill(3276).buffer));
+        return 0.36;
+      },
+    }),
   );
   for (const name of ["Alex", "Sam"]) {
     const player = room.game.addPlayer(name),
@@ -474,6 +511,11 @@ test("a complete cached utterance retries once, rejects an obsolete connection, 
   assert.equal(replay.attempt, 1);
   assert.notEqual(replay.epoch, old.epoch);
   assert.equal(replay.samples, old.samples);
+  assert.deepEqual(room.game.state.judge?.alignment?.cues, cues);
+  const revision = room.game.state.judge?.alignment?.revision;
+  lateAlignment?.([{ text: "obsolete timing", start: 0, end: 100 }]);
+  assert.deepEqual(room.game.state.judge?.alignment?.cues, cues);
+  assert.equal(room.game.state.judge?.alignment?.revision, revision);
   room.playback.audioPlayback(
     ids[1],
     old.id,

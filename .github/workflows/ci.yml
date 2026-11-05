@@ -57,3 +57,26 @@ jobs:
             output/playwright/recovery-ownership/after/*.png
           if-no-files-found: ignore
           retention-days: 14
+  ui-review:
+    # Synthetic review data only; no game build, providers or local review archives.
+    runs-on: macos-26
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chrome webkit
+      - run: pnpm test:ui-review
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-review
+          path: |
+            output/ui-review-tests/results.json
+            output/ui-review-tests/results/
+          if-no-files-found: ignore
+          retention-days: 14

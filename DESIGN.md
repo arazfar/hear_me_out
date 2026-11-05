@@ -12,7 +12,16 @@ colors:
   player-shell: "#281833"
   muted: "#d6c6dd"
   warning: "#ffca82"
-  lime-hover: "#e5ff7c"
+  control-primary: "#b8e51c"
+  control-secondary: "#20102e"
+  control-pending: "#e5ff91"
+  control-accepted: "#efdfba"
+  control-unavailable: "#dacdaf"
+  control-unavailable-ink: "#615067"
+  control-hover: "#a9d318"
+  control-pressed: "#9cc315"
+  control-pink: "#ff4f9a"
+  control-cyan: "#39d8f2"
   field-paper: "#fffaf0"
   field-stroke: "#9c8b9e"
   paper-copy: "#64516b"
@@ -73,10 +82,14 @@ typography:
     letterSpacing: "-0.03em"
   timer:
     fontFamily: '"Space Grotesk", sans-serif'
-    fontSize: "64px"
+    fontSize: "22px"
     fontWeight: 700
-    lineHeight: 1.12
-    letterSpacing: "-0.03em"
+    lineHeight: 1.2
+  timer-phone:
+    fontFamily: '"Space Grotesk", sans-serif'
+    fontSize: "16px"
+    fontWeight: 700
+    lineHeight: "20px"
 rounded:
   radius: "16px"
   radius-small: "12px"
@@ -92,17 +105,30 @@ spacing:
   space-12: "48px"
 components:
   button-primary:
-    backgroundColor: "{colors.lime}"
+    backgroundColor: "{colors.control-primary}"
     textColor: "{colors.plum}"
     typography: "{typography.action}"
     rounded: "{rounded.radius-small}"
     padding: "12px 18px"
     width: "100%"
   button-primary-hover:
-    backgroundColor: "{colors.lime-hover}"
+    backgroundColor: "{colors.control-hover}"
+    textColor: "{colors.plum}"
+  button-primary-pressed:
+    backgroundColor: "{colors.control-pressed}"
+    textColor: "{colors.plum}"
+  button-primary-pending:
+    backgroundColor: "{colors.control-pending}"
+    textColor: "{colors.plum}"
+    boxShadow: "none"
+  button-primary-accepted:
+    backgroundColor: "{colors.control-accepted}"
+    textColor: "{colors.plum}"
+    boxShadow: "none"
   button-primary-disabled:
-    backgroundColor: "{colors.disabled-fill}"
-    textColor: "{colors.disabled-copy}"
+    backgroundColor: "{colors.control-unavailable}"
+    textColor: "{colors.control-unavailable-ink}"
+    boxShadow: "none"
   button-text:
     backgroundColor: "transparent"
     textColor: "{colors.plum}"
@@ -119,7 +145,7 @@ components:
     backgroundColor: "#fff0ce0c"
     textColor: "{colors.cream}"
     rounded: "{rounded.radius-small}"
-    padding: "10px 14px"
+    padding: "10px 12px"
   button-device-hover:
     backgroundColor: "{colors.quiet-control-hover}"
   room-code:
@@ -135,7 +161,7 @@ components:
     width: "100%"
   header:
     textColor: "{colors.cream}"
-    padding: "18px 32px"
+    padding: "12px 32px"
   entry-card:
     backgroundColor: "{colors.cream}"
     textColor: "{colors.plum}"
@@ -145,7 +171,7 @@ components:
     backgroundColor: "{colors.cream}"
     textColor: "{colors.plum}"
     rounded: "{rounded.radius}"
-    padding: "22px"
+    padding: "24px"
   player-card-pink:
     backgroundColor: "{colors.player-shell}"
     textColor: "{colors.cream}"
@@ -189,14 +215,17 @@ Warm cream and plum establish the courtroom; vivid seat colors and lime actions 
 
 ### Primary
 
-- **Action Lime** (`lime`): primary actions, the emphasized part of the title, Bonk's accent, and the judge caption label.
-- **Lifted Lime** (`lime-hover`): primary action hover state.
+- **Identity Lime** (`lime`): the emphasized part of the title, Bonk's accent, the judge caption label, and focus indicators on dark surfaces.
+- **Action Lime** (`control-primary`): available primary actions. Enabled hover uses `control-hover`; pressing uses `control-pressed`. All three use plum text.
+- **Pending / Accepted** (`control-pending`, `control-accepted`): pale lime for a request awaiting acknowledgement; warm beige for accepted Ready, Confirmed and acknowledged rematch votes. Both use plum text and no shadow.
+- **Unavailable** (`control-unavailable`, `control-unavailable-ink`): muted fill and ink for disabled actions that are neither pending nor accepted.
 
 ### Secondary
 
 - **Seat Pink** (`pink`): server seat zero, including its frame, caption name, turn accent, and courtroom seat marker.
 - **Seat Cyan** (`cyan`): server seat one, using the same roles as pink.
 - **Bonk Lavender** (`lavender`): Bonk's head and the result icon.
+- **Secondary Controls** (`control-secondary`): plum surfaces with cream text. Side choices use `control-pink` and `control-cyan`, preserving the existing seat palette.
 
 ### Tertiary
 
@@ -212,14 +241,14 @@ Warm cream and plum establish the courtroom; vivid seat colors and lime actions 
 - **Field Paper / Field Stroke** (`field-paper`, `field-stroke`): lighter input fill with a defined edge.
 - **Paper Copy / Paper Focus** (`paper-copy`, `paper-focus`): secondary prose and visible focus on light cards.
 - **Quiet Control / Quiet Control Hover** (`quiet-control`, `quiet-control-hover`): translucent cream treatments for room and help controls on plum.
-- **Disabled Fill / Disabled Copy** (`disabled-fill`, `disabled-copy`): the shared disabled action treatment.
+- **Disabled Fill / Disabled Copy** (`disabled-fill`, `disabled-copy`): the same values as the unavailable control fill and ink. Pending and accepted actions have their own treatments even while disabled.
 - **Option Fill** (`option-fill`): quieter topic choices and audio setting rows on cream.
 
 ### Named Rules
 
 **The Seat Continuity Rule.** Pink belongs to server seat zero and cyan to server seat one. Local identity, the current speaker, and the winner never reorder those colors.
 
-**The Action Lime Rule.** Use lime for the forward action and established judge/identity accents. Keep player identity in pink and cyan, with words and icons carrying state alongside color.
+**The Action Lime Rule.** Use `control-primary` for an available forward action and `lime` for established judge/identity accents and focus. Keep player identity in pink and cyan, with words and icons carrying state alongside color.
 
 ## Typography
 
@@ -237,7 +266,8 @@ Warm cream and plum establish the courtroom; vivid seat colors and lime actions 
 - **Title** (`title`): phase card headings. Player names use 18px, becoming 15px on narrow screens.
 - **Body** (`body`, `body-small`): entry explanations and captions use the larger body role; phase instructions and dialogs use the smaller role. Support text is commonly 12px or 13px.
 - **Label / Action** (`label`, `action`): field labels are semibold; lime action labels are bold. Ordinary device and text actions use 13px.
-- **Score / Timer** (`score`, `timer`): 34px live totals and 64px remaining time. Scores become 26px on narrow screens. Both use tabular numerals; the small point label remains separate. A 4.8ch minimum number width prevents the total from shifting as digits change.
+- **Score** (`score`): 34px live totals, becoming 26px on narrow screens. Tabular numerals and a 4.8ch minimum number width prevent the total from shifting as digits change; the small point label remains separate.
+- **Timer** (`timer`, `timer-phone`): compact tabular seconds at 22px with 1.2 line height by default. At widths through 700px, the timer uses 16px with 20px line height beside its progress track. Neither timer token adds letter spacing.
 
 The wordmark uses Bungee at 20px, becoming 16px on narrow screens. Bungee also appears in camera-off initials, room invitation digits, score bursts, and result headings. These are deliberate identity moments rather than a replacement for interface text.
 
@@ -247,15 +277,17 @@ The wordmark uses Bungee at 20px, becoming 16px on narrow screens. Bungee also a
 
 ## Layout
 
-The root fills at least the small viewport height and stacks the header, main stage, captions, and controls in normal document flow. The entry screen is a centered two-column grid with a flexible diorama and a 360px form, a 56px gap, and a 1240px maximum width. Its outer padding is 24px 32px 44px.
+The title screen remains in document flow. At 960px and above it is a centered two-column composition, with a flexible diorama, a 320–360px form, a 32px gap, and a 1240px maximum width. Below 960px it stacks with a form capped at 420px. The hero stage is 280–400px on desktop, 220–280px on stacked tablets, and 180–200px on phones. Its perspective camera fits stable platform, podium, arch, and Bonk animation bounds with 8% clearance at each viewport edge. Resizing changes framing, not the scene model or in-game camera. The loading/error image uses the same stage container and contain sizing.
 
-At desktop widths of 1120px and above, the room is a three-column grid: two equal flexible player seats around a 280px center well. The stage has a 1512px maximum width, 24px column gaps, and 32px horizontal padding. The proposition sits above it. Captions follow directly below the courtroom with an 1100px maximum width; flexible space sits above the court and before the footer controls, keeping speech close to the action. Bonk stays above the task in every phase, including live turns. The turn type and owner share one heading, such as “Your rebuttal.” During rounds, the court stays anchored below the proposition so changing captions and handoff controls do not shift the live faces.
+Rooms use a fixed dynamic-viewport-height shell with a header, a bounded game region, and a dedicated footer row. The visually floating dock occupies real layout space and never covers the game region. Ordinary content fits the initial viewport. The court centers safely when it fits; unusually long content, zoom, keyboards, and short landscape retain internal panel scrolling. Desktop and tablet captions use a bounded lane. On phones, captions belong to the single lower reading region; empty caption and reaction space is released without moving the cards. Focused controls receive scroll clearance. Safe-area insets apply to the header, content gutters, and footer. While a text field is focused at normal browser scale, a reduced VisualViewport height constrains the shell for the software keyboard; pinch zoom remains browser-owned.
 
-At 1119px and below, both player seats remain side by side in the first row. The center well spans the next row, with Bonk next to the task. At 700px and below, both seats stay side by side above an 80px Bonk stage and the action area. Topic selection and recovery use the full width. Captions and brief Bonk feedback have separate space; controls remain at least 44px tall. Short phones use 96px video, tighter heading spacing, and compact inline captions. Reflowed layouts above 700px wide reserve 56px between the faces and task for score pops; phones use 40px. Short phones retain their 32px gap and move award pops 4px closer to the cards. Landscape, long content, and zoom retain scrolling. This supports the approved Android Chrome and iPhone Safari scope; physical-device verification is still required.
+From 960px upward, two equal player columns flank a center well sized with `clamp(280px, 25vw, 360px)`. The court has a 1512px maximum width and 24px column gaps. At 959px and below, both player seats stay side by side above the Bonk/task row. At 700px and below, the Bonk column is 80px; topic selection and recovery use the full task width. The primary turn action remains alongside Bonk. Short phones cap video at 96px and use compact captions. Unusually long content and short landscape screens scroll inside bounded panels rather than losing text.
 
-The compact desktop rule combines a maximum height of 820px with a minimum width of 1120px. It uses 8px vertical header padding, 12px below the proposition, a 150px Bonk stage, 14px task padding, and media height `clamp(180px, 30vh, 330px)`. The result trophy hides at this size; Bonk and the winner heading carry the moment. Taller desktops use media height `clamp(210px, 32vh, 330px)`. Narrower layouts use their own bounded heights. The courtroom uses a 24px bottom inset on desktop, with a separate award layer. Reflowed layouts use compact gaps; short phones retain a 32px handoff gap and keep footer controls visible. Ordinary turns, results, and rematch readiness fit a 1280×720 viewport. Long content and zoom retain scrolling.
+Both player cards share intrinsic heading, video, and side/score rows through a common grid and CSS subgrid. Wrapping names enlarge the shared heading row only when needed; neither name is truncated. The task column sits outside this row sizing, so long tasks cannot stretch the faces. Video elements stay mounted through phase and viewport changes, and award space remains separate from these rows.
 
-The declared spacing steps are recorded in frontmatter. Component spacing also includes measured fit values such as the 22px phase padding and 24px courtroom gap; do not replace these with an invented uniform grid. Long names, topics, and captions wrap within their columns.
+Outer gutters are 32px desktop, 24px tablet, and 12px phone, enlarged where device safe areas require it. The phone entry form retains 16px gutters. Captions share the courtroom's content edges. Phase padding is 24px desktop, 20px tablet and short desktop, 16px phone, and 12px short phone. Bonk and cream task panels have an 8px gap. Desktop heights at or below 820px use a 150px in-game stage and video height `clamp(180px, 28vh, 220px)`; taller desktop video uses `clamp(210px, 32vh, 330px)`.
+
+On scored phone cards, Wins and status share one metadata row. The listening state uses an accessible ear icon; Ready and Confirmed retain text. Shared card rows align both videos even when full names wrap. Score notices retain their dedicated space above each card. One `--award-space` variable owns both the card offset and award layer: 64px normally and 36px on phones. Captions and score updates must not reposition the live faces. Names, sides, propositions, captions, and verdicts remain complete and may wrap. Physical iPhone Safari and Android Chrome testing is still required before claiming mobile-device readiness.
 
 ## Elevation & Depth
 
@@ -285,11 +317,17 @@ Icons are inline SVG paths with a 24 × 24 viewBox, no fill, a 1.8-unit stroke, 
 
 ### Buttons
 
-The main action is a shallow toy button. It uses lime, plum ink, the small control radius, bold action type, and the padding recorded in frontmatter, with a minimum height of 48px. Hover brightens the fill and lifts it slightly. Disabled actions use the shared disabled colors and remove their shadow.
+The main action is a shallow toy button. It uses `control-primary`, plum ink, the small control radius, bold action type, and the padding recorded in frontmatter, with a minimum height of 48px. Enabled hover uses `control-hover` without moving the hit area; pressing uses `control-pressed`. Requests with `aria-busy="true"` use `control-pending`; accepted Ready, Confirmed and acknowledged rematch votes use `control-accepted`. Other disabled actions use `control-unavailable` and `control-unavailable-ink`. Pending, accepted and unavailable actions remove their shadow. Pending and accepted classes preserve their own colors while disabled.
 
-The text action is an underlined, transparent alternative with a minimum height of 44px. Help and close controls use the circular icon treatment. Device buttons use a quieter translucent treatment, a minimum height of 44px, and explicit labels such as “Mic on” or “Mic off.” These labels describe privacy only; the listening badge describes judge eligibility. The footer's leave action is transparent. Topic choices and audio settings use the option fill instead of competing with the lime action.
+The text action is an underlined, transparent alternative with a minimum height of 44px. Help and close controls use the circular icon treatment. Device buttons use a quieter translucent treatment, a minimum height of 44px, and explicit labels such as “Mic on” or “Mic off.” These labels describe privacy only; the listening badge describes judge eligibility. The footer's leave action is transparent. Topic choices use the option fill; sound toggles share the quieter media-control treatment instead of competing with the lime action.
 
 The shared button transition uses `quick` (180ms); movement uses `ease` (`cubic-bezier(0.16, 1, 0.3, 1)`). Pressing an enabled button gives immediate small-scale feedback. Keyboard focus uses a 3px outline with a 4px offset, lime on the dark field and Paper Focus on light cards and dialogs. Player frames use the lime focus treatment. These are implemented treatments, not a claim of an audited accessibility standard.
+
+### Media disclosure
+
+The footer contains an icon-only “Mic & camera” trigger and a labeled Leave action. The trigger shows both device icons, slashed privacy states, and a warning icon for missing devices. Accessible descriptions and a focus/hover tooltip identify “Mic off”, “Camera off”, “Both off”, or “Check devices”. It opens an upward popover with two pairs: mic/camera privacy controls, then Friend audio and Bonk & effects output toggles. Pairs use 8px internal gaps and 12px between them, with no extra visible headings. Sound controls retain On/Off text, volume icons, and pressed states; changing output never changes capture, readiness, or the game clock. There is no separate Sound dialog. Capture state remains authoritative; opening and closing controls never changes media. Recovery actions remain visible in the task panel.
+
+The popover uses a 180ms upward reveal, slight scale, and opacity; reduced motion removes the effect. All actions have at least 44×44px targets. Opening focuses the first enabled action. Escape restores trigger focus; outside click or focus dismisses without stealing focus. Tab follows normal disclosure order. All four toggles keep the popover open, including during toggle-driven recovery. The rules dialog and departure close it. Short viewports allow internal scrolling while keeping microphone and camera first. Copy feedback and room notices occupy a shared reserved area immediately above the dock. The popover opens above that area and uses the measured footer height to stay within the viewport.
 
 ### Room Code
 
@@ -297,21 +335,23 @@ The copyable code is a compact utility chip with quiet fill, a copy icon, and ta
 
 ### Cards / Containers
 
-Cream cards feel like painted inserts in the court. Entry cards use the larger padding step and left-aligned forms; phase cards use 22px padding and centered guidance. Both use the same surface radius and lift. Phase headings and copy can wrap. The surrounding game state determines the content; the card itself does not invent an outcome or a score.
+The joined, healthy lobby shows its lone Ready to argue/Ready button directly beneath Bonk, without a cream surface. Its semantic section and button stay mounted as pending or readiness state changes. Invitation, recovery, status, and error content retain the cream panel. The standalone action uses the lime focus ring against the plum field.
+
+Cream cards feel like painted inserts in the court. Entry cards use the larger padding step and left-aligned forms; phase cards use responsive 24/20/16px padding (12px on short phones) and centered guidance. Both use the same surface radius and lift. Phase headings and copy can wrap. The surrounding game state determines the content; the card itself does not invent an outcome or a score.
 
 ### Inputs / Fields
 
-Fields use Field Paper, Plum Ink, the small control radius, and the defined field stroke. Labels stay above the field. Placeholder text uses the darker local muted ink (`#706274`) and the caret uses `#762f79`. The name field is a regular inherited-size input; room digits use 24px and 0.24em tracking. Phase forms use smaller 14px inputs with 10px 12px padding. Errors appear as labeled inline text with a warning icon.
+Fields use Field Paper, Plum Ink, the small control radius, and the defined field stroke. Labels stay above the field. Placeholder text uses the darker local muted ink (`#706274`) and the caret uses `#762f79`. The name field is a regular inherited-size input; room digits use 24px and 0.24em tracking. Phase forms use 14px inputs with 10px 12px padding on larger screens, and at least 16px text and 44px height on phones to avoid input-focus zoom. Errors appear as labeled inline text with a warning icon.
 
 ### Navigation
 
-The header is a compact identity and room-utility row, not a separate navigation system. The left wordmark stands alone; room-copy and help controls sit on the right. Entry already has a large title, so it does not repeat the wordmark. The original tagline appears once beside that title. Horizontal padding steps from 32px to 24px to 16px at the layout breakpoints. The wordmark does not leave an active room; the footer provides the explicit leave action.
+The header is a compact identity and room-utility row, not a separate navigation system. The left wordmark stands alone; room-copy and help controls sit on the right. Entry already has a large title, so it does not repeat the wordmark. The original tagline appears once beside that title. Room horizontal padding steps from 32px to 24px to 12px at the layout breakpoints, with safe-area clearance. The wordmark does not leave an active room; the footer provides the explicit leave action.
 
 ### Player Seats
 
 Player cards retain their position through setup, play, verdict, and recovery. They show live video or relay canvas when available, with the local camera mirrored. Camera-off and connecting states use initials or a camera icon plus truthful text. The score, side of the proposition, and two round-win marks remain attached to the same seat. The cream ear badge “Bonk is listening” identifies the eligible player. Other badges mark actual Ready or Confirmed decisions and private mic checks. Routine chat, coin roles, turn settlement, and result descriptions do not repeat on the cards. During rounds, a compact badge slot keeps the faces and scores aligned across handoffs; other phases omit empty status space. Speech meters remain visible on phones and react to local/received audio even off-turn. Never dim a friend’s face to imply input eligibility.
 
-The eligible floor holder’s video edge brightens only when input opens; the ear icon and label make this understandable without color. Audible friend conversation does not change that outline. Two 12px round-win marks sit beside the name, with an accessible count. The fixed score sits beside the role below the video. Desktop winners receive a small badge; phones use the central winner heading and earned marks. The ledger disclosure and reserved row are removed. The internal ledger still supplies exact totals and verdict reasons.
+The eligible floor holder’s video edge brightens only when input opens; the ear icon and label make this understandable without color. Audible friend conversation does not change that outline. Two 12px round-win marks sit beside the name, with an accessible count. The fixed score sits beside the role below the video. The central verdict and earned marks identify the winner at every size; player cards do not repeat a WINNER badge or hide the winner’s voice activity. The marks are labeled “Wins” and retain their accessible round-win count; “Round pts” distinguishes the current round score. The ledger disclosure and reserved row are removed. The internal ledger still supplies exact totals and verdict reasons.
 
 Fresh accepted score events drive a 400ms count-up in score units. Interrupting awards retarget from the current displayed value and land on the latest authoritative total, including quarter points. Each event gets its own colorful +X below the video: a roughly 120ms pop, upward travel, and fade within 900ms. Notices occupy up to five slots, allowing 96px per slot. Starts stagger by 85ms, and each slot stays reserved for its notice’s full 900ms lifetime. Pending notices mount only when space is available. Reduced motion uses the same queue with static labels. Totals, accessible announcements, badge pulses, and throttled sound respond immediately to accepted awards. A recovery, round or match reset, unmount, or visibility change clears the entire notice queue.
 
@@ -331,27 +371,29 @@ A connection drop during a private mic check shows the same reconnecting state a
 
 Socket loss immediately replaces the task with “Reconnecting…”. The stale turn countdown and completion action disappear; mounted faces, scores, privacy controls, and Leave remain. The same connection decision drives accessible announcements, without a competing banner. Once bounded automatic retries finish, “Connection lost. Check your network.” offers “Retry connection”. Authenticated state, synchronized time, and open required channels are all necessary before normal server-controlled presentation returns. Device repair stages replacement capture separately, so cancellation cannot interrupt another healthy device.
 
-A deliberate departure ends an unfinished match with the friend's name, “No winner this time.”, and one “Back to menu” action. The empty card says “Left the court”. Recovery countdowns and device checks disappear. Completed results keep the winner and reason, with “Your friend isn’t here.” and the same exit. The departed winner's card uses an “Offline” avatar instead of a reconnect badge or stale video. Interrupted matches reuse the compact recovery footer at short phone sizes. A stalled audio download shows “Couldn’t load sound. Try again.” beside the existing retry action; it does not suggest changing permissions.
+A deliberate departure ends an unfinished match with the friend's name, “No winner this time.”, and one “Back to menu” action. The empty card says “Left the court”. Recovery countdowns and device checks disappear. Completed results keep the winner or draw, with “Your friend isn’t here.” and the same exit. The departed winner's card uses an “Offline” avatar instead of a reconnect badge or stale video. Interrupted matches reuse the compact recovery footer at short phone sizes. A stalled audio download shows “Couldn’t load sound. Try again.” beside the existing retry action; it does not suggest changing permissions.
 
 ### Captions and Turn Information
 
 Captions occupy a dedicated dark strip below the stage. Bonk is marked in lime with the gavel icon; player labels use their seat colors. The interface distinguishes captions-only judge output, final player captions, paused microphones, and connection recovery with text. The timer uses tabular digits, a seat-colored progress bar, and the warm warning treatment when time is low.
 
-One presentation model prioritizes private checks, recovery, caption fallback, judge buffering/playback, settlement, preparation, and open turns. Keep the short turn label centrally beside Bonk and the clock. During rounds it owns Bonk’s preparing, speaking, finishing, or captions-only status; in other phases that status appears beside his name in the caption speaker row. One phase/turn live region announces changes. Captions and score awards have separate announcements; clocks do not announce ticks. Complete supplied captions wrap and extend the page naturally, without slicing or line clamping. Open turns show “Your case/rebuttal/closing” or the friend’s name. Done immediately shows “Finishing Alex’s turn…” and freezes the clock; preparation shows “Your turn next.” Buffering reads “Bonk’s getting ready…” without mouth animation. Actual rendering reads “Bonk speaking”; the faster client can show “Finishing Bonk’s line…” while waiting for its friend. Failure keeps the complete line visible with “Captions only.” Background judging preserves the open turn’s label, action, and timer.
+Nonempty captions are a labeled keyboard stop with an inset lime focus ring and native scrolling. A new Bonk utterance, player turn/speaker, match, or cleared caption resets the lane to its beginning before paint. Updates within the same utterance preserve the reader’s position without automatic tail-following, focus changes, or media remounts. Empty reserved lanes are outside the tab order. The media tooltip is hidden while captions have keyboard focus, so a parked pointer cannot cover the text. The trigger’s accessible name and privacy description remain available.
 
-Decision copy comes from the same pure presentation selectors in the views and the phase announcement. Topic selection names the chooser. A successful confirmation announces “Confirmed. Waiting for Sam to confirm.”; the other player hears “Alex confirmed. Confirm your side.” Lobby readiness, undo, and rematch votes update this same region. Repeated snapshots and countdown ticks leave its text unchanged. Recovery and departure take precedence over decision feedback. Ready and Confirmed badges do not add competing live regions or move keyboard focus.
+One presentation model prioritizes private checks, recovery, caption fallback, judge buffering/playback, settlement, preparation, and open turns. Ordinary turn labels are announced accessibly; the active card, listening icon, clock, and completion action provide visible orientation. During rounds it owns Bonk’s preparing, speaking, finishing, or captions-only status; in other phases that status appears beside his name in the caption speaker row. One phase/turn live region announces changes. Captions and score awards have separate announcements; clocks do not announce ticks. Complete supplied captions remain available through Transcript; full-text fallbacks wrap and scroll within the reserved bounded strip without line clamping. Open turns announce “Your case/rebuttal/closing” or the friend’s name without repeating a visible label. Done immediately shows “Finishing Alex’s turn…” and freezes the clock; preparation shows “Your turn next.” Buffering reads “Bonk’s getting ready…” without mouth animation. Actual rendering reads “Bonk speaking”; the faster client can show “Finishing Bonk’s line…” while waiting for its friend. Failure keeps the complete line visible with “Captions only.” Background judging preserves the open turn’s action and timer.
+
+Decision copy comes from the same pure presentation selectors in the views and the phase announcement. Topic selection names the chooser. A successful confirmation announces “Confirmed. Waiting for Sam to confirm.”; the other player hears “Alex confirmed. Confirm your side.” Lobby readiness and rematch votes update this same region. Repeated snapshots and countdown ticks leave its text unchanged. Recovery and departure take precedence over decision feedback. Ready and Confirmed badges do not add competing live regions or move keyboard focus.
 
 ### Dialogs
 
-Rules and audio settings use a cream native dialog, bounded to the viewport, with a visible close control. The implementation opens it modally, wraps Tab and Shift+Tab through visible controls, handles Escape and backdrop dismissal, and restores prior focus. The content padding is 32px, becoming 28px 24px on narrow screens. Preview snippets describe the visual surface; the application component owns these interaction behaviors.
+Rules use a cream native dialog, bounded to the viewport, with a visible close control. The implementation opens it modally, wraps Tab and Shift+Tab through visible controls, handles Escape and backdrop dismissal, and restores prior focus. The content padding is 32px, becoming 28px 24px on narrow screens. Preview snippets describe the visual surface; the application component owns these interaction behaviors.
 
 ### Bonk and Motion
 
 Bonk is the procedural lavender toy-gavel judge, with a lime accent, cream eyes, and a cream-and-wood court. The rendered scene points toward the eligible floor holder and uses locally rendered, audible judge amplitude for the speaking mouth. Listening, buffering, speech, and reactions have distinct poses; a silent or muted Bonk does not lip-sync a server estimate. Verdict strikes follow fresh result events. The coin icon displays the assigned H or T face, matching the accompanying text.
 
-Fresh `floor_opened` events give the turn heading a 220ms handoff; assignment and preparation do not celebrate early. Fresh coin results reveal the assigned face over 850ms. A round win pulses the earned win mark and triggers Bonk’s strike; a match win adds a short central confetti burst and a 180ms, 3px bench shake. Faces and captions remain stationary. Animation never controls input, clocks, or phase progression. Idle task surfaces stay still.
+Fresh `floor_opened` events give the active turn surface a 220ms handoff; assignment and preparation do not celebrate early. Fresh coin results reveal the assigned face over 850ms. A round win pulses the earned win mark and triggers Bonk’s strike; a match win adds a short central confetti burst and a 180ms, 3px bench shake. Faces and captions remain stationary. Animation never controls input, clocks, or phase progression. Idle task surfaces stay still.
 
-Effects share a gain control with “Bonk & effects.” Muting stops active or scheduled effect nodes. Clustered score sounds are throttled, effects duck beneath player/judge speech; friend audio is never automatically ducked or muted, and suspended audio is not replayed later. The reduced-motion setting follows the system preference unless overridden. It disables CSS transitions and animations, hides confetti, updates totals immediately, and keeps static +X notices and state labels. It removes Bonk’s idle bob, blink, and strike; gaze and mouth state still communicate game state.
+Effects share a gain control with “Bonk & effects.” Muting stops active or scheduled effect nodes. Clustered score sounds are throttled, effects duck beneath player/judge speech; friend audio is never automatically ducked or muted, and suspended audio is not replayed later. Reduced motion follows the system preference automatically, including changes during play; there is no manual setting. It disables CSS transitions and animations, hides confetti, updates totals immediately, and keeps static +X notices and state labels. It removes Bonk’s idle bob, blink, and strike; gaze and mouth state still communicate game state.
 
 The stage uses a matching static Bonk image during loading or rendering failure. That decorative image does not replace room controls, media, captions, or game facts. It is an export of the actual model, not a substitute player image.
 
@@ -361,11 +403,11 @@ Humanizer review covers the interface, recovery and error messages, fixed host p
 
 Entry has the title, original tagline, labeled name/code fields, and create/join actions. The name input has no redundant placeholder; pending actions say “Creating room…” or “Joining room…”. The joined lobby needs only readiness or a repair action; the invite heading and code appear while alone. Conversation and scoring guidance lives in How to play.
 
-Setup replaces the entry form inline with a live preview, one progress message, a mic meter, and “Say ‘Bonk, hear me out.’” Setup is labeled private once. Hide the disabled checking action while progress is already visible, and omit the repeated transcript echo in setup and the lobby. Device selection and permission guidance appear on demand; one cancellable attempt owns resources, and retries reuse successful checks. Coin text explains the assigned role once. Confirmation keeps the full proposition and both sides visible, followed by Confirm my side and the rejection action. After confirmation, one message names the friend who has yet to confirm.
+Setup replaces the entry form inline with a live preview, one progress message, a mic meter, and “Say anything to test your mic.” Setup is labeled private once. Hide the disabled checking action while progress is already visible, and omit the repeated transcript echo in setup and the lobby. Device selection and permission guidance appear on demand; one cancellable attempt owns resources, and retries reuse successful checks. Coin text explains the assigned role once. Confirmation keeps the full proposition and both sides visible, followed by Confirm my side and the rejection action. After confirmation, one message names the friend who has yet to confirm.
 
-User-written topics, sides, names, transcripts, generated verdict reasons, and Bonk’s spoken scripts remain verbatim during interface copy work.
+Player names, transcripts, and Bonk’s spoken scripts remain verbatim during interface copy work. Topics and sides come from the existing preset list.
 
-Results give the winner, outcome, and reason, with any tie-break explanation shown once. Ready badges on the player cards show rematch decisions. After voting, the action says “Waiting for Sam” only while the healthy friend has not voted. Both-ready or device-blocked waits say “Rematch queued”; genuine blockers and repair actions stay visible. Both-ready announces “Both ready. Rematch queued.” Bonk’s caption row owns his playback status, and the server starts the next match after both clients finish his line. The central verdict owns the winner, reason, and any necessary tie-break explanation; player cards retain scores and earned win marks without repeating “Round winner” or “Round complete”. Rules, scoring facts, accessibility labels, and useful recovery instructions remain intact.
+Result panels show a concise winner or draw headline, a brief gavel accent, match score, and rematch or recovery actions. The panel does not repeat verdict reasons; Bonk still speaks his explanation and accessible captions retain every word. Seat colors accent wins; draws celebrate both players. Round-score ties give both players a win, and simultaneous qualification at two wins draws the match. Card voice indicators remain available. Ready badges and rematch waiting/queued states preserve their existing readiness semantics. The rules dialog contains three short play instructions, with no rubric or motion setting.
 
 ## Do's and Don'ts
 
@@ -387,3 +429,59 @@ Results give the winner, outcome, and reason, with any tie-break explanation sho
 - **Don't** replace the approved Bungee and Space Grotesk pairing or the toy-gavel identity as a routine extension.
 - **Don't** hide instructions, captions, or essential controls inside the decorative 3D scene.
 - **Don't** turn screenshot coverage or a local performance sample into a general accessibility, device-support, or frame-rate claim.
+
+## Historical review notes
+
+The dated notes below record earlier review decisions and their original validation scope. They are retained as history, not a separate source of current control or typography values; use the structured definitions and corresponding guidance above for those values. Historical measurements do not establish physical-device, live-provider or public-production readiness. Current qualification limits remain in [PRODUCT.md](PRODUCT.md) and [browser validation](tests/browser/README.md).
+
+### Saved-comment refinement · 2026-10-31
+
+On tall phones (width ≤700px, height >740px), videos retain a 3:4 portrait ratio, capped at 240px, across phases at the same viewport; the phone court is capped at 440px so tiles cannot become excessively tall near the tablet breakpoint. Short phones cap video at 96px, and short landscape remains compact. The shared caption lane is 96px normally and 88px on short phones. Full-text fallbacks remain available through the bounded Transcript reader; the phone excerpt follows text locally while gestures scroll the shared lower region. Live phrases use the same reserved lane. Desktop/tablet seat colors, full names, shared rows, and stable media mounting remain intact.
+
+Entry switching uses a full-width secondary action. Setup has an 80–144px hero sized from available phone space, no tagline/credit, and a stable preview area shared by missing-camera artwork and live video. Expanded device help removes the decorative hero. The mic prompt is “Say anything to test your mic.”; successful transcription is still required. The regular home diorama retains aspect-aware complete-scene framing.
+
+Topics are presets only. Coin copy reads “Heads. You go first.” and “Tails. You choose.” Ordinary turn text and redundant next-turn copy are visually removed while accessible speaker/stage announcements remain. Timers, I’m done, active-card highlighting, Bonk state, captions, settlement, and recovery messages remain explicit.
+
+Result headings place the centered winner/draw title and match score directly on the courtroom, without a static gavel emblem. Recovery actions and Device help stack vertically on every screen. Desktop/tablet verdict headings and help instructions use bounded reading regions. On phones, verdicts, actions and expanded help scroll together below the fixed cards. Decorative Bonk disappears with expanded phone setup help; the preview area stays mounted and height-bounded.
+
+### Saved-review refinements · November 2026
+
+The toy courtroom remains the visual authority. Setup groups center in spare space. The preview is 160px desktop, 112–200px on tall phones, and 96px on short phones regardless of device stage. Expanded help and keyboard entry use compact previews and hide decoration. Entry/setup help instructions scroll independently, with retry and Back outside their reading region. In-room phone help expands inside the shared lower region. Phone video frames fill the card width with centered cover cropping. Tall phones retain the lobby’s 3:4 portrait height, capped at 240px, in every phase; short phones use 96px. Task content yields space to these fixed video tracks. Definite grid tracks allocate the heading, cards/task, captions, notifications and dock. The page and courtroom do not scroll; exceptional content uses keyboard-accessible bounded regions. Short landscape uses the three-column court with the decorative stage hidden to retain reachable task controls.
+
+Topics use cream, plum-outlined tactile choices; sides use equally weighted pink and cyan treatments. Ready to argue and side choices retain arrows. Accepted Ready, Confirm my side, Confirmed and I’m done retain checkmarks. Pending, entry, repair and retry actions are text-only. Available Rematch includes a trailing replay arrow; queued or waiting rematches are text-only. Pending text, busy states, cancellation and acknowledgements remain explicit. Primary controls use a dedicated #B8E51C lime token, plum text, and a 48px height/12px radius (44px on short screens). Secondary controls use plum with cream text. Pink/cyan side choices retain equal weight; hover does not move hit areas. Seat and character colors remain unchanged. The timer is a compact track directly above I’m done, 78% of available width up to 220px, with a readable seconds badge and a single 420ms bounce at newly crossed five-second milestones. It never replays missed milestones after pause or backgrounding.
+
+Results sit directly on the court, with persistent seat-colored winner/draw text and a brief text entrance and Bonk strike from fresh feedback only. Recovery controls keep their own cream grouping. Draws celebrate both seats. Shared notices use the same type, padding, radius and icon treatment; short copy feedback fits its content. Peer connection status belongs to Friend audio, and departed-seat status belongs to that card. Privacy icons remain recognizable and labeled.
+
+The caption lane reveals provider-aligned segments at the device's rendered audio position. Player captions reveal current recognized text, including ASR corrections. The whole nonempty caption surface is a native button opening the bounded Transcript dialog through Enter/Space or touch. Its descriptive accessible name and inset focus outline are independent of full-text live announcements. The visual text viewport is excluded from sequential focus to avoid Chromium adding a second stop inside the button. Both live text and the selected transcript automatically follow additions or corrections, even after manual scrolling. Unchanged text stays stationary. A new utterance/replay resets live reading; a freshly opened reader starts at the beginning and remains attached to its selected utterance. Full text remains keyboard-scrollable in the reader. On dismissal, focus resolves to the current visible, enabled caption surface, falling back to the room shell's persistent media trigger if captions have cleared. Leaving the room does not focus detached controls or override the destination screen. Reduced motion preserves all information without movement, and no animation controls media, timing, or game state.
+
+Review 411 retains the reserved 96px caption lane (88px on short phones, 64px in short landscape). Result score stays on its own nonwrapping row beneath the centered headline. Desktop/tablet long result headings can scroll while the recovery/rematch action remains outside that region; on phones, the complete result and recovery content scroll together. Authored copy uses “Two friends. Zero chill.” and “Speak when your card lights up. Tap ‘I’m done’ to finish.” Contextual recovery icons derive from readiness capabilities, never message text.
+
+### Review 174: prominent faces and useful control cues
+
+Home hero and form center as one content-sized group, with a 16px phone gap. Entry/setup Device help is left-aligned; room recovery stays centered. Expanded phone help retains a 112px preview on tall screens and 80px on short screens or during keyboard entry. The preview node stays mounted.
+
+Phone cards anchor above one lower task region with a 12px gap. Active-round scored cards retain the shared award allowance; phase changes, captions, notices, results and recovery never reduce the video dimensions. Excess task content scrolls internally. Completed matches omit the redundant topic/round heading. Topic selection can use a 420px desktop center column (30vw), preserving equal player columns; long text still wraps.
+
+Phone result/recovery captions use a 44px “Bonk · Transcript” control, with full text and live announcements retained. The same trigger and reader stay mounted through responsive changes. Notices retain their pinned footer area without imposing special topic-heading height caps. Ordinary propositions and round labels remain complete. Both-device recovery uses a single warning symbol beside explicit device copy; the media trigger retains both device icons.
+
+Phones up to 800px high compact header, card padding and action spacing, while the video-size cutoff remains 740px: 741–800px phones still keep the full portrait tiles. Their gameplay caption lane is 64px. Phone timers place the small seconds badge beside the track, together above I’m done. Tasks, result headings, actions and expanded in-room help have natural heights inside the single lower scroll region; they do not create nested scroll containers. The transcript dialog retains its separate reader.
+
+### Review 163: complete phone recovery surfaces
+
+At widths through 700px, the fixed shell allocates the heading, shared player-card rows, one keyboard-focusable lower reading region, then pinned notifications and controls. The lower region contains Bonk, task/recovery content, actions and nonempty captions. New phase/round/turn/topic identities reset it to the top; updates to the same task retain its position. Native focus scrolling keeps help selectors reachable. Expanded help follows the verdict and recovery action in reading order. Phone caption following only moves the caption text viewport or dialog reader, never the court.
+
+Normal 390×844 videos remain 173×230.67px; 360×640 videos remain 158×96px. A 16px heading-to-card gap and 12px card-to-task gap leave ordinary collapsed recovery panels fully visible. The active scoring award lane remains stable; other phases release unused award space. Interrupted/recovering panels use the full phone width and no decorative Bonk column. Their small contextual icon shares a row with a short heading; longer headings wrap onto a full-width row below the icon. While a software keyboard constrains the viewport, compact 64px video and card chrome keep focused controls reachable; dismissal restores the original video geometry. Short landscape retains a bounded task region that can scroll both timer and completion action into view.
+
+Control tokens distinguish available lime (#B8E51C), pending pale lime (#E5FF91), accepted/waiting warm beige (#EFDFBA), unavailable beige (#DACDAF with #615067 text), and secondary plum/cream. Accepted Ready, Confirmed and acknowledged rematch votes derive their class from existing server decision state and have no active shadow. Available win/draw Rematch includes the existing decorative replay arrow; pending and accepted votes remain text-only.
+
+### Review 62: balanced initial phone composition
+
+The phone header and topic/round heading stay at the top. Within the remaining room area, cards and initially visible task/caption content center as one group when they fit. A local placement helper applies nonnegative top padding, calculated from natural content height; oversized tasks use zero offset and the existing single lower scroller. A changed repair action/icon/capability is a new task, so a larger repair panel does not inherit another task's top padding. No task-height caps or video reductions are introduced.
+
+Placement is stable while captions change, score feedback appears, labels acknowledge a request, or Device help expands. Viewport, keyboard, pinned-notification height and font changes may recalculate it. Notification changes alter the available room area; the lower content’s own growth does not. Returning to a previously measured viewport restores that task's placement even if help is now expanded. Keyboard-open layout uses zero centering padding and the existing compact card treatment; local focus clearance scrolls only the lower region. The intrinsic wrapper uses `display: contents` outside the phone breakpoint, preserving tablet and desktop grids and mounted media/readers.
+
+Nonempty phone captions and compact transcript surfaces have one 16px gap after the Bonk/task group. Empty captions add no gap. The decorative phone stage has stable 100px bounds (64px in short landscape) across lazy loading and fallback, so asset readiness does not change the initial measurement. Existing camera framing is unchanged. Phone recovery panels wrap their icon and heading intrinsically: short headings stay beside the icon, while longer headings receive the full inner width. Complete text wraps naturally at narrower widths without truncation or smaller type.
+
+## Responsive cascade maintenance
+
+`src/style.css` keeps base presentation before the responsive sections: desktop, compact desktop height, stacked tablet, phone composition, constrained phone height, short landscape, phone task surfaces, portrait boundaries, keyboard overrides, then reduced motion. Phone task surfaces intentionally follow height budgets so the single lower scroll region owns overflowing content. Keyboard overrides follow those surfaces, and reduced motion retains final precedence. Shared conditions are grouped without increasing selector specificity. Preserve this order when a width and height condition intersect; validate both sides of each boundary before changing it.

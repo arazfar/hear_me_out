@@ -9,13 +9,22 @@ test("Fish voice streams odd PCM chunks with the requested identity, prosody, an
   let request: any, signal: AbortSignal | undefined;
   const chunks: Int16Array[] = [];
   globalThis.fetch = async (_url, init) => {
+    assert.equal(_url, "https://api.fish.audio/v1/tts/stream/with-timestamp");
     request = JSON.parse(init!.body as string);
     signal = init!.signal as AbortSignal;
     return new Response(
       new ReadableStream({
         start(c) {
-          c.enqueue(new Uint8Array([0, 64, 0]));
-          c.enqueue(new Uint8Array([128, 255, 127]));
+          c.enqueue(
+            new TextEncoder().encode(
+              'data: {"audio_base64":"AEAA","alignment":null}\n\n',
+            ),
+          );
+          c.enqueue(
+            new TextEncoder().encode(
+              'data: {"audio_base64":"gP9/","alignment":null}\n\n',
+            ),
+          );
           c.close();
         },
       }),
@@ -59,8 +68,16 @@ test("Fish cancellation drops the rest of the response instead of forwarding buf
     new Response(
       new ReadableStream({
         start(c) {
-          c.enqueue(new Uint8Array([0, 64]));
-          c.enqueue(new Uint8Array([0, 64]));
+          c.enqueue(
+            new TextEncoder().encode(
+              'data: {"audio_base64":"AEA=","alignment":null}\n\n',
+            ),
+          );
+          c.enqueue(
+            new TextEncoder().encode(
+              'data: {"audio_base64":"AEA=","alignment":null}\n\n',
+            ),
+          );
           c.close();
         },
       }),

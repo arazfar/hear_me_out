@@ -281,11 +281,11 @@ test("gameplay commands cannot be sent while connection state is uncertain", (t)
     sent.push(data);
   };
   f.client.connection.phase = "connecting";
-  f.client.command({ type: "ready", value: true });
+  f.client.command({ type: "ready" });
   f.client.command({ type: "rematch", value: true });
   f.client.command({ type: "done", turnId: "stale", lastAudioSeq: 0 });
   assert.equal(sent.length, 0);
   f.client.connection.phase = "connected";
-  f.client.command({ type: "ready", value: true });
+  f.client.command({ type: "ready" });
   assert.equal(sent.length, 1);
 });

@@ -22,7 +22,9 @@ g.confirm(b.id, 1);
 const t = g.state.turn!;
 const chunks: Buffer[] = [];
 const ttsAt = Date.now();
-let first = 0;
+let first = 0,
+  alignmentAt = 0,
+  alignedSegments = 0;
 await streamVoice(
   "Waffles trap syrup in pockets, so every bite gets sweetness instead of the last bite swimming in a puddle.",
   (pcm) => {
@@ -31,10 +33,16 @@ await streamVoice(
   },
   () => false,
   12,
+  (cues) => {
+    alignmentAt ||= Date.now();
+    alignedSegments = cues.length;
+  },
 );
 console.log(
   JSON.stringify({
     ttsFirstChunkMs: first - ttsAt,
+    ttsFirstAlignmentMs: alignmentAt ? alignmentAt - ttsAt : null,
+    alignedSegments,
     audioBytes: chunks.reduce((n, b) => n + b.length, 0),
   }),
 );

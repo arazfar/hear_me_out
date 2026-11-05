@@ -15,7 +15,9 @@
     "verify:judge": "tsx scripts/judge-check.ts",
     "verify:match": "tsx scripts/socket-check.ts",
     "verify:idle": "tsx scripts/idle-check.ts",
-    "test:ui": "playwright test"
+    "test:ui": "playwright test",
+    "ui:review": "node tools/ui-review/server.mjs",
+    "test:ui-review": "node --test tools/ui-review/tests/*.test.mjs && playwright test --config tools/ui-review/playwright.config.mjs"
   },
   "dependencies": {
     "@cartesia/cartesia-js": "4.2.0",

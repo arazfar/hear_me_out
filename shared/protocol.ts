@@ -3,8 +3,9 @@ import {
   roundResultSchema,
   scoreEventSchema,
   snapshotSchema,
+  SUGGESTIONS,
 } from "./domain.js";
-export const PROTOCOL_VERSION = 4;
+export const PROTOCOL_VERSION = 6;
 export const commandEnvelopeSchema = z
   .object({
     commandId: z.string().max(80),
@@ -12,7 +13,7 @@ export const commandEnvelopeSchema = z
     matchId: z.string().nullable(),
     expectedPhaseVersion: z.number().int(),
     command: z.discriminatedUnion("type", [
-      z.object({ type: z.literal("ready"), value: z.boolean() }).strict(),
+      z.object({ type: z.literal("ready") }).strict(),
       z
         .object({
           type: z.literal("media_status"),
@@ -46,9 +47,8 @@ export const commandEnvelopeSchema = z
       z
         .object({
           type: z.literal("propose_topic"),
-          text: z.string().min(1).max(160),
-          chosenPosition: z.string().max(100),
-          suggestion: z.string().optional(),
+          suggestion: z.enum(SUGGESTIONS.map((s) => s.id)),
+          chosenPosition: z.enum(["positive", "negative"]),
         })
         .strict(),
       z
@@ -168,6 +168,7 @@ export const eventPayloads = {
   judge_thinking: z.null(),
   judge_idle: z.null(),
   judge_buffer: z.null(),
+  judge_alignment: z.null(),
   judge_finished: z.null(),
   voice_recovery: z.null(),
   recovery: z.null(),
@@ -235,6 +236,7 @@ export const gameEventSchema = z.union([
   event("judge_thinking"),
   event("judge_idle"),
   event("judge_buffer"),
+  event("judge_alignment"),
   event("judge_finished"),
   event("voice_recovery"),
   event("recovery"),

@@ -116,12 +116,28 @@ export type Claim = z.infer<typeof claimSchema>;
 export const roundResultSchema = z.object({
   round: z.number().finite(),
   roundId: z.string(),
-  winnerId: z.string(),
+  winnerId: z.string().nullable(),
   scores: z.record(z.string(), z.number().finite()),
   reason: z.string(),
-  tieBreak: z.union([z.string(), z.null()]),
 });
 export type RoundResult = z.infer<typeof roundResultSchema>;
+// Cue offsets refer to the original 44.1 kHz PCM, independent of output rate.
+export const captionCueSchema = z
+  .object({
+    text: z.string().min(1).max(500),
+    start: z.number().int().min(0).max(882000),
+    end: z.number().int().min(0).max(882000),
+  })
+  .refine((cue) => cue.end >= cue.start);
+export type CaptionCue = z.infer<typeof captionCueSchema>;
+export const captionAlignmentSchema = z
+  .object({
+    revision: z.number().int().nonnegative(),
+    cues: z.array(captionCueSchema).max(512),
+  })
+  .refine(
+    (value) => value.cues.reduce((n, cue) => n + cue.text.length, 0) <= 12000,
+  );
 export const judgeStateSchema = z.object({
   id: z.string(),
   epoch: z.number().finite(),
@@ -137,6 +153,7 @@ export const judgeStateSchema = z.object({
   targetPlayerId: z.union([z.string(), z.null()]),
   cueAt: z.number().finite().optional(),
   turnDoneAt: z.number().finite().optional(),
+  alignment: captionAlignmentSchema.optional(),
 });
 export type JudgeState = z.infer<typeof judgeStateSchema>;
 export const snapshotSchema = z.object({
@@ -246,4 +263,19 @@ export function scoreShare(
   const a = players[0].scoreUnits,
     b = players[1].scoreUnits;
   return a + b ? a / (a + b) : 0.5;
+}
+
+/** Only completed results have an outcome; null winners in other phases are not draws. */
+export function completedOutcome(
+  state: Snapshot,
+): { winnerId: string | null; playerIds: string[]; final: boolean } | null {
+  const final = state.phase === "MATCH_RESULT";
+  const result = state.results.at(-1);
+  if (!final && (state.phase !== "ROUND_RESOLVE" || !result)) return null;
+  const winnerId = final ? state.winnerId : result!.winnerId;
+  return {
+    winnerId,
+    final,
+    playerIds: winnerId ? [winnerId] : state.players.map((p) => p.id),
+  };
 }

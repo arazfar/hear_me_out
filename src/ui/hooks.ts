@@ -33,7 +33,7 @@ export function useDecision(state: Snapshot) {
             next.matchId !== current.matchId ||
             (command.type === "ready" &&
               next.players.find((p) => p.id === current.playerId)?.ready ===
-                command.value) ||
+                true) ||
             (command.type === "rematch" &&
               next.rematchReady.includes(current.playerId) === command.value) ||
             (command.type === "confirm_topic" &&
@@ -88,7 +88,6 @@ export function useServerNow() {
   return now;
 }
 export function useReducedMotion() {
-  const [override, setOverride] = useState<boolean | null>(null);
   const [system, setSystem] = useState(
     () => matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
@@ -98,5 +97,46 @@ export function useReducedMotion() {
     query.addEventListener("change", change);
     return () => query.removeEventListener("change", change);
   }, []);
-  return [override ?? system, setOverride] as const;
+  return system;
+}
+
+/** iOS keyboards resize the visual viewport, not necessarily the layout viewport.
+ * Only constrain the shell while editing at normal scale; never counteract pinch zoom.
+ */
+export function useKeyboardViewport() {
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const editing = document.activeElement?.matches(
+          'input:not([type]), input[type="text"], input[type="search"], input[type="number"], input[type="tel"], input[type="email"], input[type="url"], input[type="password"], textarea, select, [contenteditable="true"]',
+        );
+        const keyboard =
+          editing &&
+          viewport.scale === 1 &&
+          viewport.height < window.innerHeight - 100;
+        if (keyboard) {
+          document.documentElement.style.setProperty(
+            "--keyboard-height",
+            `${viewport.height}px`,
+          );
+          document.activeElement?.scrollIntoView({ block: "nearest" });
+        } else
+          document.documentElement.style.removeProperty("--keyboard-height");
+      });
+    };
+    viewport.addEventListener("resize", update);
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", update);
+    return () => {
+      cancelAnimationFrame(frame);
+      viewport.removeEventListener("resize", update);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", update);
+      document.documentElement.style.removeProperty("--keyboard-height");
+    };
+  }, []);
 }

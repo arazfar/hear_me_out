@@ -36,12 +36,13 @@ export async function command(
       "The stage moved on. Try again with the current screen.",
     );
   room.lastActiveAt = Date.now();
-  if ((c.type === "ready" || c.type === "rematch") && c.value)
+  if (c.type === "ready" || (c.type === "rematch" && c.value))
     room.readiness.tick();
   if (c.type === "ready" || c.type === "rematch") {
-    const denied = c.value && registry.matchAdmissionError(room);
+    const denied =
+      (c.type === "ready" || c.value) && registry.matchAdmissionError(room);
     if (denied) throw new RuleError(denied);
-    if (c.type === "ready") game.ready(id, c.value);
+    if (c.type === "ready") game.ready(id);
     else game.rematch(id, c.value);
   } else if (c.type === "media_status") room.media.mediaStatus(id, c);
   else if (c.type === "setup_start")
@@ -53,41 +54,14 @@ export async function command(
       !["TOPIC_SELECT", "TOPIC_CONFIRM"].includes(game.state.phase)
     )
       throw new RuleError("Tails picks the topic.");
-    room.topicRequest?.abort();
-    const request = (room.topicRequest = new AbortController());
-    const matchId = game.state.matchId;
-    const version = game.state.phaseVersion;
-    const epoch = seat.epoch;
     const suggestion = SUGGESTIONS.find((s) => s.id === c.suggestion);
-    const t = suggestion
-      ? { safe: true, ...suggestion }
-      : await room.services.normalizeTopic(
-          c.text,
-          c.chosenPosition,
-          request.signal,
-        );
-    if (
-      room.closed ||
-      request.signal.aborted ||
-      room.topicRequest !== request ||
-      seat.epoch !== epoch ||
-      room.seats.get(id) !== seat ||
-      matchId !== game.state.matchId
-    )
-      throw new RuleError("Topic selection was replaced.");
-    room.topicRequest = null;
-    if (!t.safe)
-      throw new RuleError(
-        "Pick a harmless disagreement, not a targeted attack.",
-      );
-    if (version !== game.state.phaseVersion)
-      throw new RuleError("Topic selection expired.");
+    if (!suggestion) throw new RuleError("Choose one of the available topics.");
     game.proposeTopic(
       id,
-      t.proposition,
-      t.positive,
-      t.negative,
-      c.chosenPosition !== "negative",
+      suggestion.proposition,
+      suggestion.positive,
+      suggestion.negative,
+      c.chosenPosition === "positive",
     );
   } else if (c.type === "confirm_topic") game.confirm(id, c.topicRevision);
   else if (c.type === "reject_topic") game.reject(id, c.topicRevision);

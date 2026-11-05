@@ -1,3 +1,4 @@
+import { clickMedia, closeMedia } from "./media-controls";
 import { test, expect } from "@playwright/test";
 import type { Snapshot } from "../../shared/domain";
 
@@ -270,7 +271,7 @@ test("frozen live cameras require replacement and never resume on cached frames"
     await expect
       .poll(async () => (await state()).players.every((p) => p.mediaReady))
       .toBe(true);
-    await a.getByRole("button", { name: "Mic on", exact: true }).click();
+    await clickMedia(a, "Mic on");
     await expect(
       a.getByRole("button", { name: "Turn mic on", exact: true }),
     ).toBeVisible();
@@ -282,6 +283,7 @@ test("frozen live cameras require replacement and never resume on cached frames"
     ).toHaveCount(0);
     await expect(b.locator(".lobby")).toContainText("Waiting for Alex’s mic.");
     await a.screenshot({ path: root + `/lobby-mute-${info.project.name}.png` });
+    await closeMedia(a);
     await a.getByRole("button", { name: "Turn mic on", exact: true }).click();
     await a
       .getByRole("button", { name: "Ready to argue", exact: true })

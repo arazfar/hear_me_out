@@ -14,12 +14,9 @@ function DecisionClock({ deadline }: { deadline: number | null }) {
   ) : null;
 }
 export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
-  const [custom, setCustom] = useState(false),
-    [topic, setTopic] = useState(""),
-    [position, setPosition] = useState(""),
-    [suggestion, setSuggestion] = useState<(typeof SUGGESTIONS)[number] | null>(
-      null,
-    );
+  const [suggestion, setSuggestion] = useState<
+    (typeof SUGGESTIONS)[number] | null
+  >(null);
   const { pending, error, submit } = useDecision(state);
   const selecting = state.phase === "TOPIC_SELECT";
   useEffect(() => {
@@ -37,56 +34,8 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
       {selecting ? (
         choosing ? (
           <>
-            <h2>
-              {custom
-                ? "Your topic"
-                : suggestion
-                  ? "Pick your side"
-                  : "Pick a topic"}
-            </h2>
-            {custom ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  submit({
-                    type: "propose_topic",
-                    text: topic.trim(),
-                    chosenPosition: position.trim(),
-                  });
-                }}
-              >
-                <label htmlFor="proposition">The argument</label>
-                <input
-                  id="proposition"
-                  value={topic}
-                  maxLength={160}
-                  placeholder="Cats are better roommates than dogs"
-                  onChange={(e) => setTopic(e.target.value)}
-                  required
-                  disabled={!!pending}
-                />
-                <label htmlFor="position">Your side</label>
-                <input
-                  id="position"
-                  value={position}
-                  maxLength={80}
-                  placeholder="I’m defending cats"
-                  onChange={(e) => setPosition(e.target.value)}
-                  required
-                  disabled={!!pending}
-                />
-                <button
-                  className="primary"
-                  disabled={!topic.trim() || !position.trim() || !!pending}
-                  aria-busy={pending?.type === "propose_topic"}
-                >
-                  {pending?.type === "propose_topic"
-                    ? "Proposing…"
-                    : "Propose it"}
-                  <Icon name="arrow" />
-                </button>
-              </form>
-            ) : suggestion ? (
+            <h2>{suggestion ? "Pick your side" : "Pick a topic"}</h2>
+            {suggestion ? (
               <>
                 <p className="topic-proposition">{suggestion.proposition}</p>
                 <div className="suggestions side-options">
@@ -102,7 +51,6 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
                       onClick={() =>
                         submit({
                           type: "propose_topic",
-                          text: suggestion.proposition,
                           chosenPosition: side,
                           suggestion: suggestion.id,
                         })
@@ -112,7 +60,7 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
                       pending.chosenPosition === side
                         ? "Proposing…"
                         : suggestion[side]}
-                      <Icon name="arrow" />
+                      {!pending && <Icon name="arrow" />}
                     </button>
                   ))}
                 </div>
@@ -126,20 +74,19 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
                     onClick={() => setSuggestion(s)}
                   >
                     {s.label}
-                    <Icon name="arrow" />
                   </button>
                 ))}
               </div>
             )}
-            <button
-              className="text-button"
-              disabled={!!pending}
-              onClick={() =>
-                suggestion ? setSuggestion(null) : setCustom((v) => !v)
-              }
-            >
-              {custom || suggestion ? "Back to suggestions" : "Write your own"}
-            </button>
+            {suggestion && (
+              <button
+                className="text-button"
+                disabled={!!pending}
+                onClick={() => setSuggestion(null)}
+              >
+                Back to suggestions
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -155,7 +102,9 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
         <>
           {waiting && <p>{waiting}</p>}
           <button
-            className="primary"
+            className={
+              "primary" + (confirmed && !pending ? " accepted-button" : "")
+            }
             disabled={confirmed || !me || !!pending}
             aria-busy={pending?.type === "confirm_topic"}
             onClick={() =>
@@ -170,7 +119,7 @@ export function TopicView({ state, me }: { state: Snapshot; me?: Player }) {
               : confirmed
                 ? "Confirmed"
                 : "Confirm my side"}
-            <Icon name="check" />
+            {!pending && <Icon name="check" />}
           </button>
           <button
             className="text-button"

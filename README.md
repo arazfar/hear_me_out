@@ -2,7 +2,7 @@
 
 Two friends, one ridiculous argument, and the Honorable Bonk: a mischievous toy-gavel judge who scores what was actually said and challenges a friend to answer it.
 
-A party game targeting desktop Chrome, Android Chrome, and iPhone Safari, with prominent live faces, microphone checks, four-digit rooms, a procedural Three.js courtroom, free-form topics, live justified scores, shared judge speech, best-of-three matches, and rematch.
+A party game targeting desktop Chrome, Android Chrome, and iPhone Safari, with prominent live faces, microphone checks, four-digit rooms, a procedural Three.js courtroom, preset topics, live justified scores, shared judge speech, best-of-three matches, and rematch.
 
 ## Run
 
@@ -32,9 +32,13 @@ pnpm verify:idle
 
 `TEST_URL` changes the match-test origin. `pnpm exec tsx scripts/health-check.ts` checks HTTP plus authenticated WSS at that origin. Verification scripts are type-checked. Match verification never rewrites public assets unless `EXPORT_REHEARSAL=true` is explicitly set. `CHECK_MODEL` / `CHECK_REASONING` override the judge fixture model. `.env` is ignored; browser bundles contain no provider keys. Captured player recordings are off. Raw media, room state, captions, and claims live in memory and expire with the room.
 
+## UI comparison board
+
+`pnpm ui:review` opens the local review tool server on port 5192. See the [UI review tool guide](tools/ui-review/README.md) for selecting or creating a review, saved feedback, backups, and `pnpm test:ui-review`. Generated reviews stay in ignored `output/ui-review/` storage.
+
 ## Play
 
-Create or join a room to reserve your seat. Allow both devices, check the live preview, and say “Bonk, hear me out.” A final transcript through the gameplay provider confirms the mic check privately. Both cameras must arrive before Ready unlocks. Retrying reuses the seat and valid checks; cancelling releases it. A server coin assigns Heads to open and Tails to choose the topic and their side. Both confirm the explicit proposition. Use headphones.
+Create or join a room to reserve your seat. Allow both devices, check the live preview, and say anything to test your mic. A final transcript through the gameplay provider confirms the mic check privately; silence alone does not pass. Both cameras must arrive before Ready unlocks. Ready is a one-way action, with the server resetting readiness when required devices fail or a new match starts. Retrying reuses the seat and valid checks; cancelling releases it. A server coin assigns Heads to open and Tails to choose a preset topic and their side. Both confirm the explicit proposition. Use headphones.
 
 Every round offers Case → Case → Rebuttal → Rebuttal → two Closings. Heads opens odd rounds; Tails opens round two. Normal turns allow 30 active seconds, Closings 15. Closing order is trailing player first, leader second; the responder closes first when tied. Only “I'm done” or the deadline ends an opportunity. Natural pauses keep the floor. Done closes capture eligibility immediately and acknowledges the action locally; final speech still settles. A turn's final transcripts and in-flight judging are sealed before granting the next floor.
 
@@ -42,7 +46,7 @@ Friends can talk throughout the game, including over Bonk and during the other p
 
 Bonk makes a brief named handoff between opportunities. Copy ends at complete sentences; audio is never trimmed to meet a normal line budget. His full utterance must render and drain on both clients before the next floor opens. A muted Bonk still advances silently. Caption fallback is shared and bounded. Input preparation and settlement hold the timer; the first eligible capture frame, including silence, starts it. Contextual interventions retain their existing 15-second spacing and per-round budgets.
 
-There is no early defeat. After both normal opportunities, a 4–9.75 point deficit opens a focused comeback challenge using the existing ten-point Closing budget. Points reset each round; round wins persist. First to two wins takes the match. Exact ties compare rebuttal, reasoning, impact, wit, then clarity. An exact remaining dead heat is explicitly resolved by a server coin. A stuck round aborts at 240 seconds; reconnects preserve the seat and state for 60 cumulative seconds per round. Aborts never fabricate a judged winner.
+There is no early defeat. After both normal opportunities, a 4–9.75 point deficit opens a focused comeback challenge using the existing ten-point Closing budget. Points reset each round; round wins persist. Exact ties in integer round-score units award both players one round win. First to two wins takes the match; reaching two together produces a drawn match. There is no criterion-based or random tie-break. A stuck round aborts at 240 seconds; reconnects preserve the seat and state for 60 cumulative seconds per round. Aborts never fabricate a judged winner.
 
 ## Readiness and recovery
 
@@ -56,7 +60,7 @@ Explicit mic repair replaces a live track whose source is muted, reusing a healt
 
 Deliberate Leave ends an unfinished match immediately through one room-owned policy shared by HTTP and socket commands. Pending resume requests carry a persisted ID so Leave still releases the seat when the server has accepted resume but its response has not arrived. A newer connection invalidates that authority. Completed verdicts retain their winner after a friend leaves. Sound initialization has a ten-second deadline; worklet downloads are cancellable and retryable without replacing a healthy audio context. Setup cancellation and Leave invalidate pending initialization while preserving resources that already work.
 
-The center label identifies whose turn it is and whether Bonk is preparing, speaking, or finishing. Cards show the listening badge and actual readiness decisions, with round wins beside the name and scores below the video. Full captions wrap below the court and may extend the page. Secondary instructions live in How to play and Device help; setup and recovery keep one current instruction and an actionable repair or cancellation. Rematch readiness appears on the cards, with a named waiting action. Occasional silent Bonk asides reuse the accepted score reason (up to eight words / 80 characters), once per turn and no more than once every six seconds. There is no additional model request or spoken interruption. The internal ledger and scoring rules remain unchanged.
+The active card, listening badge, timer and accessible turn announcement identify the speaker. Visible status explains Bonk's preparation/playback, handoffs, settlement and recovery. Cards show readiness decisions, round wins and current points. The page stays fixed: phones retain their faces above one lower reading region, while exceptional task/help content scrolls internally. Live captions follow rendered Bonk audio alignment or incoming player transcription; the complete caption surface opens a bounded full-transcript reader. Phone result/recovery screens use a compact transcript control. Complete text remains available when alignment or audio is unavailable. Secondary instructions live in How to play and Device help; setup and recovery keep one current instruction and an actionable repair or cancellation. Rematch readiness appears on the cards, with a named waiting action. Occasional silent Bonk asides reuse the accepted score reason (up to eight words / 80 characters), once per turn and no more than once every six seconds. There is no additional model request or spoken interruption.
 
 Private checks retain their identity and deadlines across reconnection. Lost results can be replayed without repeating the check, and private speech cannot become shared captions or score evidence. See [protocol details](docs/PROTOCOL.md) for lifecycle and compatibility rules, and [browser acceptance](tests/browser/README.md) for coverage and reproduction commands.
 
@@ -132,7 +136,7 @@ These measurements describe the earlier revision and do not validate the current
 
 Deploy the client and server together between matches. Keep a matching copy of both `dist/` and `dist-server/` before rebuilding. Rollback must restore both directories and restart the server, then refresh browser pages. Rooms remain deliberately ephemeral: server restarts require a new room. Do not market this beta as public-production ready.
 
-Before widening the beta, complete separate-network physical-device matches in RTC and forced relay, a live-provider rehearsal, and repeated abort/rematch resource checks. Monitor metadata-only transcription failures, active provider transports, microphone rejection reasons, relay-age drops and recovery duration. Authenticated `/api/diagnostics` exposes server counters; the browser client keeps a bounded `relayAudioAgeDrops` counter. Confirm provider connections return to zero after terminal cleanup. These fixes keep protocol 4 and require no data migration.
+Before widening the beta, complete separate-network physical-device matches in RTC and forced relay, a live-provider rehearsal, and repeated abort/rematch resource checks. Monitor metadata-only transcription failures, active provider transports, microphone rejection reasons, relay-age drops and recovery duration. Authenticated `/api/diagnostics` exposes server counters; the browser client keeps a bounded `relayAudioAgeDrops` counter. Confirm provider connections return to zero after terminal cleanup. The current contract is protocol 6, including preset-only proposals, drawn outcomes, one-way Ready and bounded caption alignment. Incompatible clients must refresh. Ephemeral rooms require no database migration.
 
 See [demo and verification notes](docs/DEMO.md) for historical measurements, the demo script, and fallback behavior. A synthetic-audio integration test does not establish real-device human-match quality.
 

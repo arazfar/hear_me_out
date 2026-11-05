@@ -3,12 +3,7 @@ import {
   fixedVoice,
   warmHostVoice,
 } from "../judge/voice-cache.js";
-import {
-  InkSession,
-  judge,
-  normalizeTopic,
-  streamVoice,
-} from "../providers/index.js";
+import { InkSession, judge, streamVoice } from "../providers/index.js";
 export type TranscriptionStream = Pick<
   InkSession,
   "turnId" | "roundId" | "connected" | "closing" | "failed" | "send" | "close"
@@ -18,7 +13,6 @@ export interface RoomServices {
   setTimeout: typeof setTimeout;
   clearTimeout: typeof clearTimeout;
   judge: typeof judge;
-  normalizeTopic: typeof normalizeTopic;
   createTranscription: (
     ...args: ConstructorParameters<typeof InkSession>
   ) => TranscriptionStream;
@@ -33,7 +27,6 @@ export const defaultServices: RoomServices = {
   setTimeout,
   clearTimeout,
   judge,
-  normalizeTopic,
   streamVoice,
   createTranscription: (...args) => new InkSession(...args),
   prepareVoice: (text, seconds) => new PreparedVoice(text, seconds),

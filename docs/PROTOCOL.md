@@ -1,6 +1,6 @@
-# Protocol 4: conversation, input grants, and rendered speech
+# Protocol 6: one-way Ready and aligned speech captions
 
-All four sockets authenticate with protocol version 4: `control`, `audio` (microphone/relay), `video`, and `judge` (Bonk PCM). The first three are required for connection readiness; judge-channel failure repairs independently and cannot stop healthy friend conversation. Incompatible clients receive the existing refresh instruction. No player recordings are stored. Authentication binds commands and media to the reserved seat and current connection epoch.
+All four sockets authenticate with protocol version 6: `control`, `audio` (microphone/relay), `video`, and `judge` (Bonk PCM). The first three are required for connection readiness; judge-channel failure repairs independently and cannot stop healthy friend conversation. Incompatible clients receive the existing refresh instruction. No player recordings are stored. Authentication binds commands and media to the reserved seat and current connection epoch.
 
 ## Microphone ownership and binary format
 
@@ -117,3 +117,19 @@ Recovery keeps separate blockers for each player and capability. Clearing one ca
 `bonk_reaction` links an ID, player, round, turn, and text to an accepted positive score award. The server uses the first suitable reason per turn, at least six seconds apart, while Bonk is silent. Copy is at most eight words and 80 characters. Long/unsuitable reasons keep their normal score award without an aside. No extra provider request is made. Spoken handoffs exclude verbatim shown reasons.
 
 The client verifies award ownership, exact reason, current match/round/turn, fresh sequence, and unused reaction identity. It displays one silent aside for 3.2 seconds with no backlog. Snapshots seed the event cursor; reconnects and remounts never replay historical rewards. Speech, recovery, reset, and visibility changes clear the presentation. The authoritative ledger, fractional score units, 400ms retargetable total, and collision-free award queue are unchanged.
+
+## Preset topics and shared round wins (version 5)
+
+`propose_topic` carries only `suggestion` (one of `waffles`, `sports`, `hotdog`) and `chosenPosition` (`positive` or `negative`). The server derives the proposition and both side labels from its preset list. Missing/unknown IDs, invalid sides, and legacy free-text fields are rejected by the strict command schema. No normalization provider is invoked.
+
+A completed round result has `winnerId: string | null`, exact integer-unit scores, and `reason`; `tieBreak` is removed. A null round winner means equal scores and awards one win to each player. First to two still ends a match: a single qualifying player wins, and simultaneous qualification draws. Only `phase: MATCH_RESULT` with `winnerId: null` denotes a drawn match; null in setup, recovery, or interruption is not a result. Spoken explanations remain available through judge playback and captions.
+
+Version 4 and 5 clients receive the existing incompatible-client refresh instruction. Release client and server version 6 together. Rooms remain ephemeral, with no database migration. Media packet formats and scoring budgets are unchanged.
+
+## One-way Ready and aligned captions (version 6)
+
+`ready` is now the strict command `{type: "ready"}`. Boolean `value` payloads are rejected. The server still checks media readiness and stage admission; repeated requests in the same lobby are idempotent. Only server-owned readiness invalidation or match/lobby reset clears an accepted Ready. Rematch voting is unchanged.
+
+`judge.alignment` is optional and contains `{revision, cues: [{text, start, end}]}`. Offsets are integer samples in the original 44,100 Hz PCM, bounded to the existing 20-second budget. At most 512 cues and 12,000 text characters are accepted. The containing judge ID and epoch identify the utterance/playback attempt. A higher revision replaces the whole cue list, never appends duplicate words. `judge_alignment` is a null-payload event carrying the updated snapshot, coalesced to at most ten updates per second plus the final synthesis flush. Snapshots and cached/replayed audio retain alignment; cancellation and epoch ownership exclude late updates.
+
+Fish's [timestamped SSE endpoint](https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech-stream-with-timestamps) supplies optional chunk-relative alignment, converted to utterance sample offsets. Audio bytes remain ordered and independent of alignment. Invalid/missing metadata falls back to the full text; audio delivery, acknowledgement cadence, readiness, clocks, PCM framing, and completion rules are unchanged. The browser reads a local, output-time sample cursor; visual highlights never drive gameplay or fake provider timing. Player captions still use actual partial/final transcription, with no extra recognition session or private-check publication.

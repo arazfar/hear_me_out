@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "reviewId": "synthetic-review",
+  "revision": 2,
+  "comments": [
+    {
+      "id": "legacy-1",
+      "number": 1,
+      "reviewId": "synthetic-review",
+      "captureId": "entry:desktop:before:0",
+      "screenshot": "images/desktop-before.png",
+      "screenshotSha256": "8b2a55732f45e77f3185b48104053cf6efa64f19403c356528e472a40a4b310a",
+      "scenario": "entry",
+      "viewport": "desktop",
+      "version": "before",
+      "frame": 0,
+      "x": 0.2,
+      "y": 0.2,
+      "text": "",
+      "resolved": false,
+      "deleted": false,
+      "createdAt": 1,
+      "updatedAt": 1
+    },
+    {
+      "id": "legacy-2",
+      "number": 2,
+      "reviewId": "synthetic-review",
+      "captureId": "entry:desktop:before:0",
+      "screenshot": "images/desktop-before.png",
+      "screenshotSha256": "8b2a55732f45e77f3185b48104053cf6efa64f19403c356528e472a40a4b310a",
+      "scenario": "entry",
+      "viewport": "desktop",
+      "version": "before",
+      "frame": 0,
+      "x": 0.4,
+      "y": 0.4,
+      "text": "Keep the clear spacing.",
+      "resolved": true,
+      "deleted": false,
+      "createdAt": 2,
+      "updatedAt": 2
+    },
+    {
+      "id": "legacy-3",
+      "number": 3,
+      "reviewId": "synthetic-review",
+      "captureId": "entry:desktop:before:0",
+      "screenshot": "images/desktop-before.png",
+      "screenshotSha256": "8b2a55732f45e77f3185b48104053cf6efa64f19403c356528e472a40a4b310a",
+      "scenario": "entry",
+      "viewport": "desktop",
+      "version": "before",
+      "frame": 0,
+      "x": 0.6000000000000001,
+      "y": 0.6000000000000001,
+      "text": "Deleted test note",
+      "resolved": false,
+      "deleted": true,
+      "createdAt": 3,
+      "updatedAt": 3
+    }
+  ],
+  "reviewed": {
+    "lobby:desktop": {
+      "value": true,
+      "updatedAt": 1
+    },
+    "lobby:phone": {
+      "value": true,
+      "updatedAt": 2
+    },
+    "entry:desktop": {
+      "value": false,
+      "updatedAt": 3
+    }
+  }
+}

@@ -39,6 +39,7 @@ class JudgePlayback extends AudioWorkletProcessor {
     this.rendering = false;
     this.complete = false;
     this.reportAt = 0;
+    this.captionAt = 0;
   }
   report(type, contextTime) {
     this.port.postMessage({
@@ -95,6 +96,10 @@ class JudgePlayback extends AudioWorkletProcessor {
         this.report("drained", at + 1 / sampleRate);
         break;
       }
+    }
+    if (this.position > 0 && !this.complete && currentTime >= this.captionAt) {
+      this.captionAt = currentTime + 0.04;
+      this.report("cursor", currentTime + out.length / sampleRate);
     }
     if (this.position > 0 && !this.complete && currentTime >= this.reportAt) {
       this.reportAt = currentTime + 0.25;

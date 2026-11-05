@@ -75,8 +75,8 @@ test("a queued rematch rechecks admission at real playback completion, preserves
     messages.push({ id, message: message as ServerMessage });
   await send(a, 0, { type: "rematch", value: true });
   await send(a, 1, { type: "rematch", value: true });
-  await send(b, 0, { type: "ready", value: true });
-  await send(b, 1, { type: "ready", value: true });
+  await send(b, 0, { type: "ready" });
+  await send(b, 1, { type: "ready" });
   assert.equal(count(), 1);
   a.playback.finishSpeech(speech);
   assert.equal(count(), 1);
@@ -127,7 +127,6 @@ test("all readiness arrival orders admit only one room", async (t) => {
       try {
         await send(rooms[Math.floor(action / 2)], action % 2, {
           type: "ready",
-          value: true,
         });
       } catch (error) {
         assert.match((error as Error).message, /stage is occupied/);
@@ -156,8 +155,8 @@ test("deferred lobby and direct aborted rematch starts also use authoritative ad
     expression: "happy",
     targetPlayerId: null,
   });
-  await send(a, 0, { type: "ready", value: true });
-  await send(a, 1, { type: "ready", value: true });
+  await send(a, 0, { type: "ready" });
+  await send(a, 1, { type: "ready" });
   b.game.startMatch();
   a.playback.finishSpeech(speech);
   assert.equal(a.game.state.phase, "LOBBY");

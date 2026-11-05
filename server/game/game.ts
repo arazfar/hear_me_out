@@ -213,16 +213,18 @@ export class Game {
     this.emit("player_joined");
     return p;
   }
-  ready(id: string, value: boolean) {
+  ready(id: string) {
     if (!["LOBBY", "ABORTED"].includes(this.state.phase))
       throw new RuleError("Ready belongs in the lobby.");
     const p = this.player(id);
-    if (value && !p.mediaReady)
+    if (!p.mediaReady)
       throw new RuleError(
         "Finish the mic, camera, and connection check first.",
       );
-    p.ready = value;
-    this.emit("ready_changed");
+    if (!p.ready) {
+      p.ready = true;
+      this.emit("ready_changed");
+    }
     if (
       this.state.players.length === 2 &&
       this.state.players.every((p) => p.connected && p.ready && p.mediaReady) &&
@@ -670,65 +672,51 @@ export class Game {
     this.lastInterventionAt = this.now();
   }
   resolveRound() {
+    if (
+      this.state.phase !== "ROUND" ||
+      this.state.results.some((r) => r.roundId === this.state.roundId)
+    )
+      return;
     const [a, b] = this.state.players;
-    let winner = a.scoreUnits > b.scoreUnits ? a : b,
-      tieBreak: string | null = null;
-    if (a.scoreUnits === b.scoreUnits) {
-      let chosen: Player | undefined;
-      for (const criterion of [
-        "rebuttal",
-        "reasoning",
-        "impact",
-        "wit",
-        "clarity",
-      ] as Criterion[]) {
-        const total = (id: string) =>
-          this.state.ledger
-            .filter(
-              (e) =>
-                e.roundId === this.state.roundId &&
-                e.playerId === id &&
-                e.criterion === criterion,
-            )
-            .reduce((n, e) => n + e.deltaUnits, 0);
-        if (total(a.id) !== total(b.id)) {
-          chosen = total(a.id) > total(b.id) ? a : b;
-          tieBreak = `Tied on points. ${criterion[0].toUpperCase() + criterion.slice(1)} breaks the tie.`;
-          break;
-        }
-      }
-      if (!chosen) {
-        chosen = this.state.players[randomInt(2)];
-        tieBreak =
-          "Tied on points and every criterion. A coin toss decides it.";
-      }
-      winner = chosen;
-    }
-    const decisive = this.state.ledger
-      .filter(
-        (e) => e.roundId === this.state.roundId && e.playerId === winner.id,
-      )
-      .sort((a, b) => b.deltaUnits - a.deltaUnits)[0];
-    const reason =
-      tieBreak ?? decisive?.reason ?? "The higher score wins this round.";
-    winner.wins++;
+    const winner =
+      a.scoreUnits === b.scoreUnits
+        ? null
+        : a.scoreUnits > b.scoreUnits
+          ? a
+          : b;
+    const decisive =
+      winner &&
+      this.state.ledger
+        .filter(
+          (e) => e.roundId === this.state.roundId && e.playerId === winner.id,
+        )
+        .sort((a, b) => b.deltaUnits - a.deltaUnits)[0];
+    const reason = winner
+      ? (decisive?.reason ?? "The higher score wins this round.")
+      : "The round scores are equal, so both players earn a win.";
+    for (const player of winner ? [winner] : [a, b]) player.wins++;
     this.state.results.push({
       round: this.state.round,
       roundId: this.state.roundId!,
-      winnerId: winner.id,
+      winnerId: winner?.id ?? null,
       scores: { [a.id]: a.scoreUnits, [b.id]: b.scoreUnits },
       reason,
-      tieBreak,
     });
     this.state.turn = null;
-    this.state.status = `${winner.name} takes round ${this.state.round}. ${reason}`;
+    this.state.status = winner
+      ? `${winner.name} takes round ${this.state.round}. ${reason}`
+      : `Round tied. ${reason}`;
     this.setPhase("ROUND_RESOLVE", 2200);
     this.emit("round_result", this.state.results.at(-1));
   }
   finishMatch() {
-    const winner = this.state.players.find((p) => p.wins >= 2)!;
-    this.state.winnerId = winner.id;
-    this.state.status = `${winner.name} wins. Case closed.`;
+    const winners = this.state.players.filter((p) => p.wins >= 2);
+    if (!winners.length || this.state.phase === "MATCH_RESULT") return;
+    const winner = winners.length === 1 ? winners[0] : null;
+    this.state.winnerId = winner?.id ?? null;
+    this.state.status = winner
+      ? `${winner.name} wins. Case closed.`
+      : "The match is a draw. Two wins each. Case closed.";
     this.setPhase("MATCH_RESULT");
     this.emit("match_result");
   }

@@ -1,3 +1,4 @@
+import { openMedia, closeMedia } from "./media-controls";
 import {
   test,
   expect,
@@ -238,7 +239,7 @@ test("private mic repair survives the speaker reconnecting without publishing or
       .getByRole("button", { name: "Check mic & camera", exact: true })
       .click();
     await expect(speaker.locator(".setup-status")).toHaveText(
-      "Say ‘Bonk, hear me out.’",
+      "Say anything to test your mic.",
     );
     const checkId = await speaker.evaluate(() =>
       (window as unknown as { faults: Faults }).faults.setupStarts.at(-1)!,
@@ -264,7 +265,7 @@ test("private mic repair survives the speaker reconnecting without publishing or
       )
       .toBeGreaterThan(1);
     await expect(speaker.locator(".setup-status")).toHaveText(
-      "Say ‘Bonk, hear me out.’",
+      "Say anything to test your mic.",
     );
     await shot(speaker, "checking-desktop-" + info.project.name, privateOutput);
     await speaker.setViewportSize({ width: 360, height: 640 });
@@ -786,7 +787,6 @@ test("completed verdict keeps its winner after their seat leaves", async ({
           current.players.map((p) => [p.id, p.scoreUnits]),
         ),
         reason: "That bread hinge makes your case.",
-        tieBreak: null,
       },
     ];
     await a.request.post(baseURL + "/__test/present/" + code, {
@@ -802,14 +802,14 @@ test("completed verdict keeps its winner after their seat leaves", async ({
       },
     });
     await expect(b.locator(".result-panel h2")).toHaveText(
-      "Alex wins the match, 2–0!",
+      "Alex wins the match!",
     );
     await a.getByRole("button", { name: "Leave", exact: true }).click();
     await expect(
       b.getByRole("button", { name: "Back to menu", exact: true }),
     ).toBeVisible();
     await expect(b.locator(".result-panel h2")).toHaveText(
-      "Alex wins the match, 2–0!",
+      "Alex wins the match!",
     );
     await expect(
       b.locator(".result-panel .device-check, .decision-clock"),
@@ -870,6 +870,7 @@ test("device repair preserves privacy choices made during acquisition until expl
           ),
         )
         .toBe(true);
+      await openMedia(a);
       const privacy = a
         .locator(".device-controls button")
         .nth(repair === "camera" ? 0 : 1);
@@ -1053,7 +1054,9 @@ test("Leave releases a server-accepted resume while its response is still pendin
     held = undefined;
     // Health updates still have legitimate room sequences after departure.
     // They must not change the outcome or revive the departed connection.
+    await openMedia(b);
     await b.getByRole("button", { name: /^Mic (on|paused)$/ }).click();
+    await closeMedia(b);
     await expect
       .poll(async () =>
         (await state()).players[0].readiness?.blockers.includes("microphone"),

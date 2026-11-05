@@ -1,3 +1,5 @@
+import { clickMedia, openMedia, closeMedia } from "./media-controls";
+import { checkKeyboardViewport } from "./keyboard-viewport";
 import { decodeMicrophone } from "../../shared/media";
 import {
   test,
@@ -9,7 +11,8 @@ import { mkdir } from "node:fs/promises";
 import { points, type Snapshot } from "../../shared/domain";
 import { syntheticMicrophone } from "./synthetic-media";
 import { finishBrowserTest } from "./cleanup";
-const root = "output/playwright/ready-together/after";
+const root =
+  process.env.UI_SCREENSHOT_DIR || "output/playwright/ready-together/after";
 async function snapshot(
   request: APIRequestContext,
   code: string,
@@ -35,7 +38,10 @@ async function enter(a: Page, b: Page, baseURL: string) {
 async function shot(page: Page, name: string) {
   await page.bringToFront();
   await page.evaluate(() => document.fonts.ready);
-  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    document.querySelector(".room-scroll")?.scrollTo(0, 0);
+  });
   // Let the camera resize and the 400ms score tally settle before capturing.
   await page.waitForTimeout(650);
   await page.screenshot({
@@ -46,15 +52,43 @@ async function shot(page: Page, name: string) {
 }
 async function noOverlap(page: Page) {
   const overlap = await page.evaluate(() => {
+    // Exceptional content now scrolls inside bounded panels. Measure the
+    // painted portion, rather than offscreen descendants behind a scroll clip.
+    // Ordinary-state tests separately require no court or task scrolling.
+    const visibleBounds = (node: Element) => {
+      const box = node.getBoundingClientRect();
+      let { left, right, top, bottom } = box;
+      for (
+        let parent = node.parentElement;
+        parent;
+        parent = parent.parentElement
+      ) {
+        const style = getComputedStyle(parent),
+          clip = parent.getBoundingClientRect();
+        if (style.overflowX !== "visible") {
+          left = Math.max(left, clip.left);
+          right = Math.min(right, clip.right);
+        }
+        if (style.overflowY !== "visible") {
+          top = Math.max(top, clip.top);
+          bottom = Math.min(bottom, clip.bottom);
+        }
+      }
+      return new DOMRect(
+        left,
+        top,
+        Math.max(0, right - left),
+        Math.max(0, bottom - top),
+      );
+    };
     const face = [...document.querySelectorAll(".face")].map((n) =>
-      n.getBoundingClientRect(),
+      visibleBounds(n),
     );
     const caption = document
       .querySelector(".caption-zone")
       ?.getBoundingClientRect();
-    const panel = document
-      .querySelector(".phase-content")
-      ?.getBoundingClientRect();
+    const panelNode = document.querySelector(".phase-content");
+    const panel = panelNode ? visibleBounds(panelNode) : undefined;
     const intersection = (a: DOMRect, b: DOMRect) =>
       Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 &&
       Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
@@ -66,7 +100,7 @@ async function noOverlap(page: Page) {
       ) ||
       [...document.querySelectorAll(".score-burst")].some((node) => {
         if (Number(getComputedStyle(node).opacity) <= 0.01) return false;
-        const r = node.getBoundingClientRect();
+        const r = visibleBounds(node);
         return (
           (panel && intersection(r, panel)) ||
           (caption && intersection(r, caption))
@@ -85,13 +119,29 @@ async function noOverlap(page: Page) {
 }
 
 async function controlsInViewport(page: Page) {
-  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    document.querySelector(".room-scroll")?.scrollTo(0, 0);
+  });
+  const separation = await page.evaluate(() => {
+    const content = document
+      .querySelector(".room-scroll")
+      ?.getBoundingClientRect();
+    const dock = document
+      .querySelector(".control-row")
+      ?.getBoundingClientRect();
+    return !content || !dock || content.bottom <= dock.top + 1;
+  });
+  expect(separation).toBe(true);
   const clipped = await page
     .locator(".app-header button, .controls, .controls button, .phase-content")
     .evaluateAll((nodes) =>
       nodes.flatMap((node) => {
         const r = node.getBoundingClientRect();
-        return r.width && (r.top < -1 || r.bottom > innerHeight + 1)
+        const boundary = node.closest(".room-scroll")?.getBoundingClientRect();
+        return r.width &&
+          (r.top < (boundary?.top ?? 0) - 1 ||
+            r.bottom > (boundary?.bottom ?? innerHeight) + 1)
           ? [{ label: node.textContent?.trim(), top: r.top, bottom: r.bottom }]
           : [];
       }),
@@ -203,14 +253,15 @@ test("two players complete a scored match, recover media, and rematch", async ({
   const originalVideo = await a
     .locator('.face[aria-label$=", you"] video')
     .elementHandle();
-  await a.getByRole("button", { name: "Camera on", exact: true }).click();
+  await clickMedia(a, "Camera on");
   await expect(
     a.getByRole("button", { name: "Camera off", exact: true }),
   ).toBeVisible();
-  await a.getByRole("button", { name: "Camera off", exact: true }).click();
+  await clickMedia(a, "Camera off");
   await expect(
     a.getByRole("button", { name: "Camera on", exact: true }),
   ).toBeVisible();
+  await closeMedia(a);
   // Exercise ordinary visibility and page restoration independently of reload.
   for (const suspension of ["visibility", "pagehide"] as const) {
     await b.evaluate((kind) => {
@@ -272,12 +323,13 @@ test("two players complete a scored match, recover media, and rematch", async ({
     a.getByRole("button", { name: "Confirm my side" }),
   ).toBeVisible();
   await a.getByRole("button", { name: "Choose another topic" }).click();
-  await tails.getByRole("button", { name: "Write your own" }).click();
+  await expect(
+    tails.getByRole("button", { name: "Write your own" }),
+  ).toHaveCount(0);
+  await tails.getByRole("button", { name: "Is a hot dog a sandwich?" }).click();
   await tails
-    .getByLabel("The argument", { exact: true })
-    .fill("A hot dog is a sandwich.");
-  await tails.getByLabel("Your side", { exact: true }).fill("It is a sandwich");
-  await tails.getByRole("button", { name: "Propose it" }).click();
+    .getByRole("button", { name: "It is a sandwich", exact: true })
+    .click();
   await expect(
     a.getByRole("button", { name: "Confirm my side" }),
   ).toBeVisible();
@@ -317,9 +369,7 @@ test("two players complete a scored match, recover media, and rematch", async ({
     if (s.mediaMode === "rtc")
       expect(microphonePackets.get(listener)?.audible).toBe(0);
     if (opportunities === 0) {
-      await speaker
-        .getByRole("button", { name: "Mic on", exact: true })
-        .click();
+      await clickMedia(speaker, "Mic on");
       await expect(
         speaker.getByRole("button", { name: "Mic off", exact: true }),
       ).toBeVisible();
@@ -327,13 +377,12 @@ test("two players complete a scored match, recover media, and rematch", async ({
         .poll(async () => (await snapshot(request, code)).phase)
         .toBe("RECOVERING");
       const frozen = await snapshot(request, code);
-      await speaker
-        .getByRole("button", { name: "Mic off", exact: true })
-        .click();
+      await clickMedia(speaker, "Mic off");
       await expect
         .poll(async () => (await snapshot(request, code)).phase)
         .toBe("ROUND");
       expect((await snapshot(request, code)).turn?.id).toBe(frozen.turn?.id);
+      await closeMedia(speaker);
       await shot(a, "live-round-" + info.project.name);
     }
     await expect
@@ -358,7 +407,10 @@ test("two players complete a scored match, recover media, and rematch", async ({
       for (const page of [speaker, listener]) {
         const label = `${page === speaker ? "Your" : name + "’s"} ${s.turn!.kind}`;
         await expect(page.locator(".turn-label")).toHaveText(label);
-        await expect(page.locator(".listening-badge")).toHaveText("Listening");
+        await expect(page.locator(".listening-badge")).toHaveAttribute(
+          "aria-label",
+          "Bonk is listening",
+        );
         await expect(
           page.locator(".turn-label[aria-live], .turn-label[role=status]"),
         ).toHaveCount(0);
@@ -422,21 +474,15 @@ test("two players complete a scored match, recover media, and rematch", async ({
       await expect(speaker.locator(".typed-recovery")).toHaveCount(0);
     }
     if (opportunities === 1) {
-      await speaker
-        .getByRole("button", { name: "Mic on", exact: true })
-        .click();
-      await listener
-        .getByRole("button", { name: "Camera on", exact: true })
-        .click();
+      await clickMedia(speaker, "Mic on");
+      await clickMedia(listener, "Camera on");
       await expect
         .poll(async () => (await snapshot(request, code)).phase)
         .toBe("RECOVERING");
       const held = await snapshot(request, code);
       await shot(speaker, "overlapping-recovery-" + info.project.name);
       await controlsInViewport(speaker);
-      await speaker
-        .getByRole("button", { name: "Mic off", exact: true })
-        .click();
+      await clickMedia(speaker, "Mic off");
       await speaker.waitForTimeout(1300);
       const partial = await snapshot(request, code);
       expect(partial.phase).toBe("RECOVERING");
@@ -444,13 +490,13 @@ test("two players complete a scored match, recover media, and rematch", async ({
       expect(partial.players.map((p) => p.scoreUnits)).toEqual(
         held.players.map((p) => p.scoreUnits),
       );
-      await listener
-        .getByRole("button", { name: "Camera off", exact: true })
-        .click();
+      await clickMedia(listener, "Camera off");
       await expect
         .poll(async () => (await snapshot(request, code)).phase)
         .toBe("ROUND");
       expect((await snapshot(request, code)).turn?.id).toBe(held.turn?.id);
+      await closeMedia(speaker);
+      await closeMedia(listener);
     }
     if (opportunities === 5) {
       const oldMic = await listener
@@ -610,6 +656,19 @@ test("two players complete a scored match, recover media, and rematch", async ({
   );
   await expect(a.locator(".result-panel h2")).toContainText("Alex");
   await expect(b.locator(".result-panel h2")).toContainText("Alex");
+  for (const page of [a, b]) {
+    await expect(page.locator(".face-0 .activity")).toBeVisible();
+    await expect(page.locator(".face-1 .activity")).toBeVisible();
+    await expect(page.locator(".round-pips small")).toHaveText([
+      "Wins",
+      "Wins",
+    ]);
+    expect(
+      await page
+        .locator(".face-0 .face-heading")
+        .evaluate((node) => getComputedStyle(node, "::after").content),
+    ).toBe("none");
+  }
   for (const page of [a, b])
     await expect
       .poll(() => page.locator(".score-numbers").allTextContents())
@@ -700,6 +759,8 @@ test("visual matrix, accessibility, error and fallback states", async ({
   await a.goto(baseURL!);
   await expect(a.locator(".stage canvas")).toBeVisible();
   await shot(a, "title-1440");
+  await checkKeyboardViewport(a);
+  await a.setViewportSize({ width: 1440, height: 900 });
   await a.emulateMedia({ reducedMotion: "reduce" });
   await expect(a.locator(".app")).toHaveClass(/reduced-motion/);
   await a.emulateMedia({ reducedMotion: "no-preference" });
@@ -710,7 +771,8 @@ test("visual matrix, accessibility, error and fallback states", async ({
   expect(
     await a.evaluate(() => !!document.activeElement?.closest("dialog")),
   ).toBe(true);
-  await a.getByLabel("Reduce motion", { exact: true }).check();
+  await expect(a.getByLabel("Reduce motion", { exact: true })).toHaveCount(0);
+  await a.emulateMedia({ reducedMotion: "reduce" });
   await a.keyboard.press("Escape");
   await expect(a.getByRole("button", { name: "How to play" })).toBeFocused();
   await expect(a.locator(".app")).toHaveClass(/reduced-motion/);
@@ -770,8 +832,10 @@ test("visual matrix, accessibility, error and fallback states", async ({
   await shot(a, "coin-1440");
   await present({ phase: "TOPIC_SELECT", topic: null, round: 0, turn: null });
   await shot(a, "topic-1440");
-  await a.getByRole("button", { name: "Write your own" }).click();
-  await shot(a, "custom-topic-1440");
+  await expect(a.getByRole("button", { name: "Write your own" })).toHaveCount(
+    0,
+  );
+  await a.setViewportSize({ width: 1440, height: 900 });
   await present({ phase: "TOPIC_CONFIRM", turn: null, round: 0 });
   await shot(a, "confirm-1440");
   const ledger = [
@@ -800,7 +864,13 @@ test("visual matrix, accessibility, error and fallback states", async ({
     [1440, 900],
     [1920, 1080],
     [1024, 768],
+    [960, 768],
+    [959, 900],
+    [768, 1024],
+    [701, 900],
+    [700, 900],
     [390, 844],
+    [360, 640],
   ]) {
     await a.setViewportSize({ width, height });
     await present({
@@ -817,7 +887,15 @@ test("visual matrix, accessibility, error and fallback states", async ({
       },
     });
     await noOverlap(a);
-    if (width >= 1280) await controlsInViewport(a);
+    if (width <= 700) {
+      const tops = await a
+        .locator(".face-picture")
+        .evaluateAll((nodes) =>
+          nodes.map((n) => n.getBoundingClientRect().top),
+        );
+      expect(Math.abs(tops[0] - tops[1])).toBeLessThanOrEqual(1);
+    }
+    if (width >= 960 || width <= 700) await controlsInViewport(a);
     await shot(a, "round-" + width);
     await expect(a.locator(".turn-label")).toHaveText("Your rebuttal");
   }
@@ -871,7 +949,6 @@ test("visual matrix, accessibility, error and fallback states", async ({
       scores: { [p0.id]: 33, [p1.id]: 26 },
       reason:
         "Alex answered the key distinction with a precise counterexample.",
-      tieBreak: null,
     },
   ];
   await present({ phase: "ROUND_RESOLVE", turn: null, players, results });
@@ -884,15 +961,17 @@ test("visual matrix, accessibility, error and fallback states", async ({
     results: [
       {
         ...results[0],
+        winnerId: null,
         scores: { [p0.id]: 33, [p1.id]: 33 },
         reason:
           "Both players made a clear case. Alex answered the central distinction with a specific counterexample, explained why a connected bread hinge does not change the category, and carried that reasoning through the rebuttal. Sam’s closing was clear, but did not resolve that point.",
-        tieBreak: "Scores tied. Reasoning breaks the tie.",
       },
     ],
   });
   await noOverlap(a);
-  await shot(a, "tie-break-long-reason");
+  await expect(a.locator(".result-panel h2")).toHaveText("Round tied!");
+  await expect(a.locator(".verdict-reason")).toHaveCount(0);
+  await shot(a, "draw-round");
   await present({
     phase: "MATCH_RESULT",
     round: 2,
@@ -946,7 +1025,7 @@ test("visual matrix, accessibility, error and fallback states", async ({
     results,
     winnerId: p0.id,
   });
-  await b.getByRole("button", { name: "Mic on", exact: true }).click();
+  await clickMedia(b, "Mic on");
   await expect(a.locator(".result-panel .support-copy")).toHaveText(
     "Waiting for Sam’s mic.",
   );
@@ -960,6 +1039,7 @@ test("visual matrix, accessibility, error and fallback states", async ({
     b.getByRole("button", { name: "Turn mic on", exact: true }),
   ).toBeVisible();
   await shot(a, "rematch-peer-mic-1280");
+  await closeMedia(b);
   await b.getByRole("button", { name: "Turn mic on", exact: true }).click();
   await expect
     .poll(async () =>
@@ -1042,7 +1122,7 @@ test("phone layouts preserve full captions, user wording and a single status own
     await a.getByRole("button", { name: "How to play" }).focus();
     await a.keyboard.press("Enter");
     await expect(a.getByRole("dialog")).toContainText(
-      "Chat anytime. Bonk scores whoever has the floor.",
+      "Speak when your card lights up. Tap “I’m done” to finish.",
     );
     await a.keyboard.press("Escape");
     await expect(a.getByRole("button", { name: "How to play" })).toBeFocused();
@@ -1124,9 +1204,79 @@ test("phone layouts preserve full captions, user wording and a single status own
     const transcript =
       'FIRST WORDS: I said "soup?!", not SOUP.\n' +
       "A spoon does not settle this. I drink soup from a mug; Sam uses a bowl. ".repeat(
-        9,
+        24,
       ) +
       "\nLAST WORDS: <please keep every word>.";
+    const captionRegion = a.getByRole("region", {
+      name: "Live captions",
+      includeHidden: true,
+    });
+    const mediaTrigger = a.getByRole("button", {
+      name: "Mic & camera",
+      exact: true,
+    });
+    const tab = webkit && process.platform === "darwin" ? "Alt+Tab" : "Tab";
+    const backTab =
+      webkit && process.platform === "darwin" ? "Alt+Shift+Tab" : "Shift+Tab";
+    const scrollPosition = () =>
+      captionRegion.evaluate(
+        (el) => el.querySelector(".caption-text")?.scrollTop || 0,
+      );
+    const captionTrigger = a.locator(".caption-surface");
+    const geometry = () =>
+      a.evaluate(() => {
+        const court = document.querySelector(".room-scroll")!;
+        return {
+          scroll: court.scrollTop,
+          faces: [...document.querySelectorAll(".face-picture")].map(
+            (el) => el.getBoundingClientRect().top,
+          ),
+          dock: document.querySelector(".control-row")!.getBoundingClientRect()
+            .top,
+        };
+      });
+    const readCaptionWithKeyboard = async (activation = "Enter") => {
+      await a.bringToFront();
+      await mediaTrigger.hover();
+      await mediaTrigger.focus();
+      await a.keyboard.press(backTab);
+      await expect(captionTrigger).toBeFocused();
+      await expect(captionTrigger).toHaveCSS("outline-style", "solid");
+      await expect(captionTrigger).toHaveAttribute("aria-haspopup", "dialog");
+      await expect(a.locator(".media-tooltip")).toHaveCSS("opacity", "0");
+      const before = await geometry();
+      await a.keyboard.press(activation);
+      const reader = a.getByRole("region", { name: "Full transcript" });
+      await a.keyboard.press(tab);
+      await expect(reader).toBeFocused();
+      expect(await reader.evaluate((el) => el.scrollTop)).toBe(0);
+      await a.keyboard.press("ArrowDown");
+      await a.keyboard.press("PageDown");
+      await expect
+        .poll(() => reader.evaluate((el) => el.scrollTop))
+        .toBeGreaterThan(0);
+      await a.keyboard.press("End");
+      await expect
+        .poll(() =>
+          reader.evaluate(
+            (el) => el.scrollHeight - el.clientHeight - el.scrollTop,
+          ),
+        )
+        .toBeLessThanOrEqual(1);
+      expect(await reader.locator("p").textContent()).toBe(
+        await captionRegion.locator(".sr-only").textContent(),
+      );
+      await a.keyboard.press("Escape");
+      await expect(captionTrigger).toBeFocused();
+      expect(await geometry()).toEqual(before);
+      await a.keyboard.press(tab);
+      await expect(mediaTrigger).toBeFocused();
+      await a.keyboard.press(backTab);
+      await expect(captionTrigger).toBeFocused();
+      await a.keyboard.press(backTab);
+      await expect(captionTrigger).not.toBeFocused();
+      await noOverlap(a);
+    };
     for (const [width, height] of [
       [1280, 720],
       [360, 640],
@@ -1136,32 +1286,41 @@ test("phone layouts preserve full captions, user wording and a single status own
       await a.setViewportSize({ width, height });
       await present({
         phase: "ROUND",
-        turn: { ...turn, deadline: Date.now() + 30000 },
+        turn: {
+          ...turn,
+          id: `copy-turn-${width}`,
+          deadline: Date.now() + 30000,
+        },
         captions: {
           [p0.id]: { text: transcript, final: true, at: Date.now() },
         },
       });
       // Exact textContent catches deletion, trimming, normalization and inserted copy.
-      expect(await a.locator(".player-caption p").textContent()).toBe(
+      expect(await a.locator(".player-caption .sr-only").textContent()).toBe(
         transcript,
       );
       await expect(a.locator(".turn-label")).toHaveText("Your rebuttal");
       await expect(b.locator(".turn-label")).toHaveText("Alex’s rebuttal");
-      await expect(a.locator(".player-status")).toHaveText("Listening");
+      await expect(a.locator(".listening-badge")).toHaveAttribute(
+        "aria-label",
+        "Bonk is listening",
+      );
       await expect(
         a.locator(".turn-label[aria-live], .turn-label[role=status]"),
       ).toHaveCount(0);
       await noOverlap(a);
       const unclipped = await a
-        .locator(".player-caption p")
+        .locator(".player-caption .caption-text")
         .evaluate(
           (p) =>
             p.scrollHeight <= p.clientHeight + 1 &&
             getComputedStyle(p).webkitLineClamp === "none",
         );
       expect(unclipped).toBe(true);
+      await expect.poll(scrollPosition).toBe(0);
+      await readCaptionWithKeyboard();
       await shot(a, `full-caption-${width}-${info.project.name}`);
-      expect(await a.locator(".player-caption p").textContent()).toBe(
+      expect(await a.locator(".player-caption .sr-only").textContent()).toBe(
         transcript,
       );
     }
@@ -1184,13 +1343,15 @@ test("phone layouts preserve full captions, user wording and a single status own
     });
     await expect(a.locator(".turn-label")).toHaveText("Bonk’s getting ready…");
     await expect(a.locator(".caption-status, .listening-badge")).toHaveCount(0);
-    expect(await a.locator(".judge-caption p").textContent()).toBe(line);
+    expect(await a.locator(".judge-caption .caption-text").textContent()).toBe(
+      line,
+    );
+    await shot(a, "simple-buffering-" + info.project.name);
     const faceTops = await a
       .locator(".face-picture")
       .evaluateAll((nodes) =>
         nodes.map((n) => n.getBoundingClientRect().top + window.scrollY),
       );
-    await shot(a, "simple-buffering-" + info.project.name);
     await present({
       phase: "ROUND",
       turn: { ...turn, deadline: null, pausedReason: "judge" },
@@ -1202,11 +1363,8 @@ test("phone layouts preserve full captions, user wording and a single status own
     await expect(a.locator(".turn-label")).toHaveCSS("animation-name", "none");
     await noOverlap(a);
     await shot(a, "simple-captions-only-" + info.project.name);
-    await present({
-      phase: "ROUND",
-      turn: { ...turn, deadline: Date.now() + 30000 },
-    });
-    await expect(a.locator(".turn-label")).toHaveText("Your rebuttal");
+    // Compare caption modes with the same paused-turn controls. A handoff also
+    // changes task height, which can recenter this unusually long topic.
     expect(
       await a
         .locator(".face-picture")
@@ -1214,6 +1372,11 @@ test("phone layouts preserve full captions, user wording and a single status own
           nodes.map((n) => n.getBoundingClientRect().top + window.scrollY),
         ),
     ).toEqual(faceTops);
+    await present({
+      phase: "ROUND",
+      turn: { ...turn, deadline: Date.now() + 30000 },
+    });
+    await expect(a.locator(".turn-label")).toHaveText("Your rebuttal");
     await expect(a.getByRole("button", { name: "I’m done" })).toBeEnabled();
     await present({
       phase: "INTRO_COIN",
@@ -1225,6 +1388,235 @@ test("phone layouts preserve full captions, user wording and a single status own
       "Captions only",
     );
     await expect(a.locator(".player-status")).toHaveCount(0);
+    const videos = await a.locator(".face-picture video").elementHandles();
+    expect(videos).toHaveLength(2);
+    const regionNode = await captionRegion.elementHandle();
+    const verdict = async (
+      text: string,
+      id: string,
+      patch: Partial<Snapshot> = {},
+    ) => {
+      await present({
+        phase: "MATCH_RESULT",
+        matchId: "caption-match",
+        players: base.players.map((p) => ({
+          ...p,
+          wins: p.id === p1.id ? 2 : 1,
+        })),
+        winnerId: p1.id,
+        results: [
+          {
+            round: 1,
+            roundId: "copy-round",
+            winnerId: p1.id,
+            scores: { [p0.id]: 4, [p1.id]: 6 },
+            reason: text,
+          },
+        ],
+        judge: { ...judge, id, text, status: "captions" },
+        ...patch,
+      });
+      await expect(a.locator(".judge-caption .caption-text")).toHaveText(text);
+    };
+    for (const [width, height] of [
+      [1280, 720],
+      [360, 640],
+      [390, 844],
+      [844, 390],
+    ]) {
+      await a.setViewportSize({ width, height });
+      for (const status of ["speaking", "captions"] as const) {
+        await a.emulateMedia({
+          reducedMotion: status === "captions" ? "reduce" : "no-preference",
+        });
+        const id = `verdict-${width}-${status}`;
+        await verdict(transcript, id, {
+          judge: { ...judge, id, text: transcript, status },
+        });
+        await expect.poll(scrollPosition).toBe(0);
+        if (width <= 700) {
+          await expect(a.locator(".caption-compact-label")).toBeVisible();
+          await expect(captionRegion).toHaveCSS("height", "44px");
+          await expect(a.locator(".caption-text")).toBeHidden();
+        }
+        await readCaptionWithKeyboard();
+        await a.screenshot({
+          path: `${root}/caption-keyboard-${width}-${status}-${info.project.name}.png`,
+        });
+      }
+    }
+    // The compact control retains the same reader through updates and responsive changes.
+    await a.setViewportSize({ width: 390, height: 844 });
+    await verdict(transcript, "compact-reader");
+    await captionTrigger.focus();
+    await a.keyboard.press("Space");
+    const compactReader = a.getByRole("region", { name: "Full transcript" });
+    const readerNode = await compactReader.elementHandle();
+    await a.keyboard.press(tab);
+    await expect(compactReader).toBeFocused();
+    await a.keyboard.press("End");
+    await expect
+      .poll(() =>
+        compactReader.evaluate(
+          (el) => el.scrollHeight - el.clientHeight - el.scrollTop,
+        ),
+      )
+      .toBeLessThanOrEqual(1);
+    await a.keyboard.press("Home");
+    await expect
+      .poll(() => compactReader.evaluate((el) => el.scrollTop))
+      .toBe(0);
+    await verdict(
+      transcript + " Added to the compact reader.",
+      "compact-reader",
+    );
+    await expect
+      .poll(() =>
+        compactReader.evaluate(
+          (el) => el.scrollHeight - el.clientHeight - el.scrollTop,
+        ),
+      )
+      .toBeLessThanOrEqual(1);
+    await a.setViewportSize({ width: 1280, height: 720 });
+    expect(await readerNode!.evaluate((el) => el.isConnected)).toBe(true);
+    await expect(compactReader).toBeFocused();
+    await verdict("A different utterance.", "retained-compact-reader");
+    await expect(compactReader.locator("p")).toHaveText(
+      transcript + " Added to the compact reader.",
+    );
+    await a.setViewportSize({ width: 390, height: 844 });
+    await a.keyboard.press("Escape");
+    await expect(captionTrigger).toBeFocused();
+    // The expanded desktop surface retains live scrolling; phones use its compact control.
+    await a.setViewportSize({ width: 1280, height: 720 });
+    await verdict(transcript, "first-line");
+    await readCaptionWithKeyboard();
+    // A reader may scroll up, but changed live text must reveal its new end.
+    const live = captionRegion.locator(".caption-text");
+    await live.evaluate((el) => {
+      el.scrollTop = 30;
+    });
+    await mediaTrigger.focus();
+    const beforeUpdate = await geometry();
+    const readingPosition = await scrollPosition();
+    expect(readingPosition).toBeGreaterThan(0);
+    await verdict(transcript, "first-line");
+    expect(await scrollPosition()).toBe(readingPosition);
+    await verdict(
+      transcript + " More detail in the same explanation.",
+      "first-line",
+    );
+    await expect
+      .poll(() =>
+        live.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop),
+      )
+      .toBeLessThanOrEqual(1);
+    expect(await geometry()).toEqual(beforeUpdate);
+    await expect(mediaTrigger).toBeFocused();
+    await verdict("NEW EXPLANATION: " + transcript, "next-line");
+    await expect.poll(scrollPosition).toBe(0);
+    expect(await geometry()).toEqual(beforeUpdate);
+    await expect(mediaTrigger).toBeFocused();
+    await a.screenshot({
+      path: `${root}/caption-new-utterance-${info.project.name}.png`,
+    });
+    await readCaptionWithKeyboard();
+    await verdict("NEW MATCH: " + transcript, "next-line", {
+      matchId: "caption-rematch",
+    });
+    await expect.poll(scrollPosition).toBe(0);
+    await live.evaluate((el) => {
+      el.scrollTop = 30;
+    });
+    await verdict("NEW MATCH: " + transcript, "next-line", {
+      matchId: "caption-rematch",
+      judge: {
+        ...judge,
+        id: "next-line",
+        epoch: 301,
+        text: "NEW MATCH: " + transcript,
+        status: "captions",
+      },
+    });
+    await expect.poll(scrollPosition).toBe(0);
+
+    // Judge -> player, incremental player text, next turn, and cleared captions.
+    const playerLine = async (text: string, id: string) => {
+      await present({
+        phase: "ROUND",
+        turn: { ...turn, id, deadline: Date.now() + 30000 },
+        captions: { [p0.id]: { text, final: false, at: Date.now() } },
+      });
+      await expect(a.locator(".player-caption .sr-only")).toHaveText(text);
+    };
+    await readCaptionWithKeyboard();
+    await playerLine(transcript, "reader-turn");
+    await expect.poll(scrollPosition).toBe(0);
+    await readCaptionWithKeyboard("Space");
+    await captionTrigger.click();
+    const reader = a.getByRole("region", { name: "Full transcript" });
+    await a.keyboard.press(tab);
+    await expect(reader).toBeFocused();
+    await a.keyboard.press("End");
+    await expect
+      .poll(() =>
+        reader.evaluate(
+          (el) => el.scrollHeight - el.clientHeight - el.scrollTop,
+        ),
+      )
+      .toBeLessThanOrEqual(1);
+    await a.keyboard.press("Home");
+    await expect.poll(() => reader.evaluate((el) => el.scrollTop)).toBe(0);
+    await playerLine(transcript, "reader-turn");
+    expect(await reader.evaluate((el) => el.scrollTop)).toBe(0);
+    const playerGeometry = await geometry();
+    await playerLine(transcript + " One more thought.", "reader-turn");
+    await expect
+      .poll(() =>
+        reader.evaluate(
+          (el) => el.scrollHeight - el.clientHeight - el.scrollTop,
+        ),
+      )
+      .toBeLessThanOrEqual(1);
+    await a.keyboard.press("Home");
+    await expect.poll(() => reader.evaluate((el) => el.scrollTop)).toBe(0);
+    await playerLine(transcript + " A corrected thought.", "reader-turn");
+    await expect
+      .poll(() =>
+        reader.evaluate(
+          (el) => el.scrollHeight - el.clientHeight - el.scrollTop,
+        ),
+      )
+      .toBeLessThanOrEqual(1);
+    expect(await geometry()).toEqual(playerGeometry);
+    await expect(reader).toBeFocused();
+    await playerLine("NEW TURN " + transcript, "next-turn");
+    await expect(reader.locator("p")).toHaveText(
+      transcript + " A corrected thought.",
+    );
+    await a.keyboard.press("Escape");
+    await expect(captionTrigger).toBeFocused();
+    await captionTrigger.click();
+    await expect(reader.locator("p")).toHaveText("NEW TURN " + transcript);
+    expect(await reader.evaluate((el) => el.scrollTop)).toBe(0);
+    await a.keyboard.press("Escape");
+    await present({
+      phase: "ROUND",
+      turn: { ...turn, deadline: Date.now() + 30000 },
+    });
+    await expect(captionRegion).toBeEmpty();
+    await expect(captionRegion).not.toHaveAttribute("tabindex");
+    await expect.poll(scrollPosition).toBe(0);
+    await mediaTrigger.focus();
+    await a.keyboard.press(backTab);
+    await expect(a.getByRole("button", { name: "I’m done" })).toBeFocused();
+    for (const video of videos)
+      expect(await video.evaluate((el) => el.isConnected)).toBe(true);
+    expect(
+      await regionNode!.evaluate(
+        (el) => el === document.querySelector(".caption-zone"),
+      ),
+    ).toBe(true);
   } finally {
     await ca.close();
     await cb.close();
@@ -1283,14 +1675,54 @@ test("mandatory device setup, retries, cancellation, clipboard failure and missi
   );
   await expect(page.locator(".courtroom")).toHaveCount(0);
   let seat = await page.evaluate(() => sessionStorage.getItem("hmo-seat"));
+  const previewHeight = await page
+    .locator(".setup-preview")
+    .evaluate((el) => el.getBoundingClientRect().height);
   await shot(page, "permissions-denied");
   const help = page.locator(".device-help summary");
   await help.focus();
   await page.keyboard.press("Enter");
   await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("region", { name: "Device instructions" }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
   await expect(page.getByLabel(/^Microphone/)).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(page.getByLabel(/^Camera/)).toBeFocused();
+  for (const size of [
+    { width: 360, height: 640 },
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(size);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollHeight - innerHeight,
+      ),
+    ).toBeLessThanOrEqual(1);
+    await expect(help).toHaveCSS("justify-content", "flex-start");
+    if (size.width <= 700)
+      await expect(page.locator(".setup-preview")).toHaveCSS(
+        "height",
+        size.height > 740 ? "112px" : "80px",
+      );
+    // No test-driven scrolling: opening help must leave every ordinary action reachable.
+    const geometry = await page
+      .locator(".entry-card button, .device-help select")
+      .evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const rect = node.getBoundingClientRect();
+          return { top: rect.top, bottom: rect.bottom, height: rect.height };
+        }),
+      );
+    for (const rect of geometry) {
+      expect(rect.top).toBeGreaterThanOrEqual(0);
+      expect(rect.bottom).toBeLessThanOrEqual(size.height);
+      expect(rect.height).toBeGreaterThanOrEqual(44);
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
   await help.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByLabel(/^Microphone/)).toBeHidden();
@@ -1312,6 +1744,11 @@ test("mandatory device setup, retries, cancellation, clipboard failure and missi
   expect(await page.evaluate(() => sessionStorage.getItem("hmo-seat"))).toBe(
     seat,
   );
+  expect(
+    await page
+      .locator(".setup-preview")
+      .evaluate((el) => el.getBoundingClientRect().height),
+  ).toBe(previewHeight);
   await shot(page, "camera-required");
   const cancelledCode = JSON.parse(seat!).code as string;
   await page.getByRole("button", { name: "Back", exact: true }).click();
@@ -1336,7 +1773,7 @@ test("mandatory device setup, retries, cancellation, clipboard failure and missi
   });
   await page.getByRole("button", { name: "Create room", exact: true }).click();
   await expect(page.locator(".setup-status")).toContainText(
-    "Say ‘Bonk, hear me out.’",
+    "Say anything to test your mic.",
   );
   seat = await page.evaluate(() => sessionStorage.getItem("hmo-seat"));
   await expect
@@ -1355,6 +1792,11 @@ test("mandatory device setup, retries, cancellation, clipboard failure and missi
   await expect(
     page.getByRole("button", { name: "Back", exact: true }),
   ).toBeEnabled();
+  expect(
+    await page
+      .locator(".setup-preview")
+      .evaluate((el) => el.getBoundingClientRect().height),
+  ).toBe(previewHeight);
   await shot(page, "inline-setup");
   await expect(
     page.getByRole("heading", { name: "Invite your friend" }),
@@ -1486,7 +1928,7 @@ test("fresh awards animate once, restore silently, and honor reduced motion", as
     await expect(page.locator(".bonk-aside")).toHaveCount(0);
   }
   await a.emulateMedia({ reducedMotion: "reduce" });
-  await a.getByRole("button", { name: "Audio", exact: true }).click();
+  await openMedia(a);
   await a.getByRole("button", { name: "Bonk & effects On" }).click();
   await a.keyboard.press("Escape");
   const third = await award(3);
@@ -1785,6 +2227,17 @@ test("two players receive decision feedback while a rematch waits for complete p
         send(data: Parameters<WebSocket["send"]>[0]) {
           if (typeof data === "string") {
             const message = JSON.parse(data);
+            if (
+              (window as any).__holdDecision &&
+              message.command?.type === (window as any).__holdDecision
+            ) {
+              (window as any).__releaseDecision = () => {
+                (window as any).__holdDecision = null;
+                super.send(data);
+              };
+              return;
+            }
+
             if (message.command?.type === "audio_playback")
               (window as any).__decisionPlaybackAcks.push({
                 ...message.command,
@@ -1829,9 +2282,10 @@ test("two players receive decision feedback while a rematch waits for complete p
     await a.getByRole("button", { name: "Ready to argue" }).click();
     await expect(announcement(a)).toHaveText("Ready. Waiting for Sam.");
     await expect(announcement(b)).toHaveText("Alex is ready. Ready to argue.");
-    await a.getByRole("button", { name: "Ready · undo" }).click();
-    await expect(announcement(b)).toHaveText("Ready to argue");
-    await a.getByRole("button", { name: "Ready to argue" }).click();
+    await expect(
+      a.getByRole("button", { name: "Ready", exact: true }),
+    ).toBeDisabled();
+    await expect(a.getByRole("button", { name: /undo/i })).toHaveCount(0);
     await b.getByRole("button", { name: "Ready to argue" }).click();
     await expect
       .poll(async () => (await snapshot(request, code)).phase)
@@ -1863,8 +2317,27 @@ test("two players receive decision feedback while a rematch waits for complete p
           characterData: true,
         });
       });
+    await expect(
+      a
+        .getByRole("button", { name: "Confirm my side" })
+        .locator('.icon[aria-hidden="true"]'),
+    ).toHaveCount(1);
+    await a.evaluate(() => {
+      (window as any).__holdDecision = "confirm_topic";
+    });
     await a.getByRole("button", { name: "Confirm my side" }).focus();
     await a.keyboard.press("Enter");
+    const confirming = a.getByRole("button", {
+      name: "Confirming…",
+      exact: true,
+    });
+    await expect(confirming).toHaveCSS(
+      "background-color",
+      "rgb(229, 255, 145)",
+    );
+    await expect(confirming.locator(".icon")).toHaveCount(0);
+    await a.evaluate(() => (window as any).__releaseDecision());
+
     await expect(announcement(a)).toHaveText(
       "Confirmed. Waiting for Sam to confirm.",
     );
@@ -1872,6 +2345,9 @@ test("two players receive decision feedback while a rematch waits for complete p
       "Alex confirmed. Confirm your side.",
     );
     await expect(a.getByRole("button", { name: "Confirmed" })).toBeDisabled();
+    const accepted = a.getByRole("button", { name: "Confirmed", exact: true });
+    await expect(accepted).toHaveCSS("background-color", "rgb(239, 223, 186)");
+    await expect(accepted.locator('.icon[aria-hidden="true"]')).toHaveCount(1);
     // macOS WebKit's default Tab mode skips buttons, including enabled ones.
     // Option-Tab follows all controls without changing the app's focus behavior.
     await a.keyboard.press(
@@ -1910,12 +2386,34 @@ test("two players receive decision feedback while a rematch waits for complete p
     expect(
       (await request.post("/__test/present/" + code, { data: finished })).ok(),
     ).toBe(true);
+    await expect(
+      a
+        .getByRole("button", { name: "Rematch", exact: true })
+        .locator('.icon[aria-hidden="true"]'),
+    ).toHaveCount(1);
+    await a.evaluate(() => {
+      (window as any).__holdDecision = "rematch";
+    });
     await a.getByRole("button", { name: "Rematch", exact: true }).click();
+    const queuing = a.getByRole("button", {
+      name: "Queuing rematch…",
+      exact: true,
+    });
+    await expect(queuing).toHaveCSS("background-color", "rgb(229, 255, 145)");
+    await expect(queuing.locator(".icon")).toHaveCount(0);
+    await a.evaluate(() => (window as any).__releaseDecision());
+
     await expect(
       a.getByRole("button", { name: "Waiting for Sam", exact: true }),
     ).toBeDisabled();
+    const queued = a.getByRole("button", {
+      name: "Waiting for Sam",
+      exact: true,
+    });
+    await expect(queued).toHaveCSS("background-color", "rgb(239, 223, 186)");
+    await expect(queued.locator(".icon")).toHaveCount(0);
     await expect(announcement(b)).toHaveText("Alex is ready for a rematch.");
-    await b.getByRole("button", { name: "Mic on", exact: true }).click();
+    await clickMedia(b, "Mic on");
     await expect(
       a.getByRole("button", { name: "Rematch queued", exact: true }),
     ).toBeDisabled();
@@ -1923,6 +2421,7 @@ test("two players receive decision feedback while a rematch waits for complete p
       "Waiting for Sam’s mic.",
     );
     await expect(announcement(a)).toHaveText("Waiting for Sam’s mic.");
+    await closeMedia(b);
     await b.getByRole("button", { name: "Turn mic on", exact: true }).click();
     await expect
       .poll(async () =>
@@ -1933,8 +2432,8 @@ test("two players receive decision feedback while a rematch waits for complete p
       a.getByRole("button", { name: "Waiting for Sam", exact: true }),
     ).toBeDisabled();
 
-    await a.getByRole("button", { name: "Audio", exact: true }).click();
-    await a.getByRole("button", { name: /Bonk/ }).click();
+    await openMedia(a);
+    await a.getByRole("button", { name: /^Bonk & effects / }).click();
     await a.keyboard.press("Escape");
     const voice = await request.post("/__test/voice/" + code);
     expect(voice.ok()).toBe(true);
@@ -1943,6 +2442,34 @@ test("two players receive decision feedback while a rematch waits for complete p
     for (const page of [a, b]) {
       coins.get(page)!.length = 0;
       await page.evaluate(() => ((window as any).__decisionAnnouncements = []));
+    }
+    await b.bringToFront();
+    const rematchBounds = await b
+      .getByRole("button", { name: "Rematch", exact: true })
+      .boundingBox();
+    // Hovering the lower edge must not oscillate the target out from under the pointer.
+    await b.mouse.move(
+      rematchBounds!.x + rematchBounds!.width / 2,
+      rematchBounds!.y + rematchBounds!.height - 0.25,
+    );
+    const resultGeometry = await b.evaluate(async () => {
+      const frames: number[][] = [];
+      for (let i = 0; i < 20; i++) {
+        await new Promise(requestAnimationFrame);
+        const r = document
+          .querySelector(".result-panel .primary")!
+          .getBoundingClientRect();
+        frames.push([r.x, r.y, r.width, r.height]);
+      }
+      return frames;
+    });
+    await info.attach("result-button-geometry", {
+      body: JSON.stringify(resultGeometry),
+      contentType: "application/json",
+    });
+    for (let axis = 0; axis < 4; axis++) {
+      const values = resultGeometry.slice(2).map((frame) => frame[axis]);
+      expect(Math.max(...values) - Math.min(...values)).toBeLessThan(0.5);
     }
     await b.getByRole("button", { name: "Rematch", exact: true }).click();
     for (const page of [a, b]) {
@@ -2244,6 +2771,20 @@ test("two players render a long judge line completely through asymmetric deliver
       }, 100);
       const Original = window.AudioWorkletNode;
       (window as any).__judgeRender = [];
+      (window as any).__captionSamples = [];
+      let cursor = { epoch: 0, samples: 0 };
+      setInterval(() => {
+        const active = document.querySelector<HTMLElement>(
+          ".spoken-word[data-cue-start]",
+        );
+        if (active)
+          (window as any).__captionSamples.push({
+            ...cursor,
+            start: Number(active.dataset.cueStart),
+            end: Number(active.dataset.cueEnd),
+            text: active.textContent,
+          });
+      }, 100);
       window.AudioWorkletNode = class extends Original {
         constructor(
           context: BaseAudioContext,
@@ -2253,6 +2794,7 @@ test("two players render a long judge line completely through asymmetric deliver
           super(context, name, options);
           if (name === "judge-playback")
             this.port.addEventListener("message", (event) => {
+              if (event.data.type === "cursor") cursor = event.data;
               if (event.data.type === "rendering")
                 (window as any).__judgeActive = true;
               if (event.data.type === "drained")
@@ -2293,15 +2835,23 @@ test("two players render a long judge line completely through asymmetric deliver
   });
   try {
     const code = await enter(a, b, baseURL!);
-    const response = await request.post("/__test/voice/" + code);
+    const response = await request.post("/__test/voice/" + code, {
+      data: { aligned: true },
+    });
     expect(response.ok()).toBe(true);
     const { epoch, samples } = await response.json();
-    await expect(
-      a.getByText("Every last syllable gets its day in court. Case closed."),
-    ).toBeVisible();
+    await expect(a.locator(".judge-caption .sr-only")).toHaveText(
+      "Every last syllable gets its day in court. Case closed.",
+    );
+    await expect(a.locator(".spoken-word")).toBeVisible();
+    expect((await snapshot(request, code)).judge?.alignment?.cues).toHaveLength(
+      10,
+    );
     await expect
       .poll(async () => (await snapshot(request, code)).judge?.status)
       .toBe("speaking");
+    await openMedia(a);
+    await openMedia(b);
     await expect(
       a.getByRole("button", { name: "Mic on", exact: true }),
     ).toBeEnabled();
@@ -2312,12 +2862,15 @@ test("two players render a long judge line completely through asymmetric deliver
       "Speaking",
     );
     await expect(a.locator(".turn-label")).toHaveCount(0);
-    await a.getByRole("button", { name: "Audio", exact: true }).click();
+    await openMedia(a);
     // Bonk mute is gain-only: completion must still account for the full utterance.
-    const bonkControl = a.getByRole("button", { name: /Bonk/ });
+    const bonkControl = a.getByRole("button", { name: /^Bonk & effects / });
     await expect(bonkControl).toBeVisible();
     await bonkControl.click();
     await a.keyboard.press("Escape");
+    await expect(a.locator(".judge-caption .caption-text")).toHaveText(
+      "Every last syllable gets its day in court. Case closed.",
+    );
     await expect
       .poll(async () => (await snapshot(request, code)).judge?.status, {
         timeout: 20000,
@@ -2331,6 +2884,24 @@ test("two players render a long judge line completely through asymmetric deliver
           .map((e: any) => e.samples),
       ).toEqual([samples]);
     }
+    const captionSamples = await b.evaluate(
+      () => (window as any).__captionSamples,
+    );
+    const alignedSamples = captionSamples.filter(
+      (sample: any) => sample.epoch === epoch,
+    );
+    expect(
+      new Set(alignedSamples.map((sample: any) => sample.text)).size,
+    ).toBeGreaterThanOrEqual(8);
+    // Worklet processing can lead device output slightly; allow 150 ms for output
+    // latency and the scoped caption animation frame, never wall-clock guessing.
+    expect(
+      alignedSamples.every(
+        (sample: any) =>
+          sample.samples >= sample.start - 6615 &&
+          sample.samples <= sample.end + 6615,
+      ),
+    ).toBe(true);
     const timeline = await (
       await request.post("/__test/timeline/" + code)
     ).json();
@@ -2350,7 +2921,9 @@ test("two players render a long judge line completely through asymmetric deliver
       contentType: "application/json",
     });
     // A separate judge channel repairs without pausing friends or restarting devices.
-    const next = await (await request.post("/__test/voice/" + code)).json();
+    const next = await (
+      await request.post("/__test/voice/" + code, { data: { aligned: true } })
+    ).json();
     await expect
       .poll(async () => (await snapshot(request, code)).judge?.status)
       .toBe("speaking");
@@ -2360,6 +2933,9 @@ test("two players render a long judge line completely through asymmetric deliver
       .poll(async () => (await snapshot(request, code)).judge?.epoch)
       .toBeGreaterThan(next.epoch);
     expect((await snapshot(request, code)).phase).toBe("LOBBY");
+    expect((await snapshot(request, code)).judge?.alignment?.cues).toHaveLength(
+      10,
+    );
     await expect
       .poll(async () => (await snapshot(request, code)).judge?.status, {
         timeout: 20000,

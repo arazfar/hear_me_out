@@ -31,12 +31,18 @@ test("readiness distinguishes privacy, stopped capture, speech and automatic con
       ...local,
       micOff: true,
     }),
-    { message: "Mic off.", action: "privacy", label: "Turn mic on" },
+    {
+      message: "Mic off.",
+      icon: "mic",
+      action: "privacy",
+      label: "Turn mic on",
+    },
   );
   assert.deepEqual(
     readinessPresentation(player("Alex", ["camera"]), peer, local),
     {
       message: "Your camera stopped.",
+      icon: "camera",
       action: "check",
       label: "Restart camera",
       repair: "camera",
@@ -101,14 +107,14 @@ test("stale observations show connection recovery before secondary device failur
     player("Sam"),
     local,
   );
-  assert.deepEqual(result, { message: "Reconnecting…" });
+  assert.deepEqual(result, { message: "Reconnecting…", icon: "connection" });
   assert.deepEqual(
     readinessPresentation(
       player("Alex", ["peer_video"]),
       player("Sam", ["connection", "microphone", "camera"]),
       local,
     ),
-    { message: "Waiting for Sam to reconnect." },
+    { message: "Waiting for Sam to reconnect.", icon: "connection" },
   );
   assert.deepEqual(
     readinessPresentation(player("Alex", ["camera_delivery"]), player("Sam"), {
@@ -116,7 +122,7 @@ test("stale observations show connection recovery before secondary device failur
       error: "Your camera is busy.",
       repair: "camera",
     }),
-    { message: "Reconnecting video…" },
+    { message: "Reconnecting video…", icon: "connection" },
   );
 });
 
@@ -129,8 +135,42 @@ test("exhausted connection recovery offers one retry before any device or peer r
     ),
     {
       message: "Connection lost. Check your network.",
+      icon: "connection",
       action: "connection",
       label: "Retry connection",
     },
+  );
+});
+
+test("recovery icons classify capabilities without inspecting authored messages", () => {
+  for (const [blockers, icon] of [
+    [["microphone"], "mic"],
+    [["speech_check"], "mic"],
+    [["camera"], "camera"],
+    [["microphone", "camera"], "warning"],
+    [["connection", "camera"], "connection"],
+    [["transcription"], "connection"],
+    [["camera_delivery"], "connection"],
+    [["peer_video"], "connection"],
+  ] as const) {
+    assert.equal(
+      readinessPresentation(player("Alex", [...blockers]), player("Sam"), local)
+        .icon,
+      icon,
+    );
+  }
+  assert.equal(
+    readinessPresentation(player("Alex"), player("Sam"), {
+      ...local,
+      hasStream: false,
+    }).icon,
+    undefined,
+  );
+  assert.equal(
+    readinessPresentation(player("Alex", ["microphone"]), player("Sam"), {
+      ...local,
+      hasStream: false,
+    }).icon,
+    "warning",
   );
 });

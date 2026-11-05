@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../server/app";
-import { CRITERIA, judgeIsListening } from "../shared/domain";
+import { CRITERIA, judgeIsListening, SUGGESTIONS } from "../shared/domain";
 import { services, flush } from "./fixtures";
 import { WsPeer, post, waitFor } from "./ws-peer";
 
@@ -17,12 +17,6 @@ test(
       providersReady: () => true,
       services: services({
         transcriptionAvailable: () => true,
-        normalizeTopic: async () => ({
-          safe: true,
-          proposition: "Waffles are better than pancakes.",
-          positive: "Waffles",
-          negative: "Pancakes",
-        }),
         createTranscription: (playerId, roundId, turnId, handlers) => {
           let heard = false,
             closed = false;
@@ -138,8 +132,8 @@ test(
         pa.state.players.every((p) => p.mediaReady) &&
         pb.state.players.every((p) => p.mediaReady),
     );
-    pa.send({ type: "ready", value: true });
-    pb.send({ type: "ready", value: true });
+    pa.send({ type: "ready" });
+    pb.send({ type: "ready" });
     await waitFor(
       () =>
         pa.state.phase === "TOPIC_SELECT" && pb.state.phase === "TOPIC_SELECT",
@@ -147,14 +141,20 @@ test(
     const tails = pa.state.tailsId === pa.session.playerId ? pa : pb;
     tails.send({
       type: "propose_topic",
-      text: "Waffles vs pancakes",
-      chosenPosition: "waffles",
+      suggestion: "waffles",
+      chosenPosition: "positive",
     });
     await waitFor(
       () =>
         pa.state.phase === "TOPIC_CONFIRM" &&
         pb.state.phase === "TOPIC_CONFIRM",
     );
+    assert.equal(pa.state.topic?.proposition, SUGGESTIONS[0].proposition);
+    assert.equal(
+      pa.state.topic?.positions[tails.session.playerId],
+      SUGGESTIONS[0].positive,
+    );
+    assert.deepEqual(pa.state.topic, pb.state.topic);
     pa.send({ type: "confirm_topic", topicRevision: 1 });
     pb.send({ type: "confirm_topic", topicRevision: 1 });
     await waitFor(

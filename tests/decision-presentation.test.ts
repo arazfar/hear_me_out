@@ -53,11 +53,11 @@ test("topic decisions identify the chooser and acknowledge either player's confi
   assert.equal(state.topic.proposition, '"Soup?!" <still soup>');
 });
 
-test("lobby announcements track readiness decisions and undo without changing actions", () => {
+test("lobby announcements track accepted readiness and server resets", () => {
   const { state, a, b } = fixture();
   assert.equal(lobbyPresentation(state, a.id).actionLabel, "Ready to argue");
   a.ready = true;
-  assert.equal(lobbyPresentation(state, a.id).actionLabel, "Ready · undo");
+  assert.equal(lobbyPresentation(state, a.id).actionLabel, "Ready");
   assert.equal(
     phaseAnnouncement(state, a.id, healthy),
     "Ready. Waiting for Sam.",

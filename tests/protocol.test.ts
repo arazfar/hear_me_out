@@ -68,6 +68,17 @@ test("shared schemas reject missing versions, nonfinite clocks, oversized signal
     }).success,
   );
   assert(
+    !authSchema.safeParse({
+      type: "auth",
+      protocolVersion: 4,
+      roomId: "r",
+      playerId: "p",
+      token: "t",
+      connectionEpoch: 1,
+    }).success,
+    "protocol-4 clients must refresh before using the changed result contract",
+  );
+  assert(
     !auxiliarySchema.safeParse({ type: "ping", clientTime: Infinity }).success,
   );
   assert(

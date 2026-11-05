@@ -5,18 +5,29 @@ export function Dialog({
   title,
   onClose,
   children,
+  returnFocus,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  returnFocus?: HTMLElement | null | (() => HTMLElement | null);
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const returnTarget = useRef(returnFocus);
+  returnTarget.current = returnFocus;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    ref.current?.showModal();
+    const dialog = ref.current;
+    dialog?.showModal();
     return () => {
-      ref.current?.close();
-      previous?.focus();
+      dialog?.close();
+      // A reader can outlive its trigger. A resolver returning null opts out
+      // of restoration when its room has unmounted.
+      const target =
+        typeof returnTarget.current === "function"
+          ? returnTarget.current()
+          : (returnTarget.current ?? previous);
+      if (target?.isConnected) target.focus({ preventScroll: true });
     };
   }, []);
   return (

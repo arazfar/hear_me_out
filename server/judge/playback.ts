@@ -1,3 +1,4 @@
+import type { CaptionCue } from "../../shared/domain.js";
 import { randomUUID } from "node:crypto";
 import { WebSocket } from "ws";
 import {
@@ -39,6 +40,9 @@ type Speech = {
   matchId: string | null;
   source?: PreparedVoice;
   attempt: number;
+  alignment?: CaptionCue[];
+  alignmentPending?: boolean;
+  alignmentAt?: number;
   repairAt?: number;
   fallback: boolean;
   hostPhase?: { phase: string; version: number };
@@ -266,9 +270,21 @@ export class JudgePlayback {
         s.duration = (s.samples + s.carry.length / 2) / JUDGE_RATE;
         this.pump(s);
       };
-      if (source) await source.stream(receive, cancelled);
+      const aligned = (cues: CaptionCue[]) => {
+        if (cancelled()) return;
+        s.alignment = cues;
+        s.alignmentPending = true;
+        this.flushAlignment(s);
+      };
+      if (source) await source.stream(receive, cancelled, aligned);
       else
-        await this.room.services.streamVoice(limited, receive, cancelled, 20);
+        await this.room.services.streamVoice(
+          limited,
+          receive,
+          cancelled,
+          20,
+          aligned,
+        );
       if (cancelled()) return;
       if (s.carry.length) {
         s.frames.push(s.carry);
@@ -278,11 +294,31 @@ export class JudgePlayback {
       s.duration = s.samples / JUDGE_RATE;
       if (!s.samples) throw new Error("Empty voice");
       s.done = true;
+      this.flushAlignment(s, true);
       this.room.trace("tts_eof", { speechEpoch: s.epoch, samples: s.samples });
       this.pump(s);
     } catch {
       if (!cancelled()) this.voiceFailure(false);
     }
+  }
+  private flushAlignment(s: Speech, force = false) {
+    const judge = this.room.game.state.judge,
+      now = this.room.services.now();
+    if (
+      this.speech !== s ||
+      s.fallback ||
+      judge?.epoch !== s.epoch ||
+      !s.alignmentPending ||
+      (!force && s.alignmentAt !== undefined && now - s.alignmentAt < 100)
+    )
+      return;
+    s.alignmentPending = false;
+    s.alignmentAt = now;
+    judge.alignment = {
+      revision: (judge.alignment?.revision || 0) + 1,
+      cues: s.alignment || [],
+    };
+    this.room.game.emit("judge_alignment");
   }
   private socketsReady() {
     return (
@@ -377,6 +413,7 @@ export class JudgePlayback {
         this.voiceFailure(true);
         return;
       }
+      this.flushAlignment(s);
       this.pump(s);
       if (this.speech === s && !s.fallback) this.watch(s);
     }, 20);
@@ -496,7 +533,8 @@ export class JudgePlayback {
     const source = new PreparedVoice(
       s.text,
       20,
-      async (_text, onChunk, cancelled) => {
+      async (_text, onChunk, cancelled, _budget, onAlignment) => {
+        if (!cancelled() && s.alignment) onAlignment?.(s.alignment);
         for (const chunk of pcm) if (!cancelled()) onChunk(chunk);
         return s.duration;
       },

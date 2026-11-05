@@ -1,9 +1,12 @@
+import type { CaptionCue } from "../../shared/domain.js";
 import { streamVoice } from "../providers/index.js";
 import { FIXED_LINES, PHRASES, voiceSettingsKey } from "./personality.js";
 /** A bounded preparation can be replayed while synthesis is still arriving. */
 export class PreparedVoice {
   chunks: Uint8Array[] = [];
   bytes = 0;
+  alignment: CaptionCue[] = [];
+  alignmentRevision = 0;
   users = 0;
   done = false;
   cancelled = false;
@@ -29,6 +32,12 @@ export class PreparedVoice {
       },
       () => this.cancelled,
       maxSeconds,
+      (cues) => {
+        if (this.cancelled) return;
+        this.alignment = cues;
+        this.alignmentRevision++;
+        this.wake();
+      },
     ).then(
       () => {
         this.done = true;
@@ -48,13 +57,22 @@ export class PreparedVoice {
     this.cancelled = true;
     this.wake();
   }
-  async stream(onChunk: (pcm: Uint8Array) => void, cancelled: () => boolean) {
+  async stream(
+    onChunk: (pcm: Uint8Array) => void,
+    cancelled: () => boolean,
+    onAlignment: (cues: CaptionCue[]) => void = () => {},
+  ) {
     this.users++;
     try {
-      let cursor = 0;
+      let cursor = 0,
+        revision = 0;
       while (!cancelled() && !this.cancelled) {
         while (cursor < this.chunks.length && !cancelled())
           onChunk(this.chunks[cursor++]);
+        if (this.alignmentRevision !== revision && !cancelled()) {
+          revision = this.alignmentRevision;
+          onAlignment(this.alignment);
+        }
         if (this.done) {
           if (this.error) throw this.error;
           return;

@@ -363,8 +363,8 @@ console.log(
     ready: true,
   }),
 );
-pa.command({ type: "ready", value: true });
-pb.command({ type: "ready", value: true });
+pa.command({ type: "ready" });
+pb.command({ type: "ready" });
 await wait(() => pa.state.judge?.status === "speaking", 10000);
 console.log(
   JSON.stringify({
@@ -376,8 +376,8 @@ await wait(() => pa.state.phase === "TOPIC_SELECT");
 const tails = pa.state.tailsId === pa.session.playerId ? pa : pb;
 tails.command({
   type: "propose_topic",
-  text: "Waffles versus pancakes",
-  chosenPosition: "I defend waffles",
+  suggestion: "waffles",
+  chosenPosition: "positive",
 });
 await wait(() => pa.state.phase === "TOPIC_CONFIRM");
 pa.command({ type: "confirm_topic", topicRevision: pa.state.topic!.revision });

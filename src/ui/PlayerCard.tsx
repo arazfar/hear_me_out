@@ -37,8 +37,6 @@ export function PlayerCard({
     !client.reconnecting &&
     judgeIsListening(state, player?.id || null) &&
     !(local && client.capture.pendingDone === state.turn?.id);
-  const winner =
-    state.phase === "MATCH_RESULT" && state.winnerId === player?.id;
   const offlineResult =
     state.phase === "MATCH_RESULT" && player?.connected === false;
   const showScore = state.round > 0;
@@ -123,7 +121,13 @@ export function PlayerCard({
         );
       if (u.feedbackReset) clear();
       const cue = u.feedback;
-      if (!cue || cue.playerId !== player?.id) return;
+      if (
+        !cue ||
+        !("playerIds" in cue
+          ? cue.playerIds.includes(player?.id || "")
+          : cue.playerId === player?.id)
+      )
+        return;
       if (cue.kind === "score") {
         queue.enqueue(cue);
         display();
@@ -144,8 +148,7 @@ export function PlayerCard({
         "face face-" +
         index +
         (showScore ? " scored" : "") +
-        (active ? " has-floor" : "") +
-        (winner ? " winner" : "")
+        (active ? " has-floor" : "")
       }
       aria-label={(player?.name || "Empty seat") + (local ? ", you" : "")}
     >
@@ -172,7 +175,7 @@ export function PlayerCard({
               aria-label={(player?.wins || 0) + " of 2 round wins"}
               title={(player?.wins || 0) + " of 2 round wins"}
             >
-              <small>Rounds</small>
+              <small>Wins</small>
               {[0, 1].map((n) => (
                 <span
                   key={n}
@@ -191,19 +194,36 @@ export function PlayerCard({
           {status && (
             <div
               className={"player-status " + (active ? "listening-badge" : "")}
+              role={active || offlineResult ? "img" : undefined}
+              aria-label={
+                offlineResult
+                  ? "Left the court"
+                  : active
+                    ? "Bonk is listening"
+                    : undefined
+              }
+              title={
+                offlineResult
+                  ? "Left the court"
+                  : active
+                    ? "Bonk is listening"
+                    : undefined
+              }
             >
               <Icon
                 name={
-                  active
-                    ? "ear"
-                    : status === "Ready" || status === "Confirmed"
-                      ? "check"
-                      : local && client.capture.micMuted
-                        ? "mic-off"
-                        : "mic"
+                  offlineResult
+                    ? "leave"
+                    : active
+                      ? "ear"
+                      : status === "Ready" || status === "Confirmed"
+                        ? "check"
+                        : local && client.capture.micMuted
+                          ? "mic-off"
+                          : "mic"
                 }
               />
-              <span>{active ? "Listening" : status}</span>
+              {!active && !offlineResult && <span>{status}</span>}
             </div>
           )}
         </div>

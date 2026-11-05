@@ -1,0 +1,456 @@
+{
+  "id": "synthetic-review",
+  "baseline": "synthetic-before",
+  "created": "2026-01-01T00:00:00Z",
+  "browser": "Synthetic fixture",
+  "reducedMotion": true,
+  "media": "No real game or media",
+  "scenarios": [
+    {
+      "id": "entry",
+      "title": "Create a room",
+      "group": "Entry & setup",
+      "note": ""
+    },
+    {
+      "id": "lobby",
+      "title": "Ready to play",
+      "group": "Lobby",
+      "note": ""
+    },
+    {
+      "id": "topics",
+      "title": "Choose a topic",
+      "group": "Coin & topics",
+      "note": ""
+    },
+    {
+      "id": "turn",
+      "title": "Your turn",
+      "group": "Gameplay",
+      "note": ""
+    },
+    {
+      "id": "winner",
+      "title": "Match winner",
+      "group": "Results",
+      "note": ""
+    },
+    {
+      "id": "match-draw",
+      "title": "Match drawn",
+      "group": "Results",
+      "note": ""
+    },
+    {
+      "id": "recovery",
+      "title": "Repair devices",
+      "group": "Recovery",
+      "note": ""
+    },
+    {
+      "id": "shared",
+      "title": "Media controls",
+      "group": "Shared UI",
+      "note": ""
+    }
+  ],
+  "captures": [
+    {
+      "id": "entry:desktop:before:0",
+      "scenario": "entry",
+      "viewport": "desktop",
+      "version": "before",
+      "frame": 0,
+      "file": "images/desktop-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "8b2a55732f45e77f3185b48104053cf6efa64f19403c356528e472a40a4b310a"
+    },
+    {
+      "id": "entry:desktop:after:0",
+      "scenario": "entry",
+      "viewport": "desktop",
+      "version": "after",
+      "frame": 0,
+      "file": "images/desktop-after.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d2a43d8de93a22364055619a263e78b5e8a5ccf66ceb9faadb1248e613c97e00"
+    },
+    {
+      "id": "entry:phone:before:0",
+      "scenario": "entry",
+      "viewport": "phone",
+      "version": "before",
+      "frame": 0,
+      "file": "images/phone-before.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "8d94842e1ba1a519a65d16796ca8512432d49e765417bf2ab4c543ebe6e7a81c"
+    },
+    {
+      "id": "entry:phone:after:0",
+      "scenario": "entry",
+      "viewport": "phone",
+      "version": "after",
+      "frame": 0,
+      "file": "images/phone-after.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "55592f4d962219d89f23ea62c120574a3d6753ef788d492835743d79a274ae5a"
+    },
+    {
+      "id": "lobby:desktop:before:0",
+      "scenario": "lobby",
+      "viewport": "desktop",
+      "version": "before",
+      "frame": 0,
+      "file": "images/desktop-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "8b2a55732f45e77f3185b48104053cf6efa64f19403c356528e472a40a4b310a"
+    },
+    {
+      "id": "lobby:desktop:after:0",
+      "scenario": "lobby",
+      "viewport": "desktop",
+      "version": "after",
+      "frame": 0,
+      "file": "images/desktop-after.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d2a43d8de93a22364055619a263e78b5e8a5ccf66ceb9faadb1248e613c97e00"
+    },
+    {
+      "id": "lobby:phone:before:0",
+      "scenario": "lobby",
+      "viewport": "phone",
+      "version": "before",
+      "frame": 0,
+      "file": "images/phone-before.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "8d94842e1ba1a519a65d16796ca8512432d49e765417bf2ab4c543ebe6e7a81c"
+    },
+    {
+      "id": "lobby:phone:after:0",
+      "scenario": "lobby",
+      "viewport": "phone",
+      "version": "after",
+      "frame": 0,
+      "file": "images/phone-after.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "55592f4d962219d89f23ea62c120574a3d6753ef788d492835743d79a274ae5a"
+    },
+    {
+      "id": "topics:desktop:before:0",
+      "scenario": "topics",
+      "viewport": "desktop",
+      "version": "before",
+      "frame": 0,
+      "file": "images/desktop-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "8b2a55732f45e77f3185b48104053cf6efa64f19403c356528e472a40a4b310a"
+    },
+    {
+      "id": "topics:desktop:after:0",
+      "scenario": "topics",
+      "viewport": "desktop",
+      "version": "after",
+      "frame": 0,
+      "file": "images/desktop-after.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d2a43d8de93a22364055619a263e78b5e8a5ccf66ceb9faadb1248e613c97e00"
+    },
+    {
+      "id": "topics:phone:before:0",
+      "scenario": "topics",
+      "viewport": "phone",
+      "version": "before",
+      "frame": 0,
+      "file": "images/phone-before.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "8d94842e1ba1a519a65d16796ca8512432d49e765417bf2ab4c543ebe6e7a81c"
+    },
+    {
+      "id": "topics:phone:after:0",
+      "scenario": "topics",
+      "viewport": "phone",
+      "version": "after",
+      "frame": 0,
+      "file": "images/phone-after.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "55592f4d962219d89f23ea62c120574a3d6753ef788d492835743d79a274ae5a"
+    },
+    {
+      "id": "turn:desktop:before:0",
+      "scenario": "turn",
+      "viewport": "desktop",
+      "version": "before",
+      "frame": 0,
+      "file": "images/desktop-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "8b2a55732f45e77f3185b48104053cf6efa64f19403c356528e472a40a4b310a"
+    },
+    {
+      "id": "turn:desktop:after:0",
+      "scenario": "turn",
+      "viewport": "desktop",
+      "version": "after",
+      "frame": 0,
+      "file": "images/desktop-after.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d2a43d8de93a22364055619a263e78b5e8a5ccf66ceb9faadb1248e613c97e00"
+    },
+    {
+      "id": "turn:desktop:after:1",
+      "scenario": "turn",
+      "viewport": "desktop",
+      "version": "after",
+      "frame": 1,
+      "file": "images/desktop-after.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d2a43d8de93a22364055619a263e78b5e8a5ccf66ceb9faadb1248e613c97e00"
+    },
+    {
+      "id": "turn:phone:before:0",
+      "scenario": "turn",
+      "viewport": "phone",
+      "version": "before",
+      "frame": 0,
+      "file": "images/phone-before.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "8d94842e1ba1a519a65d16796ca8512432d49e765417bf2ab4c543ebe6e7a81c"
+    },
+    {
+      "id": "turn:phone:before:1",
+      "scenario": "turn",
+      "viewport": "phone",
+      "version": "before",
+      "frame": 1,
+      "file": "images/phone-before.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "8d94842e1ba1a519a65d16796ca8512432d49e765417bf2ab4c543ebe6e7a81c"
+    },
+    {
+      "id": "turn:phone:after:0",
+      "scenario": "turn",
+      "viewport": "phone",
+      "version": "after",
+      "frame": 0,
+      "file": "images/phone-after.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "55592f4d962219d89f23ea62c120574a3d6753ef788d492835743d79a274ae5a"
+    },
+    {
+      "id": "turn:phone:after:1",
+      "scenario": "turn",
+      "viewport": "phone",
+      "version": "after",
+      "frame": 1,
+      "file": "images/phone-after.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "55592f4d962219d89f23ea62c120574a3d6753ef788d492835743d79a274ae5a"
+    },
+    {
+      "id": "turn:phone:after:2",
+      "scenario": "turn",
+      "viewport": "phone",
+      "version": "after",
+      "frame": 2,
+      "file": "images/phone-after.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "55592f4d962219d89f23ea62c120574a3d6753ef788d492835743d79a274ae5a"
+    },
+    {
+      "id": "winner:desktop:before:0",
+      "scenario": "winner",
+      "viewport": "desktop",
+      "version": "before",
+      "frame": 0,
+      "file": "images/desktop-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "8b2a55732f45e77f3185b48104053cf6efa64f19403c356528e472a40a4b310a"
+    },
+    {
+      "id": "winner:desktop:after:0",
+      "scenario": "winner",
+      "viewport": "desktop",
+      "version": "after",
+      "frame": 0,
+      "file": "images/desktop-after.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d2a43d8de93a22364055619a263e78b5e8a5ccf66ceb9faadb1248e613c97e00"
+    },
+    {
+      "id": "winner:phone:before:0",
+      "scenario": "winner",
+      "viewport": "phone",
+      "version": "before",
+      "frame": 0,
+      "file": "images/phone-before.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "8d94842e1ba1a519a65d16796ca8512432d49e765417bf2ab4c543ebe6e7a81c"
+    },
+    {
+      "id": "winner:phone:after:0",
+      "scenario": "winner",
+      "viewport": "phone",
+      "version": "after",
+      "frame": 0,
+      "file": "images/phone-after.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "55592f4d962219d89f23ea62c120574a3d6753ef788d492835743d79a274ae5a"
+    },
+    {
+      "id": "match-draw:desktop:before:0",
+      "scenario": "match-draw",
+      "viewport": "desktop",
+      "version": "before",
+      "frame": 0,
+      "file": "images/desktop-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "8b2a55732f45e77f3185b48104053cf6efa64f19403c356528e472a40a4b310a"
+    },
+    {
+      "id": "match-draw:desktop:after:0",
+      "scenario": "match-draw",
+      "viewport": "desktop",
+      "version": "after",
+      "frame": 0,
+      "file": "images/desktop-after.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d2a43d8de93a22364055619a263e78b5e8a5ccf66ceb9faadb1248e613c97e00"
+    },
+    {
+      "id": "match-draw:phone:before:0",
+      "scenario": "match-draw",
+      "viewport": "phone",
+      "version": "before",
+      "frame": 0,
+      "file": "images/phone-before.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "8d94842e1ba1a519a65d16796ca8512432d49e765417bf2ab4c543ebe6e7a81c"
+    },
+    {
+      "id": "match-draw:phone:after:0",
+      "scenario": "match-draw",
+      "viewport": "phone",
+      "version": "after",
+      "frame": 0,
+      "file": "images/phone-after.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "55592f4d962219d89f23ea62c120574a3d6753ef788d492835743d79a274ae5a"
+    },
+    {
+      "id": "recovery:desktop:before:0",
+      "scenario": "recovery",
+      "viewport": "desktop",
+      "version": "before",
+      "frame": 0,
+      "file": "images/desktop-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "8b2a55732f45e77f3185b48104053cf6efa64f19403c356528e472a40a4b310a"
+    },
+    {
+      "id": "recovery:desktop:after:0",
+      "scenario": "recovery",
+      "viewport": "desktop",
+      "version": "after",
+      "frame": 0,
+      "file": "images/desktop-after.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d2a43d8de93a22364055619a263e78b5e8a5ccf66ceb9faadb1248e613c97e00"
+    },
+    {
+      "id": "recovery:phone:before:0",
+      "scenario": "recovery",
+      "viewport": "phone",
+      "version": "before",
+      "frame": 0,
+      "file": "images/phone-before.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "8d94842e1ba1a519a65d16796ca8512432d49e765417bf2ab4c543ebe6e7a81c"
+    },
+    {
+      "id": "recovery:phone:after:0",
+      "scenario": "recovery",
+      "viewport": "phone",
+      "version": "after",
+      "frame": 0,
+      "file": "images/phone-after.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "55592f4d962219d89f23ea62c120574a3d6753ef788d492835743d79a274ae5a"
+    },
+    {
+      "id": "shared:desktop:before:0",
+      "scenario": "shared",
+      "viewport": "desktop",
+      "version": "before",
+      "frame": 0,
+      "file": "images/desktop-before.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "8b2a55732f45e77f3185b48104053cf6efa64f19403c356528e472a40a4b310a"
+    },
+    {
+      "id": "shared:desktop:after:0",
+      "scenario": "shared",
+      "viewport": "desktop",
+      "version": "after",
+      "frame": 0,
+      "file": "images/desktop-after.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d2a43d8de93a22364055619a263e78b5e8a5ccf66ceb9faadb1248e613c97e00"
+    },
+    {
+      "id": "shared:phone:before:0",
+      "scenario": "shared",
+      "viewport": "phone",
+      "version": "before",
+      "frame": 0,
+      "file": "images/phone-before.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "8d94842e1ba1a519a65d16796ca8512432d49e765417bf2ab4c543ebe6e7a81c"
+    },
+    {
+      "id": "shared:phone:after:0",
+      "scenario": "shared",
+      "viewport": "phone",
+      "version": "after",
+      "frame": 0,
+      "file": "images/phone-after.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "55592f4d962219d89f23ea62c120574a3d6753ef788d492835743d79a274ae5a"
+    }
+  ]
+}

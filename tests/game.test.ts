@@ -12,8 +12,8 @@ function setup() {
   const a = g.addPlayer("Sam"),
     b = g.addPlayer("Alex");
   a.mediaReady = b.mediaReady = true;
-  g.ready(a.id, true);
-  g.ready(b.id, true);
+  g.ready(a.id);
+  g.ready(b.id);
   time += 8001;
   g.tick();
   assert.equal(
@@ -182,8 +182,8 @@ test("topic requires both confirmations and connection recovery cannot invent wi
   const a = g.addPlayer("A"),
     b = g.addPlayer("B");
   a.mediaReady = b.mediaReady = true;
-  g.ready(a.id, true);
-  g.ready(b.id, true);
+  g.ready(a.id);
+  g.ready(b.id);
   time = 8001;
   g.selectTopic();
   time += 45001;
