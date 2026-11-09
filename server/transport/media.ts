@@ -7,7 +7,7 @@ import type { Command } from "../../shared/protocol.js";
 import type { RoomController } from "../rooms/room.js";
 export class RoomMedia {
   constructor(readonly room: RoomController) {}
-  rtcTimer: ReturnType<typeof setTimeout> | null = null;
+  private rtcTimer: ReturnType<typeof setTimeout> | null = null;
   audioRejections = {
     invalid: 0,
     epoch: 0,
@@ -101,7 +101,6 @@ export class RoomMedia {
     for (let i = 0; i < pcm.length; i += 16)
       rms += (pcm.readInt16LE(i) / 32768) ** 2;
     rms = Math.sqrt(rms / Math.max(1, pcm.length / 16));
-    if (rms > 0.018) seat.voiceAt = this.room.services.now();
     if (this.room.game.state.mediaMode !== "rtc") {
       if (this.room.services.now() - capturedAt <= RELAY_AUDIO_MAX_AGE_MS)
         this.forward(id, "audio", raw);
@@ -149,10 +148,7 @@ export class RoomMedia {
           this.rtcTimer = null;
           this.setMedia("wss");
         }, 3000);
-      else if (!stalled && this.rtcTimer) {
-        this.room.services.clearTimeout(this.rtcTimer);
-        this.rtcTimer = null;
-      }
+      else if (!stalled && this.rtcTimer) this.cancelRtcFallback();
       return;
     }
     if (
@@ -174,11 +170,14 @@ export class RoomMedia {
         );
     }
   }
+  cancelRtcFallback() {
+    this.room.cancelTimer(this.rtcTimer);
+    this.rtcTimer = null;
+  }
   setMedia(mode: "rtc" | "wss") {
     if (this.room.game.state.mediaMode === mode) return;
     this.room.game.setMediaMode(mode);
-    if (this.rtcTimer) this.room.services.clearTimeout(this.rtcTimer);
-    this.rtcTimer = null;
+    this.cancelRtcFallback();
     this.room.game.emit("media_mode_changed", { mode });
   }
 }

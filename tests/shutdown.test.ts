@@ -3,6 +3,7 @@ import test from "node:test";
 import { fork } from "node:child_process";
 import { WebSocket } from "ws";
 import { createApp } from "../server/app";
+import { RoomController } from "../server/rooms/room";
 import { services, fakeTranscription, deferred } from "./fixtures";
 
 test("room closure waits, deduplicates providers, and attempts cleanup after failures", async () => {
@@ -37,6 +38,38 @@ test("room closure waits, deduplicates providers, and attempts cleanup after fai
   pending.resolve(true);
   assert.equal(await first, false);
   assert.equal(await closing, false);
+});
+
+test("room closure attempts each timer and closes providers after a timer clear fails", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const room = new RoomController(
+    "1234",
+    services({ setTimeout, clearTimeout }),
+  );
+  let fired = 0;
+  const failed = room.later(() => fired++, 100);
+  const pending = room.later(() => fired++, 100);
+  const clear = t.mock.method(
+    room.services,
+    "clearTimeout",
+    (timer: Parameters<typeof clearTimeout>[0]) => {
+      if (timer === failed) throw new Error("test failure");
+      clearTimeout(timer);
+    },
+  );
+  const stream = fakeTranscription(null, "");
+  const closeStream = t.mock.method(stream, "close");
+  room.transcription.active.add(stream);
+
+  assert.equal(await room.close(), false);
+  assert.deepEqual(
+    clear.mock.calls.map((call) => call.arguments[0]),
+    [failed, pending],
+  );
+  assert.equal(room.timers.has(pending), false);
+  assert.equal(closeStream.mock.callCount(), 1);
+  t.mock.timers.tick(100);
+  assert.equal(fired, 0);
 });
 
 test(

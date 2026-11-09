@@ -4,8 +4,6 @@ let failures = 0;
 const ink = new InkSession("idle", "round", null, {
   caption: () => {},
   segment: () => {},
-  start: () => {},
-  end: () => {},
   error: () => failures++,
 });
 await new Promise((r) => setTimeout(r, 500));

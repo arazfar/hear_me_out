@@ -21,7 +21,6 @@ export type Seat = {
   audioSeq: number;
   audioBudget: AudioBudget;
   lastAudioAt: number;
-  voiceAt: number;
   lastActivity: number;
   rtcReady: boolean;
   acks: Map<string, unknown>;
@@ -106,9 +105,14 @@ export class RoomController {
     this.timers.add(timer);
     return timer;
   }
-  clearTimers() {
-    for (const timer of this.timers) this.services.clearTimeout(timer);
-    this.timers.clear();
+  cancelTimer(timer: ReturnType<typeof setTimeout> | null) {
+    if (timer === null || !this.timers.has(timer)) return;
+    this.services.clearTimeout(timer);
+    this.timers.delete(timer);
+  }
+  private clearTimers() {
+    for (const timer of this.timers) this.cancelTimer(timer);
+    this.media.cancelRtcFallback();
   }
   send(playerId: string, message: unknown) {
     const ws = this.seats.get(playerId)?.sockets.get("control");
@@ -124,8 +128,7 @@ export class RoomController {
     ) {
       this.game.state.mediaEpoch++;
       this.game.state.mediaMode = "connecting";
-      if (this.media.rtcTimer) this.services.clearTimeout(this.media.rtcTimer);
-      this.media.rtcTimer = null;
+      this.media.cancelRtcFallback();
       for (const player of this.game.state.players) {
         this.game.setMediaReady(player.id, false);
         this.game.setCaptureReady(player.id, player.cameraOn, false);
@@ -162,8 +165,7 @@ export class RoomController {
       }
       if (this.game.state.phase === "ABORTED")
         this.transcription.retireGameplay();
-      if (this.playback.topicNudge)
-        this.services.clearTimeout(this.playback.topicNudge);
+      this.cancelTimer(this.playback.topicNudge);
       this.playback.topicNudge = null;
       if (this.game.state.phase !== "ROUND" || !this.game.state.turn)
         this.playback.pendingHandoff = null;
@@ -397,19 +399,11 @@ export class RoomController {
     ]);
     const actions: Array<() => unknown> = [
       () => this.transcription.resetEvidence(),
-      () => this.clearTimers(),
+      ...[...this.timers].map((timer) => () => this.cancelTimer(timer)),
       () => this.judging.cancelJudgment(),
-      () => {
-        if (this.playback.topicNudge)
-          this.services.clearTimeout(this.playback.topicNudge);
-      },
       ...this.playback.hostCues.map((cue) => () => cue.source?.cancel()),
       () => this.judging.invalidateCandidate(),
       () => this.playback.cancelSpeech(),
-      () => {
-        if (this.media.rtcTimer)
-          this.services.clearTimeout(this.media.rtcTimer);
-      },
       ...[...streams].map((stream) => () => stream.close()),
       ...[...this.seats.values()].flatMap((seat) =>
         [...seat.sockets.values()].map((socket) => () => socket.close()),

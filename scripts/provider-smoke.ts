@@ -117,8 +117,6 @@ export async function runProviderSmoke(overrides: Partial<Providers> = {}) {
         metrics.sttFinalMs ??= Date.now() - sttAt;
         resolve(segment);
       },
-      start() {},
-      end() {},
       error: () => reject(new Error("Transcription provider failed")),
     });
     await bounded(

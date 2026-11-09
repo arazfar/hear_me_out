@@ -45,8 +45,6 @@ function session(baseURL, finals = []) {
     {
       segment: (segment) => finals.push(segment.text),
       caption() {},
-      start() {},
-      end() {},
       error() {},
     },
     inkTransport(

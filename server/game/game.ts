@@ -1,5 +1,5 @@
 import { randomInt, randomUUID } from "node:crypto";
-import { gameEventSchema, type eventPayloads } from "../../shared/protocol.js";
+import { gameEventSchema, type GameEvent } from "../../shared/protocol.js";
 import {
   CAPS,
   CRITERIA,
@@ -14,7 +14,6 @@ import {
   type Snapshot,
   type Turn,
 } from "../../shared/domain.js";
-import { type GameEvent } from "../../shared/protocol.js";
 
 export class RuleError extends Error {}
 type StoredTurn = {
@@ -41,7 +40,6 @@ export class Game {
   recoverySealRemaining = 0;
   topicRejections = 0;
   sealAt = 0;
-  endOfThoughtAt = 0;
   interventions = 0;
   lastInterventionAt = -Infinity;
   constructor(
@@ -162,7 +160,7 @@ export class Game {
     this.state.serverNow = this.now();
     return structuredClone(this.state);
   }
-  emit(type: keyof typeof eventPayloads, payload: unknown = null) {
+  emit(type: GameEvent["type"], payload: unknown = null) {
     this.state.seq++;
     this.state.serverNow = this.now();
     this.onEvent(
@@ -429,7 +427,6 @@ export class Game {
       validUntil: Infinity,
       segments: new Map(),
     });
-    this.endOfThoughtAt = 0;
     this.state.status =
       entry.kind === "case"
         ? "Make your case. Give us a reason."
@@ -534,21 +531,6 @@ export class Game {
       lastAudioSeq,
       capturedBefore,
     });
-  }
-  thought(id: string) {
-    if (
-      this.state.turn?.playerId === id &&
-      !this.state.turn.sealing &&
-      [...(this.turns.get(this.state.turn.id)?.segments.values() || [])].some(
-        (s) =>
-          s.text.trim().split(/\s+/).length >= 3 &&
-          !/^(um|uh|hmm|okay|hello|hi|yeah|yes|no)[.,!?\s]*$/i.test(s.text),
-      )
-    )
-      this.endOfThoughtAt = this.now();
-  }
-  speechStarted(id: string) {
-    if (this.state.turn?.playerId === id) this.endOfThoughtAt = 0;
   }
   registerSegment(segment: Segment) {
     if (!segment.turnId || !segment.eligible) return false;

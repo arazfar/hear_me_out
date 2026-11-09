@@ -371,10 +371,7 @@ export class JudgePlayback {
     }
   }
   private watch(s: Speech) {
-    if (s.timer) {
-      this.room.services.clearTimeout(s.timer);
-      this.room.timers.delete(s.timer);
-    }
+    this.clearTimer(s);
     s.timer = this.room.later(() => {
       if (this.speech !== s || s.fallback) return;
       const now = this.room.services.now();
@@ -596,9 +593,7 @@ export class JudgePlayback {
     this.room.game.emit("judge_cancelled", { epoch: s.epoch });
   }
   private clearTimer(s: Speech) {
-    if (!s.timer) return;
-    this.room.services.clearTimeout(s.timer);
-    this.room.timers.delete(s.timer);
+    this.room.cancelTimer(s.timer);
     s.timer = null;
   }
 }

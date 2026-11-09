@@ -49,7 +49,6 @@ export function seat(): Seat {
     audioSeq: -1,
     audioBudget: new AudioBudget(),
     lastAudioAt: 0,
-    voiceAt: 0,
     lastActivity: 0,
     rtcReady: false,
     acks: new Map(),

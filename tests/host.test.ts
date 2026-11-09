@@ -5,6 +5,7 @@ import {
   evidence,
   fakeVoice,
   fakeSpeech,
+  services,
 } from "./fixtures";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -58,8 +59,9 @@ test("leaving a room resets judge playback IDs so another room can reuse its epo
   assert.equal(client.playback.cancelled.size, 0);
   assert.equal(client.playback.readySent.size, 0);
 });
-test("topic nudge is once per phase; active speech survives navigation while queued cues expire", () => {
-  const c = new RoomController("1234");
+test("topic nudge is once per phase; active speech survives navigation while queued cues expire", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const c = new RoomController("1234", services({ setTimeout, clearTimeout }));
   c.game.addPlayer("Sam");
   c.game.addPlayer("Alex");
   const lines: string[] = [];
@@ -75,11 +77,16 @@ test("topic nudge is once per phase; active speech survives navigation while que
   c.playback.hostCues = [
     { text: "obsolete", target: null, phaseVersion: v, phase: "TOPIC_SELECT" },
   ];
+  assert.equal(c.timers.size, 1);
   c.game.setPhase("TOPIC_CONFIRM", 20000);
   assert.equal(c.playback.speech?.id, "speech");
   assert.equal(c.playback.hostCues.length, 0);
+  assert.equal(c.timers.size, 0);
   c.playback.nudgeTopic(v);
   assert.equal(lines.length, 2);
+  const nudge = t.mock.method(c.playback, "nudgeTopic");
+  t.mock.timers.tick(12000);
+  assert.equal(nudge.mock.callCount(), 0);
   c.close();
 });
 test("settlement accepts delayed final evidence, waits for scoring, and then advances immediately", () => {

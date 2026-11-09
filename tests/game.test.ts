@@ -162,14 +162,13 @@ test("judge pauses preserve time; natural pauses never surrender the floor", () 
   assert.equal(g.remaining(), left);
   g.resume("judge");
   g.registerSegment(segment(g));
-  g.thought(t.playerId);
-  g.speechStarted(t.playerId);
   advance(900);
   assert(!t.sealing);
-  g.thought(t.playerId);
   advance(8000);
   assert(!t.sealing);
-  advance(30000);
+  advance(g.remaining() - 1);
+  assert(!t.sealing);
+  advance(1);
   assert(t.sealing);
 });
 test("topic requires both confirmations and connection recovery cannot invent winner", () => {

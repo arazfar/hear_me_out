@@ -101,8 +101,6 @@ export class InkSession {
     public handlers: {
       segment: (s: Segment) => void;
       caption: (text: string, final: boolean) => void;
-      start: () => void;
-      end: () => void;
       error: (error: unknown) => void;
     },
     transport: InkTransport = connectInk(),
@@ -203,16 +201,10 @@ export class InkSession {
         this.speechCounter++;
         this.transcript = "";
         this.consumed = 0;
-        this.handlers.start();
-      } else if (m.type === "turn.update")
+      } else if (m.type === "turn.update" || m.type === "turn.eager_end")
         this.update(m.transcript || "", false);
-      else if (m.type === "turn.eager_end")
-        this.update(m.transcript || "", false);
-      else if (m.type === "turn.resume") this.handlers.start();
-      else if (m.type === "turn.end") {
-        this.update(m.transcript || "", true);
-        this.handlers.end();
-      } else if (m.type === "error")
+      else if (m.type === "turn.end") this.update(m.transcript || "", true);
+      else if (m.type === "error")
         this.fail(new Error("Transcription provider error"));
     }
   }

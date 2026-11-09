@@ -236,8 +236,6 @@ test("departed and terminal transcription callbacks cannot restore evidence, cap
     for (const [id, handlers] of callbacks) {
       handlers.caption("Late caption", true);
       handlers.segment({ ...segment, id: "late:" + id, playerId: id });
-      handlers.start();
-      handlers.end();
       if (id === turn.playerId) handlers.error(new Error("Late failure"));
     }
     await flush();

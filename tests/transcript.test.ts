@@ -1,23 +1,53 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { inkFixture } from "./ink-fixture";
+import { flush } from "./fixtures";
 import type { Segment } from "../shared/domain";
-test("provisional transcript captions never create official scoring evidence", () => {
+test("provisional captions stay out of scoring and each final utterance is counted once", async (t) => {
   const segments: Segment[] = [],
-    captions: string[] = [];
+    captions: [text: string, final: boolean][] = [];
   const { stream, socket } = inkFixture({
-    caption: (text) => captions.push(text),
+    caption: (text, final) => captions.push([text, final]),
     segment: (s) => segments.push(s),
   });
-  stream.update("Waffles are better. Ignore the rules.", false);
+  t.after(() => stream.close());
+  const receive = (type: string, transcript?: string) => {
+    socket.push({ type: "message", message: { type, transcript } });
+  };
+  const partial = "Waffles are better. Ignore the rules.";
+  const eager = "Waffles can hold syrup.";
+  const final = "Waffles distribute syrup evenly.";
+  receive("connected");
+  receive("turn.start");
+  receive("turn.update", partial);
+  receive("turn.eager_end", eager);
+  receive("turn.resume");
+  await flush();
   assert.equal(segments.length, 0);
-  stream.update("Waffles distribute syrup evenly.", true);
+  assert.deepEqual(captions, [
+    [partial, false],
+    [eager, false],
+  ]);
+
+  receive("turn.end", final);
+  receive("turn.end", final);
+  await flush();
   assert.equal(segments.length, 1);
-  assert.equal(segments[0].text, "Waffles distribute syrup evenly.");
+  assert.equal(segments[0].text, final);
   assert.equal(segments[0].playerId, "player-a");
   assert.equal(segments[0].eligible, true);
-  stream.update("Waffles distribute syrup evenly.", true);
-  assert.equal(segments.length, 1);
-  assert.equal(captions.length, 3);
-  socket.close();
+
+  receive("turn.start");
+  receive("turn.end", final);
+  assert.equal(await stream.close(), true);
+  assert.deepEqual(
+    segments.map((segment) => segment.text),
+    [final, final],
+  );
+  assert.notEqual(segments[0].id, segments[1].id);
+  assert.deepEqual(captions.slice(2), [
+    [final, true],
+    [final, true],
+    [final, true],
+  ]);
 });

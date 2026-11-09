@@ -46,8 +46,6 @@ export function inkFixture(
     {
       caption: () => {},
       segment: () => {},
-      start: () => {},
-      end: () => {},
       error: () => {},
       ...handlers,
     },

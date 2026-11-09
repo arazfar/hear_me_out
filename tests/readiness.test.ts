@@ -59,6 +59,7 @@ function fixture() {
   function report(
     id: string,
     changes: Partial<Extract<Command, { type: "media_status" }>> = {},
+    deliverRelayVideo = true,
   ) {
     room.seats.get(id)!.lastAudioAt = now;
     room.readiness.observe(id, {
@@ -77,6 +78,7 @@ function fixture() {
     const probe = ++seq;
     room.readiness.sent(id, probe, true);
     room.readiness.received(id, probe, room.game.state.mediaEpoch, true);
+    if (!deliverRelayVideo) return;
     const video = ++seq;
     room.readiness.sent(id, video, false);
     room.readiness.received(
@@ -202,10 +204,20 @@ test("stalled RTC decoding switches to relay while preserving readiness guards",
   f.room.services.clearTimeout = clearTimeout;
   f.ready();
   f.room.game.state.mediaMode = "rtc";
-  for (const p of f.players) f.room.readiness.get(p.id).remoteAt = -Infinity;
-  f.room.readiness.tick();
-  assert(!f.room.game.allMediaReady());
+  const stallVideo = () => {
+    for (const p of f.players) f.room.readiness.get(p.id).remoteAt = -Infinity;
+    f.room.readiness.tick();
+    assert(!f.room.game.allMediaReady());
+    f.room.media.selectMode();
+    assert.equal(f.room.timers.size, 1);
+  };
+  stallVideo();
+  f.refresh();
   f.room.media.selectMode();
+  assert.equal(f.room.timers.size, 0);
+  t.mock.timers.tick(3001);
+  assert.equal(f.room.game.state.mediaMode, "rtc");
+  stallVideo();
   t.mock.timers.tick(3001);
   assert.equal(f.room.game.state.mediaMode, "wss");
   assert(!f.room.game.allMediaReady());
@@ -214,6 +226,56 @@ test("stalled RTC decoding switches to relay while preserving readiness guards",
   f.refresh(1001);
   assert(f.room.game.allMediaReady());
   f.room.close();
+});
+test("an RTC stall rearms relay fallback after recovery expires", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const f = fixture();
+  const { room, players } = f;
+  const { game, media } = room;
+  t.after(() => room.close());
+  f.round();
+  game.onEvent = (event) => room.onEvent(event);
+  room.services.setTimeout = setTimeout;
+  room.services.clearTimeout = clearTimeout;
+  media.setMedia("rtc");
+  game.recoverySpent = 59000;
+  for (const p of players) room.readiness.get(p.id).remoteAt = -Infinity;
+  const reportStall = () => {
+    for (const p of players) f.report(p.id, { rtc: true }, false);
+    room.tick();
+  };
+  const advance = (ms: number) => {
+    f.advance(ms);
+    t.mock.timers.tick(ms);
+  };
+
+  reportStall();
+  assert.equal(game.state.phase, "RECOVERING");
+  assert.equal(game.state.recoveryDeadline, room.services.now() + 1000);
+  assert.equal(room.timers.size, 1);
+
+  advance(1000);
+  reportStall();
+  assert.equal(game.state.phase, "ABORTED");
+  assert.equal(room.timers.size, 0);
+  room.tick();
+  assert.equal(room.timers.size, 1);
+
+  advance(2000);
+  reportStall();
+  assert.equal(room.timers.size, 1);
+  advance(999);
+  assert.equal(game.state.mediaMode, "rtc");
+  advance(1);
+  assert.equal(game.state.mediaMode, "wss");
+  assert.equal(room.timers.size, 0);
+
+  f.refresh();
+  assert(!game.allMediaReady());
+  f.refresh(1001);
+  f.refresh(1001);
+  assert(game.allMediaReady());
+  assert.equal(game.state.phase, "ABORTED");
 });
 test("source interruption cancels a running private check immediately", () => {
   const f = fixture(),
@@ -514,8 +576,6 @@ test("a private check owns reconnect transcription; private callbacks never beco
   f.audio(id);
   current.caption("Bonk, hear", false);
   current.caption("Testing my microphone with entirely different words.", true);
-  current.start();
-  current.end();
   // Purpose owns eligibility, even if an adapter supplies turn-shaped data.
   current.segment({
     ...evidence(room.game, "private"),

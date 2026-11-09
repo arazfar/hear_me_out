@@ -53,8 +53,6 @@ for (const fault of ["clean", "abnormal", "error", "silent"] as const) {
       {
         segment: (s) => finals.push(s.text),
         caption: () => {},
-        start: () => {},
-        end: () => {},
         error: () => {},
       },
       inkTransport(transport),

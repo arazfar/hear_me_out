@@ -1,6 +1,7 @@
 import { ServerClock } from "../src/media/server-clock";
 import assert from "node:assert/strict";
 import test from "node:test";
+import { Game } from "../server/game/game";
 import {
   decodeJudgeAudio,
   decodeMicrophone,
@@ -14,6 +15,7 @@ import {
   auxiliarySchema,
   commandEnvelopeSchema,
   PROTOCOL_VERSION,
+  serverMessageSchema,
 } from "../shared/protocol";
 import { fakeVoice, flush, roomFixture } from "./fixtures";
 
@@ -97,6 +99,51 @@ test("shared schemas reject missing versions, nonfinite clocks, oversized signal
       command: { type: "barge_in", utteranceId: "u", speechEpoch: 1 },
     }).success,
   );
+});
+test("protocol 6 events preserve null, structured, and nullable payloads", () => {
+  const snapshot = new Game("1234").snapshot();
+  const envelope = {
+    roomId: snapshot.roomId,
+    matchId: snapshot.matchId,
+    seq: snapshot.seq,
+    serverNowMs: snapshot.serverNow,
+    phaseVersion: snapshot.phaseVersion,
+    snapshot,
+  };
+  const seal = {
+    turnId: "turn",
+    playerId: "player",
+    lastAudioSeq: -1,
+    capturedBefore: snapshot.serverNow,
+  };
+  for (const event of [
+    { type: "phase_changed", payload: null },
+    { type: "turn_sealed", payload: seal },
+    { type: "transcript", payload: null },
+    {
+      type: "transcript",
+      payload: {
+        playerId: "player",
+        text: "Hello",
+        final: false,
+        turnId: null,
+      },
+    },
+  ]) {
+    const message = { ...envelope, ...event };
+    assert.deepEqual(serverMessageSchema.parse(message), message);
+  }
+  for (const event of [
+    { type: "phase_changed" },
+    { type: "turn_sealed", payload: null },
+    { type: "turn_sealed", payload: { ...seal, lastAudioSeq: -2 } },
+    { type: "unknown_event", payload: null },
+  ]) {
+    assert.equal(
+      serverMessageSchema.safeParse({ ...envelope, ...event }).success,
+      false,
+    );
+  }
 });
 test("missing audio recipient cancels shared speech instead of silently dropping one copy", async () => {
   const { room } = roomFixture({ streamVoice: fakeVoice });

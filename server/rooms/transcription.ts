@@ -292,15 +292,6 @@ export class Transcription {
         )
           this.room.judging.onSegment(segment);
       },
-      start: () => {
-        if (turnId && acceptsEvidence() && this.ink.get(id) === stream) {
-          this.room.game.speechStarted(id);
-        }
-      },
-      end: () => {
-        if (turnId && acceptsEvidence() && this.ink.get(id) === stream)
-          this.room.game.thought(id);
-      },
       error: () => {
         if (ownsSeat() && this.ink.get(id) === stream)
           this.sttFailure(id, turnId);
