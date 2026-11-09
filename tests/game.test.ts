@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Game } from "../server/game/game";
 import { CAPS, CRITERIA, type Segment } from "../shared/domain";
+import type { GameEvent } from "../shared/protocol";
 function setup() {
   let time = 100000;
   const g = new Game(
@@ -53,6 +54,11 @@ function segment(g: Game, id = "s"): Segment {
     text: "A meaningful argument.",
     stableAt: g.now(),
   };
+}
+function finishTurn(g: Game) {
+  const turn = g.state.turn!;
+  g.endTurn(turn.playerId, turn.id);
+  g.tick();
 }
 test("score ledger enforces exact budgets, duplicate keys, stale evidence and off-floor eligibility", () => {
   const { g, advance } = setup();
@@ -152,6 +158,61 @@ test("six equal opportunities, alternating opener, reset score, first to two and
   assert.notEqual(g.state.matchId, old);
   assert.equal(g.state.ledger.length, 0);
 });
+test("tied scores put the round's responder first in Closing for either opener", () => {
+  const { g, advance } = setup();
+  for (const opener of [g.state.headsId!, g.state.tailsId!]) {
+    const responder = g.other(opener).id;
+    assert.equal(g.state.turn?.playerId, opener);
+    for (let i = 0; i < 3; i++) finishTurn(g);
+
+    assert.deepEqual(g.opportunityAt(4), {
+      playerId: responder,
+      kind: "closing",
+    });
+    assert.equal(g.opportunityAt(5), undefined);
+    assert.equal(
+      g.order.length,
+      4,
+      "looking ahead leaves the order uncommitted",
+    );
+
+    finishTurn(g);
+    assert.equal(g.state.turn?.playerId, responder);
+    assert.equal(g.state.turn?.kind, "closing");
+    finishTurn(g);
+    assert.equal(g.state.turn?.playerId, opener);
+    assert.equal(g.state.turn?.kind, "closing");
+    finishTurn(g);
+    advance(2200);
+  }
+});
+for (const [deficitUnits, qualifies] of [
+  [15, false],
+  [16, true],
+  [39, true],
+  [40, false],
+] as const) {
+  test(`a ${deficitUnits}-unit deficit ${qualifies ? "announces" : "skips"} a comeback window before Closing`, () => {
+    const { g } = setup();
+    const trailing = g.state.headsId!;
+    for (let i = 0; i < 3; i++) finishTurn(g);
+    g.other(trailing).scoreUnits = deficitUnits;
+    const events: GameEvent[] = [];
+    g.onEvent = (event) => events.push(event);
+
+    finishTurn(g);
+    assert.equal(g.state.turn?.playerId, trailing);
+    assert.equal(g.state.comebackPlayerId, qualifies ? trailing : null);
+    assert.deepEqual(
+      events.map((event) => event.type),
+      qualifies
+        ? ["turn_sealed", "comeback_window", "floor_granted"]
+        : ["turn_sealed", "floor_granted"],
+    );
+    if (qualifies)
+      assert.deepEqual(events[1].payload, { playerId: trailing, deficitUnits });
+  });
+}
 test("judge pauses preserve time; natural pauses never surrender the floor", () => {
   const { g, advance } = setup();
   const t = g.state.turn!;

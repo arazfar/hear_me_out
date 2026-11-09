@@ -23,6 +23,8 @@ type StoredTurn = {
   validUntil: number;
   segments: Map<string, Segment>;
 };
+type ScheduledOpportunity = { playerId: string; kind: Opportunity };
+
 export class Game {
   state: Snapshot;
   coordinateInput = false;
@@ -30,7 +32,7 @@ export class Game {
   turns = new Map<string, StoredTurn>();
   seenScores = new Set<string>();
   ledgerVersion = 0;
-  order: { playerId: string; kind: Opportunity }[] = [];
+  order: ScheduledOpportunity[] = [];
   now: () => number;
   onEvent: (event: GameEvent) => void;
   roundStartedAt = 0;
@@ -378,24 +380,31 @@ export class Game {
     this.setPhase("ROUND");
     this.openTurn();
   }
+  /** Look ahead to the first Closing without committing its order. */
+  opportunityAt(index: number): ScheduledOpportunity | undefined {
+    if (index !== 4 || this.order.length !== 4) return this.order[index];
+    const [a, b] = this.state.players;
+    const playerId =
+      a.scoreUnits === b.scoreUnits
+        ? this.order[1].playerId
+        : a.scoreUnits < b.scoreUnits
+          ? a.id
+          : b.id;
+    return { playerId, kind: "closing" };
+  }
   openTurn() {
     if (this.state.turnIndex === 4 && this.order.length === 4) {
+      const first = this.opportunityAt(this.state.turnIndex)!;
       const [a, b] = this.state.players;
-      const trailing =
-        a.scoreUnits === b.scoreUnits
-          ? this.order[1].playerId
-          : a.scoreUnits < b.scoreUnits
-            ? a.id
-            : b.id;
-      this.order.push(
-        { playerId: trailing, kind: "closing" },
-        { playerId: this.other(trailing).id, kind: "closing" },
-      );
+      this.order.push(first, {
+        playerId: this.other(first.playerId).id,
+        kind: "closing",
+      });
       const deficit = Math.abs(a.scoreUnits - b.scoreUnits);
       if (deficit >= 16 && deficit < 40) {
-        this.state.comebackPlayerId = trailing;
+        this.state.comebackPlayerId = first.playerId;
         this.emit("comeback_window", {
-          playerId: trailing,
+          playerId: first.playerId,
           deficitUnits: deficit,
         });
       }

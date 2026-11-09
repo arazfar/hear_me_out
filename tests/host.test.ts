@@ -296,6 +296,73 @@ test("reactions require current eligible stable evidence and preserve interventi
   assert.equal(c.judging.latestReaction(turn.id), null);
   c.close();
 });
+test("a late rebuttal score changes the first Closing preview until the order is committed", (t) => {
+  const { room } = roomFixture();
+  t.after(() => room.close());
+  const { game, judging } = room;
+  room.playback.say = async () => {};
+  const settle = () => {
+    game.setSettlement("ready");
+    game.tick();
+  };
+  for (let i = 0; i < 3; i++) {
+    const turn = game.state.turn!;
+    game.endTurn(turn.playerId, turn.id);
+    settle();
+  }
+
+  const rebuttal = game.state.turn!;
+  const responder = game.player(rebuttal.playerId);
+  const opener = game.other(responder.id);
+  game.endTurn(responder.id, rebuttal.id);
+  judging.prepareHandoff();
+  assert.equal(judging.candidate?.playerId, responder.id);
+  assert.equal(judging.candidate?.kind, "closing");
+  assert.equal(game.order.length, 4);
+  assert.equal(
+    game.nextTurnId,
+    null,
+    "no transcription reservation for a preview",
+  );
+
+  const late = evidence(game, "late rebuttal");
+  assert(game.registerSegment(late));
+  assert(
+    game.score({
+      ...late,
+      turnId: rebuttal.id,
+      segmentId: late.id,
+      criterion: "wit",
+      quality: 4,
+      reason: "The late rebuttal leads.",
+    }),
+  );
+  judging.prepareHandoff();
+  assert.equal(judging.candidate?.playerId, opener.id);
+  assert.equal(game.order.length, 4);
+  settle();
+
+  const closing = game.state.turn!;
+  assert.equal(closing.playerId, opener.id);
+  assert.equal(closing.kind, "closing");
+  const reversal = evidence(game, "first Closing");
+  assert(game.registerSegment(reversal));
+  assert(
+    game.score({
+      ...reversal,
+      turnId: closing.id,
+      segmentId: reversal.id,
+      criterion: "reasoning",
+      quality: 4,
+      reason: "The first Closing takes the lead.",
+    }),
+  );
+  assert(opener.scoreUnits > responder.scoreUnits);
+  game.endTurn(opener.id, closing.id);
+  settle();
+  assert.equal(game.state.turn?.playerId, responder.id);
+  assert.equal(game.state.turn?.kind, "closing");
+});
 test("a prefetched handoff from another match is cancelled rather than played", () => {
   const { room: c, turn } = roomFixture();
   c.playback.lastSealedTurnId = "old";

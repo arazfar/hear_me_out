@@ -313,37 +313,23 @@ export class Judging {
     };
   }
   prepareHandoff() {
-    const turn = this.room.game.state.turn;
-    if (
-      !turn ||
-      this.room.game.state.phase !== "ROUND" ||
-      this.busy ||
-      this.queue.length
-    )
+    const { game } = this.room;
+    const turn = game.state.turn;
+    if (!turn || game.state.phase !== "ROUND" || this.busy || this.queue.length)
       return;
-    let next = this.room.game.order[this.room.game.state.turnIndex + 1];
-    if (!next && this.room.game.state.turnIndex === 3) {
-      const [a, b] = this.room.game.state.players;
-      const trailing =
-        a.scoreUnits < b.scoreUnits
-          ? a
-          : b.scoreUnits < a.scoreUnits
-            ? b
-            : this.room.game.other(this.room.game.order[0].playerId);
-      next = { playerId: trailing.id, kind: "closing" };
-    }
+    const next = game.opportunityAt(game.state.turnIndex + 1);
     if (!next) return;
     const handoff = this.handoff(next.playerId, next.kind, turn.id);
     const text = completeSpeech(handoff.text, 27);
-    const key = `${this.room.game.state.matchId}:${this.room.game.state.roundId}:${turn.id}:${this.argumentRevision.get(turn.id) || 0}:${next.playerId}:${next.kind}:${text}:${voiceSettingsKey()}`;
+    const key = `${game.state.matchId}:${game.state.roundId}:${turn.id}:${this.argumentRevision.get(turn.id) || 0}:${next.playerId}:${next.kind}:${text}:${voiceSettingsKey()}`;
     if (this.candidate?.key === key) return;
     this.invalidateCandidate();
     this.candidate = {
       key,
       text,
       turnId: turn.id,
-      matchId: this.room.game.state.matchId,
-      roundId: this.room.game.state.roundId,
+      matchId: game.state.matchId,
+      roundId: game.state.roundId,
       revision: this.argumentRevision.get(turn.id) || 0,
       playerId: next.playerId,
       kind: next.kind,
