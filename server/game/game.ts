@@ -133,7 +133,7 @@ export class Game {
   }
   resumePlayer(id: string) {
     Object.assign(this.player(id), {
-      connected: true,
+      connected: false,
       captureReady: false,
       mediaReady: false,
     });
@@ -192,7 +192,7 @@ export class Game {
   other(id: string) {
     return this.state.players.find((p) => p.id !== id)!;
   }
-  addPlayer(name: string) {
+  addPlayer(name: string, connected = true) {
     if (this.state.players.length >= 2 || this.state.phase !== "LOBBY")
       throw new RuleError("This court already has two players.");
     const duplicate = this.state.players.some(
@@ -201,7 +201,7 @@ export class Game {
     const p: Player = {
       id: randomUUID(),
       name: duplicate ? `${name.slice(0, 16)} (2)` : name,
-      connected: true,
+      connected,
       ready: false,
       mediaReady: false,
       captureReady: false,

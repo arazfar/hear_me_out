@@ -14,7 +14,10 @@ function fixture(t: TestContext) {
     registry.byId.set(room.game.state.roomId, room);
     registry.session(room, "Alex");
     registry.session(room, "Sam");
-    room.game.state.players.forEach((p) => (p.mediaReady = true));
+    room.game.state.players.forEach((p) => {
+      p.connected = true;
+      p.mediaReady = true;
+    });
     room.readiness.tick = () => {};
     room.playback.say = async () => {};
     return room;

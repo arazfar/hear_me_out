@@ -96,7 +96,7 @@ export function registerSockets(
           result.seat.sockets.get(channel)?.close(4001, "Channel replaced");
           result.seat.sockets.set(channel, ws);
           clearTimeout(timeout);
-          room.game.connectPlayer(id);
+          room.connect(id);
           if (channel === "control")
             ws.send(
               JSON.stringify({

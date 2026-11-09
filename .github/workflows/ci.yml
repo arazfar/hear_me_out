@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -42,6 +43,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps ${{ startsWith(matrix.project, 'webkit') && 'webkit' || 'chrome' }}
+      - if: matrix.project == 'rtc'
+        run: pnpm test:browser-diagnostics
       - run: pnpm test:ui --project=${{ matrix.project }}
       - name: Summarize browser attempts
         if: always()
@@ -55,6 +58,7 @@ jobs:
             output/playwright/results/
             output/playwright/ready-together/after/*.png
             output/playwright/recovery-ownership/after/*.png
+            output/browser-diagnostics/
           if-no-files-found: ignore
           retention-days: 14
   ui-review:

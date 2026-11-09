@@ -1,4 +1,5 @@
 // Render the production app with deterministic state and mock media for geometry tests.
+import { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "../../src/App";
 import { client } from "../../src/game/client";
@@ -32,8 +33,9 @@ export type PresentationCase =
 declare global {
   interface Window {
     presentation: {
-      show: (name: PresentationCase) => void;
-      update: (patch: Partial<Snapshot>) => void;
+      ready: Promise<void>;
+      show: (name: PresentationCase) => Promise<void>;
+      update: (patch: Partial<Snapshot>) => Promise<void>;
       notice: (message: string) => void;
       leave: () => void;
     };
@@ -221,11 +223,25 @@ const show = (name: PresentationCase) => {
       error: "Your connection was briefly interrupted. Your turn is safe.",
     });
 };
+let mounted!: () => void;
+const ready = new Promise<void>((resolve) => (mounted = resolve));
+function Fixture() {
+  // Child effects subscribe App to the client before this parent effect runs.
+  useEffect(() => mounted(), []);
+  return <App />;
+}
 window.presentation = {
-  show,
-  update,
+  ready,
+  show: async (name) => {
+    await ready;
+    show(name);
+  },
+  update: async (patch) => {
+    await ready;
+    update(patch);
+  },
   notice: (error) => client.notify({ error }),
   leave: () => client.leave(),
 };
 show("mic-repair");
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(<Fixture />);

@@ -1,6 +1,6 @@
 # Audio, turn, and visual acceptance
 
-Protocol 4 separates friend conversation, judge eligibility, and judge output. Correctness takes priority over a latency target: do not skip samples, bypass settlement, or charge player time before capture opens. Deploy matching client/server builds between matches; old pages must refresh.
+Protocol 6 separates friend conversation, judge eligibility, and judge output. Correctness takes priority over a latency target: do not skip samples, bypass settlement, or charge player time before capture opens. Deploy matching client/server builds between matches; old pages must refresh.
 
 ## Automated evidence and measurement
 
@@ -27,6 +27,20 @@ A current seat may POST its normal session credentials to `/api/diagnostics` to 
 Targets apply to foreground clients at RTT ≤150 ms; report failures/recoveries separately rather than removing them silently. Cue/Done metrics use synchronized client render clocks. Server timestamps also expose input grant/first capture, capture receipt, provider final/drained, score commit, first TTS packet/EOF, and per-seat render progress/completion. Use browser performance marks plus an animation-frame observation for visible acknowledgments and turn cues. Output timestamps/latency guards estimate hardware drain; loopback or synchronized acoustic recordings are needed for conversation latency and final syllables. Diagnostic capture must be an explicit qualification activity, not game recording enabled by default.
 
 Historical README p95 values (1,215 ms cue-to-start and 2,758 ms Done-to-start; warmed cues 152–160 ms) measured server-scheduled starts on an earlier revision. They are directional baselines only. Current acoustic latency, conversational comfort, and physical-device support remain unqualified until the sessions below are recorded in a separate evidence report.
+
+## Reproducible qualification reports
+
+`pnpm verify:providers` uses a synthetic phrase through the live providers and emits metadata only: commit/dirty state, Node/model versions, latency, failure category, and awaited transcription disposal. It exits naturally on success; an unreferenced 70-second watchdog fails a process that retains provider handles. Missing credentials fail before any call. This loopback check does not exercise a browser or certify acoustic playback.
+
+`sttFinalMs` measures session creation to the first final-segment callback, including connection and paced audio delivery. It is not end-of-speech latency. Remaining audio, trailing silence, and duplicate final callbacks do not increase it; a run without a final segment has no final-latency measurement.
+
+Copy `docs/qualification-manifest.example.json` into the ignored `output/` directory, replace its placeholders with the tested revision, two physical devices/browser versions, output routes, distinct network labels, RTT, and provider configuration. Mark each manual check only after observing it; `turnRelayExercised` specifically means provisioned TURN relay was exercised. Leave `deployment` null until the public readiness/WSS, deployed revision, proxy-hop, and idle/wake checks have been performed. A populated deployment object has `commit`, `readiness`, `publicWss`, `proxyHopsVerified`, and `idleWake` fields. Record provider transport counts after cleanup separately from the pre-Leave diagnostics export.
+
+```sh
+pnpm exec tsx scripts/audio-report.ts output/diagnostics.json output/qualification-manifest.json > output/qualification-report.json
+```
+
+The report includes p50/p95/max, explicit latency-target misses, incomplete pairs, categorized failures, provenance, and cleanup results. No credentials, seat tokens, transcripts, or recordings belong in the manifest. Retain distinct exports per session so reused speech epochs cannot merge unrelated utterances. Without a manifest, provenance and cleanup remain unknown. This report supports review; it never automatically certifies a release. Before widening access, collect at least 100 judge utterances per transport across the physical matrix, shared outcomes and complete final syllables on both sides, zero private/off-turn leakage, bounded recovery, and zero retained provider transports. Report missed latency targets and untested device/output combinations explicitly.
 
 ## Required visual and browser matrix
 

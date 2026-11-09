@@ -1,3 +1,4 @@
+import { CRITERIA } from "../shared/domain";
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
 import type { WebSocket } from "ws";
@@ -41,13 +42,18 @@ async function fixture(t: TestContext) {
       jobId,
     ) => ({
       jobId,
-      scores: segments.map((s) => ({
-        playerId: s.playerId,
-        roundId: s.roundId,
-        turnId: s.turnId!,
-        segmentId: s.id,
-        criterion: "reasoning" as const,
-        quality: s.text.startsWith("The pockets") ? 4 : 1,
+      scores: CRITERIA.map((criterion) => ({
+        playerId: segments[0].playerId,
+        roundId: segments[0].roundId,
+        turnId: segments[0].turnId!,
+        segmentId: segments[0].id,
+        criterion,
+        quality:
+          criterion === "reasoning"
+            ? segments[0].text.startsWith("The pockets")
+              ? 4
+              : 1
+            : 0,
         reason: "Syrup pockets distribute sweetness.",
       })),
       arguments: [],

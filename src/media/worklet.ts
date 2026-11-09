@@ -11,7 +11,7 @@ export async function loadWorklet(
   let modules = loaded.get(context);
   if (!modules) loaded.set(context, (modules = new Set()));
   if (modules.has(path)) return;
-  const response = await fetch(path, { signal });
+  const response = await fetch(path, { signal, cache: "no-store" });
   signal.throwIfAborted();
   if (!response.ok) throw new Error("Audio download failed.");
   const code = await response.text();

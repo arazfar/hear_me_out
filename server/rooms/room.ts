@@ -1,3 +1,4 @@
+import type { JudgeFailureCategory } from "../providers/judge-request.js";
 import { WebSocket } from "ws";
 import { type GameEvent } from "../../shared/protocol.js";
 import { Game } from "../game/game.js";
@@ -10,7 +11,9 @@ import { Readiness } from "./readiness.js";
 import { TurnCoordinator } from "./turn-coordinator.js";
 import { Transcription } from "./transcription.js";
 import { settleCleanup } from "../shutdown.js";
+export const LOBBY_SEAT_LEASE_MS = 60000;
 export type Seat = {
+  lobbyDeadline: number | null;
   tokenHash: string;
   epoch: number;
   resume?: { id: string; fromEpoch: number; toEpoch: number };
@@ -65,7 +68,13 @@ export class RoomController {
     if (samples.length > 128) samples.shift();
   }
   failures = new Map<string, number>();
-  recordFailure(category: "judgment" | "transcription" | "voice_delivery") {
+  recordFailure(
+    category:
+      | "judgment"
+      | `judgment_${JudgeFailureCategory}`
+      | "transcription"
+      | "voice_delivery",
+  ) {
     this.failures.set(category, (this.failures.get(category) || 0) + 1);
   }
   services: RoomServices;
@@ -109,6 +118,29 @@ export class RoomController {
     for (const id of this.seats.keys()) this.send(id, message);
   }
   onEvent(event: GameEvent) {
+    if (
+      ["player_joined", "player_left"].includes(event.type) &&
+      this.game.state.phase === "LOBBY"
+    ) {
+      this.game.state.mediaEpoch++;
+      this.game.state.mediaMode = "connecting";
+      if (this.media.rtcTimer) this.services.clearTimeout(this.media.rtcTimer);
+      this.media.rtcTimer = null;
+      for (const player of this.game.state.players) {
+        this.game.setMediaReady(player.id, false);
+        this.game.setCaptureReady(player.id, player.cameraOn, false);
+        const seat = this.seats.get(player.id);
+        if (seat) seat.rtcReady = false;
+        const health = this.readiness.records.get(player.id);
+        if (health) {
+          health.observation = undefined;
+          health.healthySince = null;
+          health.remoteAt = health.probeAt = health.localAt = -Infinity;
+          health.sent.clear();
+        }
+      }
+      event.snapshot = this.game.snapshot();
+    }
     // Publish a paused floor atomically, before either client can open its mic.
     if (event.type === "floor_granted" && this.game.state.turn) {
       this.turnCoordinator.assigned();
@@ -274,7 +306,36 @@ export class RoomController {
     )
       this.playback.cancelSpeech();
   }
+  holdLobbySeat(id: string) {
+    const seat = this.seats.get(id);
+    if (seat && this.game.state.phase === "LOBBY")
+      seat.lobbyDeadline ??= this.services.now() + LOBBY_SEAT_LEASE_MS;
+  }
+  connect(id: string) {
+    const seat = this.seats.get(id);
+    if (
+      !seat ||
+      !["control", "audio", "video"].every(
+        (channel) => seat.sockets.get(channel)?.readyState === WebSocket.OPEN,
+      )
+    )
+      return;
+    seat.lobbyDeadline = null;
+    const changed = !this.game.player(id).connected;
+    this.game.connectPlayer(id);
+    if (changed) this.game.emit("media_status");
+  }
+  expireLobbySeats() {
+    if (this.closed || this.game.state.phase !== "LOBBY") return;
+    for (const [id, seat] of this.seats)
+      if (
+        seat.lobbyDeadline !== null &&
+        this.services.now() >= seat.lobbyDeadline
+      )
+        this.leave(id);
+  }
   disconnect(id: string) {
+    this.holdLobbySeat(id);
     const p = this.game.player(id);
     this.game.disconnectPlayer(id);
     this.transcription.disconnect(id);
@@ -311,6 +372,7 @@ export class RoomController {
     game.emit("player_left");
   }
   tick() {
+    this.expireLobbySeats();
     for (const [id, stream] of this.transcription.ink) {
       if (
         !stream.connected &&

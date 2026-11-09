@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react";
 import type { PresentationCase } from "./presentation-fixture";
@@ -30,6 +30,29 @@ test.afterAll(async () => {
   await server?.close();
 });
 
+async function settledGeometry(page: Page) {
+  await page.evaluate(async () => {
+    await window.presentation.ready;
+    await document.fonts.ready;
+    await new Promise<void>((resolve) => {
+      let previous = "",
+        stable = 0;
+      const frame = () => {
+        const next = JSON.stringify(
+          [...document.querySelectorAll(".face-picture")].map((node) =>
+            node.getBoundingClientRect().toJSON(),
+          ),
+        );
+        stable = next === previous ? stable + 1 : 0;
+        previous = next;
+        if (stable >= 3) resolve();
+        else requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    });
+  });
+}
+
 test("phone layouts: transcript dismissal resolves current focus without losing its selected text", async ({
   page,
 }, info) => {
@@ -38,6 +61,8 @@ test("phone layouts: transcript dismissal resolves current focus without losing 
       ? "Alt+Tab"
       : "Tab";
   await page.goto(url);
+  await page.waitForFunction(() => !!window.presentation);
+  await page.evaluate(() => window.presentation.ready);
   await expect(page.locator(".recovery-panel")).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   for (const width of [390, 1280]) {
@@ -122,6 +147,8 @@ test("phone layouts: pinned recovery panels are complete and share one scroll ow
 }) => {
   test.setTimeout(120000);
   await page.goto(url);
+  await page.waitForFunction(() => !!window.presentation);
+  await page.evaluate(() => window.presentation.ready);
   await expect(page.locator(".recovery-panel")).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   const names: PresentationCase[] = [
@@ -222,6 +249,8 @@ test("phone layouts: expanded recovery scrolls together and retains reader and v
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(url);
+  await page.waitForFunction(() => !!window.presentation);
+  await page.evaluate(() => window.presentation.ready);
   await expect(page.locator(".recovery-panel")).toBeVisible();
   await page.evaluate(() => window.presentation.show("result-help"));
   await expect(page.locator(".result-panel")).toBeVisible();
@@ -232,6 +261,7 @@ test("phone layouts: expanded recovery scrolls together and retains reader and v
       .evaluateAll((nodes) =>
         nodes.map((n) => n.getBoundingClientRect().toJSON()),
       );
+  await settledGeometry(page);
   const before = await pictures(),
     lower = page.getByRole("region", { name: "Court activity", exact: true });
   await page.getByText("Device help", { exact: true }).click();
@@ -273,6 +303,7 @@ test("phone layouts: expanded recovery scrolls together and retains reader and v
     page.getByRole("region", { name: "Full transcript" }),
   ).toContainText("Last words.");
   await page.setViewportSize({ width: 390, height: 844 });
+  await settledGeometry(page);
   await page.keyboard.press("Escape");
   await expect(transcript).toBeFocused();
   for (const video of videos)
@@ -316,6 +347,8 @@ test("phone layouts: short landscape notice keeps the complete turn reachable", 
 }) => {
   await page.setViewportSize({ width: 844, height: 390 });
   await page.goto(url);
+  await page.waitForFunction(() => !!window.presentation);
+  await page.evaluate(() => window.presentation.ready);
   await expect(page.locator(".recovery-panel")).toBeVisible();
   await page.evaluate(() => window.presentation.show("notice"));
   const actions = page.getByRole("region", {
@@ -360,6 +393,8 @@ test("phone layouts: fitting courts center while live content keeps faces anchor
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(url);
+  await page.waitForFunction(() => !!window.presentation);
+  await page.evaluate(() => window.presentation.ready);
   await expect(page.locator(".recovery-panel")).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   for (const [width, height] of [

@@ -1,9 +1,37 @@
+import { CRITERIA } from "../shared/domain";
 import { encodeMicrophone } from "../shared/media";
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Proposal } from "../server/providers/index";
 import { ServerClock } from "../src/media/server-clock";
-import { deferred, evidence, flush, roomFixture } from "./fixtures";
+import { deferred, evidence, flush, proposal, roomFixture } from "./fixtures";
+
+for (const transition of ["rematch", "dispose", "recovery"] as const) {
+  test(`obsolete successful judgment cannot score after ${transition}`, async (t) => {
+    const pending = deferred<Proposal>();
+    let answer!: Proposal;
+    const { room } = roomFixture({
+      judge: async (_s, batch, _k, _targets, _r, _c, jobId) => {
+        answer = proposal(jobId, batch[0]);
+        return pending.promise;
+      },
+    });
+    t.after(() => room.close());
+    room.judging.onSegment(evidence(room.game));
+    if (transition === "rematch") {
+      room.game.abort("Fixture ended");
+      room.game.startMatch();
+    }
+    if (transition === "dispose") void room.close();
+    if (transition === "recovery") room.game.recover("Connection interrupted");
+    const before = room.game.snapshot();
+    pending.resolve(answer);
+    await flush();
+    assert.deepEqual(room.game.state.ledger, before.ledger);
+    assert.equal(room.game.state.phase, before.phase);
+    assert.equal(room.judging.busy, false);
+  });
+}
 
 for (const transition of ["rematch", "dispose", "recovery"] as const) {
   test(`obsolete provider failure cannot mutate ${transition}`, async () => {
@@ -52,17 +80,15 @@ test("same-match recovery scores retained evidence only once", async () => {
       const s = segments[0];
       return {
         jobId,
-        scores: [
-          {
-            playerId: s.playerId,
-            roundId: s.roundId,
-            turnId: s.turnId!,
-            segmentId: s.id,
-            criterion: "reasoning",
-            quality: 3,
-            reason: "Syrup pockets distribute sweetness.",
-          },
-        ],
+        scores: CRITERIA.map((criterion) => ({
+          playerId: s.playerId,
+          roundId: s.roundId,
+          turnId: s.turnId!,
+          segmentId: s.id,
+          criterion,
+          quality: criterion === "reasoning" ? 3 : 0,
+          reason: "Syrup pockets distribute sweetness.",
+        })),
         arguments: [],
         reaction: { segmentId: s.id, text: "Those pockets came prepared." },
         intervention: null,

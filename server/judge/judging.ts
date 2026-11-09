@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { type Segment } from "../../shared/domain.js";
-import { type Proposal } from "../providers/index.js";
+import { validateProposal, type Proposal } from "../providers/index.js";
+import { judgeFailure, withJudgeDeadline } from "../providers/judge-request.js";
 import type { RoomController } from "../rooms/room.js";
 import {
   completeSpeech,
@@ -97,74 +98,64 @@ export class Judging {
     const record = first.turnId ? this.room.game.turns.get(first.turnId) : null;
     const jobId = randomUUID(),
       claimIds: string[] = [randomUUID(), randomUUID()];
-    let version = this.room.game.ledgerVersion;
+    const version = this.room.game.ledgerVersion;
     const revision = this.argumentRevision.get(first.turnId!) || 0;
     try {
       if (!record || this.room.services.now() > record.validUntil) return;
-      let proposal: Proposal | undefined;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          proposal = await this.room.services.judge(
-            this.room.game.snapshot(),
-            batch,
-            record.turn.kind,
-            record.turn.targets,
-            this.recent,
-            this.room.game.state.claims,
-            jobId,
-            claimIds,
-            (score) => {
-              if (
-                !current() ||
-                this.room.game.ledgerVersion !== version ||
-                first.roundId !== this.room.game.state.roundId ||
-                this.room.game.snapshot().phase === "RECOVERING"
-              )
-                return;
-              if (
-                score.playerId === first.playerId &&
-                score.turnId === first.turnId &&
-                batch.some((s) => s.id === score.segmentId)
-              ) {
-                if (this.room.game.score(score))
-                  this.room.recordMetric(
-                    "scoringMs",
-                    this.room.services.now() - first.stableAt,
-                  );
-                version = this.room.game.ledgerVersion;
-              }
-            },
-            [...this.reactions.values()]
-              .map((reaction) => reaction.text)
-              .slice(-6),
-            request.signal,
-          );
-          break;
-        } catch (e) {
-          if (!current()) return;
-          if (attempt) throw e;
-        }
-      }
+      const proposal = await withJudgeDeadline(
+        async (signal) => {
+          for (let attempt = 0; ; attempt++) {
+            signal.throwIfAborted();
+            try {
+              const result = await this.room.services.judge(
+                this.room.game.snapshot(),
+                batch,
+                record.turn.kind,
+                record.turn.targets,
+                this.recent,
+                this.room.game.state.claims,
+                jobId,
+                claimIds,
+                [...this.reactions.values()]
+                  .map((reaction) => reaction.text)
+                  .slice(-6),
+                signal,
+              );
+              signal.throwIfAborted();
+              return validateProposal(result, jobId, batch);
+            } catch (error) {
+              signal.throwIfAborted();
+              const failure = judgeFailure(error);
+              this.room.trace("judge_attempt_failed", {
+                category: failure.category,
+                attempt: attempt + 1,
+              });
+              if (attempt || !failure.retryable) throw failure;
+            }
+          }
+        },
+        request.signal,
+        this.room.services,
+      );
       if (!current()) return;
       if (this.room.game.snapshot().phase === "RECOVERING") {
         this.queue.unshift(...batch);
         return;
       }
       if (
-        !proposal ||
-        proposal.jobId !== jobId ||
         this.room.game.ledgerVersion !== version ||
         this.room.services.now() > record.validUntil ||
         first.roundId !== this.room.game.state.roundId
       )
         return;
+      let committed = false;
       for (const score of proposal.scores)
-        if (
-          score.playerId === first.playerId &&
-          score.turnId === first.turnId &&
-          batch.some((s) => s.id === score.segmentId)
-        )
-          this.room.game.score(score);
+        committed = this.room.game.score(score) || committed;
+      if (committed)
+        this.room.recordMetric(
+          "scoringMs",
+          this.room.services.now() - first.stableAt,
+        );
       for (const a of proposal.arguments)
         if (
           (claimIds.includes(a.claimId) ||
@@ -194,9 +185,12 @@ export class Judging {
           sourceTurnId: first.turnId!,
         });
       }
-    } catch {
+    } catch (error) {
       if (!current()) return;
+      const failure = judgeFailure(error);
       this.room.recordFailure("judgment");
+      this.room.recordFailure(`judgment_${failure.category}`);
+      this.room.trace("judge_failed", { category: failure.category });
       this.room.game.abort("Bonk couldn’t finish scoring. Try a new match.");
     } finally {
       if (!current()) return;

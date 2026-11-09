@@ -6,7 +6,7 @@ import type {
   RoomServices,
   TranscriptionStream,
 } from "../server/rooms/services";
-import type { Segment } from "../shared/domain";
+import { CRITERIA, type Segment } from "../shared/domain";
 
 export function deferred<T>() {
   let resolve!: (value: T) => void, reject!: (error: Error) => void;
@@ -42,6 +42,7 @@ export function services(
 }
 export function seat(): Seat {
   return {
+    lobbyDeadline: null,
     tokenHash: "fixture",
     epoch: 1,
     sockets: new Map(),
@@ -59,7 +60,10 @@ export function startRound(game: Game) {
     game.addPlayer("Sam");
     game.addPlayer("Alex");
   }
-  game.state.players.forEach((p) => (p.mediaReady = true));
+  game.state.players.forEach((p) => {
+    p.connected = true;
+    p.mediaReady = true;
+  });
   game.startMatch();
   game.selectTopic();
   game.proposeTopic(
@@ -142,5 +146,23 @@ export function fakeSpeech(
     attempt: 0,
     fallback: false,
     ...overrides,
+  };
+}
+
+export function proposal(jobId: string, s: Segment, quality = 4) {
+  return {
+    jobId,
+    scores: CRITERIA.map((criterion) => ({
+      playerId: s.playerId,
+      roundId: s.roundId,
+      turnId: s.turnId!,
+      segmentId: s.id,
+      criterion,
+      quality,
+      reason: "Syrup pockets distribute sweetness.",
+    })),
+    arguments: [],
+    reaction: null,
+    intervention: null,
   };
 }

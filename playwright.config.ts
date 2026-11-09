@@ -5,11 +5,12 @@ const rtcURL = `http://127.0.0.1:${rtcPort}`;
 const relayURL = `http://127.0.0.1:${relayPort}`;
 export default defineConfig({
   testDir: "./tests/browser",
-  // Hosted runners also close two browser contexts inside this budget.
+  // Hosted media tests get three minutes; audio diagnostics own their teardown budget.
   // Individual gameplay and recovery deadlines remain unchanged.
   timeout: process.env.CI ? 180000 : 120000,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  failOnFlakyTests: !!process.env.CI,
   workers: 1,
   fullyParallel: false,
   expect: { timeout: 15000 },

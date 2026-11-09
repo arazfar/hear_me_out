@@ -182,6 +182,15 @@ test("manifest validation rejects invalid entries and keeps SPA navigation", asy
       (await fetch(base + path)).headers.get("content-type")!,
       /javascript/,
     );
+  for (const worklet of AUDIO_WORKLETS)
+    assert.equal(
+      (await fetch(base + "/" + worklet)).headers.get("cache-control"),
+      "no-store",
+    );
+  assert.match(
+    (await fetch(base + "/assets/app.js")).headers.get("cache-control")!,
+    /max-age=3600/,
+  );
   assert.equal((await fetch(base + "/assets/absent.js")).status, 404);
 });
 

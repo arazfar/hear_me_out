@@ -1,0 +1,42 @@
+{
+  "commit": "0000000000000000000000000000000000000000",
+  "dirty": true,
+  "date": "Replace with the session date",
+  "transport": "rtc",
+  "liveProviders": false,
+  "devices": [
+    {
+      "device": "Replace with physical device",
+      "browser": "Include version",
+      "output": "wired",
+      "network": "Network A"
+    },
+    {
+      "device": "Replace with physical device",
+      "browser": "Include version",
+      "output": "wired",
+      "network": "Network B"
+    }
+  ],
+  "providers": {
+    "judge": "gpt-6-luna",
+    "reasoning": "none",
+    "stt": "ink-2",
+    "tts": "s2-pro"
+  },
+  "rttMs": 0,
+  "checks": {
+    "sharedOutcomes": false,
+    "finalSyllables": false,
+    "privateIsolation": false,
+    "simultaneousConversation": false,
+    "boundedRecovery": false,
+    "backgrounding": false,
+    "outputChanges": false,
+    "sealingDisconnect": false,
+    "rematch": false,
+    "turnRelayExercised": false
+  },
+  "deployment": null,
+  "cleanup": { "confirmed": false, "retainedProviderTransports": 0 }
+}

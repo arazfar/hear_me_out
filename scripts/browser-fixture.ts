@@ -79,7 +79,6 @@ const runtime = createApp({
       _claims,
       jobId,
       ids,
-      _onScore,
       _recentReactions,
       signal,
     ) => {
@@ -121,6 +120,22 @@ const runtime = createApp({
 });
 const awardReplays = new Map<string, GameEvent[]>();
 // Test-only inspection and failure injection. These routes do not exist in production.
+runtime.app.post("/__test/expire-seat/:code", (req, res) => {
+  const room = runtime.registry.rooms.get(req.params.code);
+  const seat = room?.seats.get(req.body.playerId);
+  if (
+    !room ||
+    room.game.state.phase !== "LOBBY" ||
+    !seat ||
+    seat.lobbyDeadline === null
+  ) {
+    res.sendStatus(409);
+    return;
+  }
+  seat.lobbyDeadline = 0;
+  room.expireLobbySeats();
+  res.json({ ok: true });
+});
 runtime.app.post("/__test/state/:code", (req, res) => {
   const room = runtime.registry.rooms.get(req.params.code);
   res.json(room?.game.snapshot() || null);

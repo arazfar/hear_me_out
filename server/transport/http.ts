@@ -184,6 +184,7 @@ export function registerHttp(
       }
       // Only the owner can retry or cancel an accepted, unanswered transition.
       if (!retry) {
+        room.holdLobbySeat(playerId);
         seat.epoch++;
         seat.resume = resumeId
           ? { id: resumeId, fromEpoch: connectionEpoch, toEpoch: seat.epoch }

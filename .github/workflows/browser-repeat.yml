@@ -1,0 +1,45 @@
+name: Repeat browser regressions
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: browser-repeat-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  repeat-browser:
+    runs-on: macos-26
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [rtc, relay, phone, phone-relay, webkit, webkit-relay]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record tested revision
+        run: |
+          echo "Diagnostic repetition only; full Verify game checks remain required." >> "$GITHUB_STEP_SUMMARY"
+          git rev-parse HEAD >> "$GITHUB_STEP_SUMMARY"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps ${{ startsWith(matrix.project, 'webkit') && 'webkit' || 'chrome' }}
+      - run: pnpm test:ui --project=${{ matrix.project }} --grep 'two players complete a scored match|two players render a long|expanded recovery|short landscape' --repeat-each=10 --retries=0
+      - name: Summarize browser attempts
+        if: always()
+        run: node scripts/browser-summary.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-repeat-${{ matrix.project }}
+          path: |
+            output/playwright/results.json
+            output/playwright/results/
+            output/playwright/ready-together/after/*.png
+            output/playwright/recovery-ownership/after/*.png
+          if-no-files-found: ignore
+          retention-days: 14

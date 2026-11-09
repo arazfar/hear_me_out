@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { RuleError } from "../game/game.js";
-import { RoomController } from "./room.js";
+import { RoomController, LOBBY_SEAT_LEASE_MS } from "./room.js";
 import { AudioBudget } from "../transport/audio-budget.js";
 
 import type { RoomServices } from "./services.js";
@@ -45,9 +45,11 @@ export function createRegistry(
     return s;
   }
   function session(room: RoomController, playerName: string) {
-    const p = room.game.addPlayer(playerName),
+    room.expireLobbySeats();
+    const p = room.game.addPlayer(playerName, false),
       token = randomBytes(32).toString("base64url");
     room.seats.set(p.id, {
+      lobbyDeadline: room.services.now() + LOBBY_SEAT_LEASE_MS,
       tokenHash: hash(token),
       epoch: 1,
       sockets: new Map(),
@@ -68,8 +70,9 @@ export function createRegistry(
     };
   }
   const authenticate = (roomId: string, playerId: string, token: string) => {
-    const room = byId.get(roomId),
-      seat = room?.seats.get(playerId);
+    const room = byId.get(roomId);
+    room?.expireLobbySeats();
+    const seat = room?.seats.get(playerId);
     if (!room || !seat || hash(token) !== seat.tokenHash)
       throw new RuleError("Your seat expired. Join a new room.");
     return { room, seat };

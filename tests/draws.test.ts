@@ -105,6 +105,7 @@ for (const [name, rounds, wins, drawn] of [
     const snapshot = game.snapshot();
     game.disconnectPlayer(b.id);
     game.resumePlayer(b.id);
+    game.connectPlayer(b.id);
     assert.deepEqual(game.state.results, snapshot.results);
     assert.equal(game.state.phase, "MATCH_RESULT");
     assert.equal(game.state.winnerId, snapshot.winnerId);

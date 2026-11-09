@@ -10,6 +10,8 @@ import {
 import { mkdir } from "node:fs/promises";
 import { points, type Snapshot } from "../../shared/domain";
 import { syntheticMicrophone } from "./synthetic-media";
+import { attachAudioDiagnostics } from "./audio-diagnostics";
+import { audioTest } from "./audio-test";
 import { finishBrowserTest } from "./cleanup";
 const root =
   process.env.UI_SCREENSHOT_DIR || "output/playwright/ready-together/after";
@@ -188,6 +190,7 @@ test("two players complete a scored match, recover media, and rematch", async ({
     b = await cb.newPage();
   const errors: string[] = [];
   const latest = new Map<Page, Snapshot>();
+  const coins = new Map<Page, string[]>();
   const observations = new Map<Page, unknown>();
   const microphonePackets = new Map<
     Page,
@@ -224,6 +227,8 @@ test("two players complete a scored match, recover media, and rematch", async ({
         if (typeof payload !== "string") return;
         const data = JSON.parse(payload);
         if (data.snapshot) latest.set(p, data.snapshot);
+        if (data.type === "coin_committed")
+          coins.set(p, [...(coins.get(p) || []), data.matchId]);
       });
     });
   }
@@ -707,8 +712,14 @@ test("two players complete a scored match, recover media, and rematch", async ({
   await shot(a, "live-rematch-ready-" + info.project.name);
   await b.getByRole("button", { name: "Rematch" }).click();
   await expect
-    .poll(async () => (await snapshot(request, code)).phase)
-    .toBe("INTRO_COIN");
+    .poll(async () => {
+      const next = await snapshot(request, code);
+      return (
+        next.matchId !== result.matchId &&
+        ["INTRO_COIN", "TOPIC_SELECT"].includes(next.phase)
+      );
+    })
+    .toBe(true);
   const rematch = await snapshot(request, code);
   expect(rematch.matchId).not.toBe(result.matchId);
   for (const page of [a, b]) {
@@ -721,6 +732,9 @@ test("two players complete a scored match, recover media, and rematch", async ({
           received.players.every((p) => p.scoreUnits === 0 && p.wins === 0)
         );
       })
+      .toBe(true);
+    await expect
+      .poll(() => coins.get(page)?.includes(rematch.matchId!))
       .toBe(true);
     await expect(page.locator(".score-burst")).toHaveCount(0);
     await expect(page.locator(".score")).toHaveCount(0);
@@ -735,6 +749,82 @@ test("two players complete a scored match, recover media, and rematch", async ({
   await cb.close();
   await secondBrowser?.close();
   await video?.saveAs(root + "/match-" + info.project.name + ".webm");
+});
+
+test("two players replace an expired lobby seat and negotiate fresh media", async ({
+  browser,
+  baseURL,
+  request,
+}, info) => {
+  const aContext = await browser.newContext({
+    permissions: ["camera", "microphone"],
+  });
+  const second = info.project.name.startsWith("webkit")
+    ? await browser.browserType().launch({ headless: true })
+    : null;
+  const bContext = await (second || browser).newContext({
+    permissions: ["camera", "microphone"],
+  });
+  let replacement: Awaited<ReturnType<typeof browser.newContext>> | undefined;
+  try {
+    if (second)
+      await Promise.all([
+        syntheticMicrophone(aContext),
+        syntheticMicrophone(bContext),
+      ]);
+    const a = await aContext.newPage(),
+      b = await bContext.newPage();
+    const code = await enter(a, b, baseURL!);
+    const before = await snapshot(request, code);
+    const departed = before.players.find((player) => player.name === "Sam")!;
+    await bContext.close();
+    await expect
+      .poll(
+        async () =>
+          (await snapshot(request, code)).players.find(
+            (p) => p.id === departed.id,
+          )?.connected,
+      )
+      .toBe(false);
+    expect(
+      (
+        await request.post("/__test/expire-seat/" + code, {
+          data: { playerId: departed.id },
+        })
+      ).ok(),
+    ).toBe(true);
+    await expect
+      .poll(async () => (await snapshot(request, code)).players.length)
+      .toBe(1);
+    replacement = await (second || browser).newContext({
+      permissions: ["camera", "microphone"],
+    });
+    if (second) await syntheticMicrophone(replacement);
+    const c = await replacement.newPage();
+    await c.goto(baseURL + "/?room=" + code);
+    await c.getByLabel("Your name", { exact: true }).fill("Casey");
+    await c.getByRole("button", { name: "Join room", exact: true }).click();
+    await expect(
+      a.getByRole("button", { name: "Ready to argue" }),
+    ).toBeEnabled();
+    await expect(
+      c.getByRole("button", { name: "Ready to argue" }),
+    ).toBeEnabled();
+    const after = await snapshot(request, code);
+    expect(after.mediaEpoch).toBeGreaterThan(before.mediaEpoch);
+    expect(after.players.map((p) => p.name)).toEqual(["Alex", "Casey"]);
+    expect(after.players.every((p) => p.connected && p.mediaReady)).toBe(true);
+    expect(after.mediaMode).toBe(
+      info.project.name.includes("relay") ? "wss" : "rtc",
+    );
+  } finally {
+    await Promise.allSettled([
+      aContext.close(),
+      bContext.close(),
+      replacement?.close(),
+    ]);
+    await second?.close();
+  }
 });
 
 test("visual matrix, accessibility, error and fallback states", async ({
@@ -2637,204 +2727,222 @@ test("two players receive decision feedback while a rematch waits for complete p
   }
 });
 
-test("two players render a long judge line completely through asymmetric delivery and explicit mute", async ({
-  browser,
-  baseURL,
-  request,
-}, info) => {
-  const phone = /^(phone|webkit)/.test(info.project.name);
-  const aContext = await browser.newContext({
-    viewport: phone
-      ? { width: 390, height: 844 }
-      : { width: 1280, height: 720 },
-    permissions: ["camera", "microphone"],
-  });
-  const second = info.project.name.startsWith("webkit")
-    ? await browser.browserType().launch({ headless: true })
-    : null;
-  const bContext = await (second || browser).newContext({
-    viewport: phone
-      ? { width: 390, height: 844 }
-      : { width: 1280, height: 720 },
-    permissions: ["camera", "microphone"],
-  });
-  await Promise.all([
-    syntheticMicrophone(aContext, 330),
-    syntheticMicrophone(bContext, 550),
-  ]);
-  for (const context of [aContext, bContext])
-    await context.addInitScript(() => {
-      const Socket = WebSocket;
-      (window as any).__judgeSockets = [];
-      const inspectPCM = (raw: unknown) => {
-        if (
-          !(raw instanceof ArrayBuffer) ||
-          raw.byteLength < 31 ||
-          new Uint8Array(raw)[0] !== 1
-        )
-          return;
-        const view = new DataView(raw),
-          count = view.getUint32(13, true);
-        let squares = 0;
-        for (let i = 0; i < count; i++)
-          squares += (view.getInt16(31 + i * 2, true) / 32768) ** 2;
-        return {
-          count,
-          rms: Math.sqrt(squares / Math.max(1, count)),
-          age: Date.now() - view.getFloat64(17, true),
-          purpose: view.getUint8(25),
+audioTest(
+  "two players render a long judge line completely through asymmetric delivery and explicit mute",
+  async ({ browser, baseURL, request, audioCleanup }, info) => {
+    const phone = /^(phone|webkit)/.test(info.project.name);
+    const aContext = await browser.newContext({
+      viewport: phone
+        ? { width: 390, height: 844 }
+        : { width: 1280, height: 720 },
+      permissions: ["camera", "microphone"],
+    });
+    const second = info.project.name.startsWith("webkit")
+      ? await browser.browserType().launch({ headless: true })
+      : null;
+    const bContext = await (second || browser).newContext({
+      viewport: phone
+        ? { width: 390, height: 844 }
+        : { width: 1280, height: 720 },
+      permissions: ["camera", "microphone"],
+    });
+    await Promise.all([
+      syntheticMicrophone(aContext, 330),
+      syntheticMicrophone(bContext, 550),
+    ]);
+    for (const context of [aContext, bContext])
+      await context.addInitScript(() => {
+        const Socket = WebSocket;
+        (window as any).__judgeSockets = [];
+        const inspectPCM = (raw: unknown) => {
+          if (
+            !(raw instanceof ArrayBuffer) ||
+            raw.byteLength < 31 ||
+            new Uint8Array(raw)[0] !== 1
+          )
+            return;
+          const view = new DataView(raw),
+            count = view.getUint32(13, true);
+          let squares = 0;
+          for (let i = 0; i < count; i++)
+            squares += (view.getInt16(31 + i * 2, true) / 32768) ** 2;
+          return {
+            count,
+            rms: Math.sqrt(squares / Math.max(1, count)),
+            age: Date.now() - view.getFloat64(17, true),
+            purpose: view.getUint8(25),
+          };
         };
-      };
-      (window as any).__micFrames = [];
-      (window as any).__receivedFrames = [];
-      const Peer = RTCPeerConnection;
-      (window as any).__peers = [];
-      window.RTCPeerConnection = class extends Peer {
-        constructor(config?: RTCConfiguration) {
-          super(config);
-          (window as any).__peers.push(this);
-        }
-      };
-      window.WebSocket = class extends Socket {
-        constructor(...args: ConstructorParameters<typeof WebSocket>) {
-          super(...args);
-          if (String(args[0]).includes("/socket/judge"))
-            (window as any).__judgeSockets.push(this);
-          this.addEventListener("message", (event) => {
-            const sample = inspectPCM(event.data);
+        (window as any).__micFrames = [];
+        (window as any).__receivedFrames = [];
+        const Peer = RTCPeerConnection;
+        (window as any).__peers = [];
+        window.RTCPeerConnection = class extends Peer {
+          constructor(config?: RTCConfiguration) {
+            super(config);
+            (window as any).__peers.push(this);
+          }
+        };
+        window.WebSocket = class extends Socket {
+          constructor(...args: ConstructorParameters<typeof WebSocket>) {
+            super(...args);
+            if (String(args[0]).includes("/socket/judge"))
+              (window as any).__judgeSockets.push(this);
+            this.addEventListener("message", (event) => {
+              const sample = inspectPCM(event.data);
+              if (sample) {
+                const frames = (window as any).__receivedFrames;
+                frames.push(sample);
+                if (frames.length > 30) frames.shift();
+              }
+            });
+          }
+          send(data: Parameters<WebSocket["send"]>[0]) {
+            const raw = ArrayBuffer.isView(data)
+              ? data.buffer.slice(
+                  data.byteOffset,
+                  data.byteOffset + data.byteLength,
+                )
+              : data;
+            const sample = inspectPCM(raw);
             if (sample) {
-              const frames = (window as any).__receivedFrames;
+              const frames = (window as any).__micFrames;
               frames.push(sample);
               if (frames.length > 30) frames.shift();
             }
-          });
-        }
-        send(data: Parameters<WebSocket["send"]>[0]) {
-          const raw = ArrayBuffer.isView(data)
-            ? data.buffer.slice(
-                data.byteOffset,
-                data.byteOffset + data.byteLength,
-              )
-            : data;
-          const sample = inspectPCM(raw);
-          if (sample) {
-            const frames = (window as any).__micFrames;
-            frames.push(sample);
-            if (frames.length > 30) frames.shift();
+            super.send(data);
           }
-          super.send(data);
-        }
-      };
-      const createGain = AudioContext.prototype.createGain;
-      const gains = new WeakMap<AudioContext, number>();
-      AudioContext.prototype.createGain = function () {
-        const gain = createGain.call(this),
-          index = gains.get(this) || 0;
-        gains.set(this, index + 1);
-        if (index === 0) {
-          const analyser = this.createAnalyser();
-          // A ~170 ms speech-energy window spans native Opus concealment at
-          // packet boundaries. Sustained mute/routing loss still fails; judge
-          // completion is checked separately at exact sample granularity.
-          analyser.fftSize = 8192;
-          analyser.smoothingTimeConstant = 0;
-          gain.connect(analyser);
-          const sink = createGain.call(this);
-          sink.gain.value = 0;
-          analyser.connect(sink).connect(this.destination);
-          (window as any).__friendOutput = { analyser, gain, context: this };
-        }
-        return gain;
-      };
-      (window as any).__conversation = [];
-      (window as any).__judgeActive = false;
-      setInterval(() => {
-        const output = (window as any).__friendOutput;
-        if (!output || !(window as any).__judgeActive) return;
-        const pcm = new Float32Array(output.analyser.fftSize);
-        output.analyser.getFloatTimeDomainData(pcm);
-        let squares = 0;
-        for (let i = 0; i < pcm.length; i++) {
-          squares += pcm[i] * pcm[i];
-        }
-        // A short jitter-concealment edge changes zero crossings. The dominant
-        // spectral bin identifies the source without assuming phase continuity.
-        const spectrum = new Float32Array(output.analyser.frequencyBinCount);
-        output.analyser.getFloatFrequencyData(spectrum);
-        let peak = 1;
-        for (let i = 2; i < spectrum.length; i++)
-          if (spectrum[i] > spectrum[peak]) peak = i;
-        (window as any).__conversation.push({
-          rms: Math.sqrt(squares / pcm.length),
-          frequency: (peak * output.context.sampleRate) / pcm.length,
-        });
-      }, 100);
-      const Original = window.AudioWorkletNode;
-      (window as any).__judgeRender = [];
-      (window as any).__captionSamples = [];
-      let cursor = { epoch: 0, samples: 0 };
-      setInterval(() => {
-        const active = document.querySelector<HTMLElement>(
-          ".spoken-word[data-cue-start]",
-        );
-        if (active)
-          (window as any).__captionSamples.push({
-            ...cursor,
-            start: Number(active.dataset.cueStart),
-            end: Number(active.dataset.cueEnd),
-            text: active.textContent,
+        };
+        const createGain = AudioContext.prototype.createGain;
+        const gains = new WeakMap<AudioContext, number>();
+        AudioContext.prototype.createGain = function () {
+          const gain = createGain.call(this),
+            index = gains.get(this) || 0;
+          gains.set(this, index + 1);
+          if (index === 0) {
+            const analyser = this.createAnalyser();
+            // A ~170 ms speech-energy window spans native Opus concealment at
+            // packet boundaries. Sustained mute/routing loss still fails; judge
+            // completion is checked separately at exact sample granularity.
+            analyser.fftSize = 8192;
+            analyser.smoothingTimeConstant = 0;
+            gain.connect(analyser);
+            const sink = createGain.call(this);
+            sink.gain.value = 0;
+            analyser.connect(sink).connect(this.destination);
+            (window as any).__friendOutput = { analyser, gain, context: this };
+          }
+          return gain;
+        };
+        (window as any).__conversation = [];
+        (window as any).__judgeActive = false;
+        setInterval(() => {
+          const output = (window as any).__friendOutput;
+          if (!output || !(window as any).__judgeActive) return;
+          const pcm = new Float32Array(output.analyser.fftSize);
+          output.analyser.getFloatTimeDomainData(pcm);
+          let squares = 0;
+          for (let i = 0; i < pcm.length; i++) {
+            squares += pcm[i] * pcm[i];
+          }
+          // A short jitter-concealment edge changes zero crossings. The dominant
+          // spectral bin identifies the source without assuming phase continuity.
+          const spectrum = new Float32Array(output.analyser.frequencyBinCount);
+          output.analyser.getFloatFrequencyData(spectrum);
+          let peak = 1;
+          for (let i = 2; i < spectrum.length; i++)
+            if (spectrum[i] > spectrum[peak]) peak = i;
+          (window as any).__conversation.push({
+            rms: Math.sqrt(squares / pcm.length),
+            frequency: (peak * output.context.sampleRate) / pcm.length,
           });
-      }, 100);
-      window.AudioWorkletNode = class extends Original {
-        constructor(
-          context: BaseAudioContext,
-          name: string,
-          options?: AudioWorkletNodeOptions,
-        ) {
-          super(context, name, options);
-          if (name === "judge-playback")
-            this.port.addEventListener("message", (event) => {
-              if (event.data.type === "cursor") cursor = event.data;
-              if (event.data.type === "rendering")
-                (window as any).__judgeActive = true;
-              if (event.data.type === "drained")
-                (window as any).__judgeActive = false;
-              if (
-                ["ready", "buffering", "rendering", "drained"].includes(
-                  event.data.type,
-                )
-              )
-                (window as any).__judgeRender.push(event.data);
+          if ((window as any).__conversation.length > 1200)
+            (window as any).__conversation.shift();
+        }, 100);
+        const Original = window.AudioWorkletNode;
+        (window as any).__judgeRender = [];
+        (window as any).__captionSamples = [];
+        let cursor = { epoch: 0, samples: 0 };
+        setInterval(() => {
+          const active = document.querySelector<HTMLElement>(
+            ".spoken-word[data-cue-start]",
+          );
+          if (active)
+            (window as any).__captionSamples.push({
+              at: performance.now(),
+              ...cursor,
+              start: Number(active.dataset.cueStart),
+              end: Number(active.dataset.cueEnd),
+              text: active.textContent,
             });
-        }
-      };
+          if ((window as any).__captionSamples.length > 1200)
+            (window as any).__captionSamples.shift();
+        }, 100);
+        window.AudioWorkletNode = class extends Original {
+          constructor(
+            context: BaseAudioContext,
+            name: string,
+            options?: AudioWorkletNodeOptions,
+          ) {
+            super(context, name, options);
+            if (name === "judge-playback")
+              this.port.addEventListener("message", (event) => {
+                if (event.data.type === "cursor") cursor = event.data;
+                if (event.data.type === "rendering")
+                  (window as any).__judgeActive = true;
+                if (event.data.type === "drained")
+                  (window as any).__judgeActive = false;
+                if (
+                  ["ready", "buffering", "rendering", "drained"].includes(
+                    event.data.type,
+                  )
+                )
+                  (window as any).__judgeRender.push(event.data);
+                if ((window as any).__judgeRender.length > 512)
+                  (window as any).__judgeRender.shift();
+              });
+          }
+        };
+      });
+    const a = await aContext.newPage(),
+      b = await bContext.newPage();
+    let held = false,
+      released = false;
+    // Delay an ordered middle burst for one second, preserving message order.
+    await b.routeWebSocket("**/socket/judge", (ws) => {
+      const server = ws.connectToServer();
+      const queue: (string | Buffer)[] = [];
+      server.onMessage((message) => {
+        const pcm = typeof message !== "string" && message[0] === 2;
+        if (!released && pcm && message.readUInt32LE(5) >= 45) {
+          queue.push(message);
+          if (!held) {
+            held = true;
+            setTimeout(() => {
+              released = true;
+              for (const packet of queue) ws.send(packet);
+              queue.length = 0;
+            }, 1000);
+          }
+        } else if (held && !released) queue.push(message);
+        else ws.send(message);
+      });
     });
-  const a = await aContext.newPage(),
-    b = await bContext.newPage();
-  let held = false,
-    released = false;
-  // Delay an ordered middle burst for one second, preserving message order.
-  await b.routeWebSocket("**/socket/judge", (ws) => {
-    const server = ws.connectToServer();
-    const queue: (string | Buffer)[] = [];
-    server.onMessage((message) => {
-      const pcm = typeof message !== "string" && message[0] === 2;
-      if (!released && pcm && message.readUInt32LE(5) >= 45) {
-        queue.push(message);
-        if (!held) {
-          held = true;
-          setTimeout(() => {
-            released = true;
-            for (const packet of queue) ws.send(packet);
-            queue.length = 0;
-          }, 1000);
-        }
-      } else if (held && !released) queue.push(message);
-      else ws.send(message);
-    });
-  });
-  try {
-    const code = await enter(a, b, baseURL!);
+    let courtCode: string | undefined;
+    let failed = true;
+    audioCleanup(() =>
+      finishBrowserTest(
+        () => attachAudioDiagnostics([a, b], request, courtCode, info, failed),
+        [
+          () => aContext.close(),
+          () => bContext.close(),
+          async () => {
+            await second?.close();
+          },
+        ],
+      ),
+    );
+    const code = (courtCode = await enter(a, b, baseURL!));
     const response = await request.post("/__test/voice/" + code, {
       data: { aligned: true },
     });
@@ -2850,6 +2958,9 @@ test("two players render a long judge line completely through asymmetric deliver
     await expect
       .poll(async () => (await snapshot(request, code)).judge?.status)
       .toBe("speaking");
+    await expect(a.locator(".caption-heading .caption-status")).toHaveText(
+      "Speaking",
+    );
     await openMedia(a);
     await openMedia(b);
     await expect(
@@ -2858,9 +2969,7 @@ test("two players render a long judge line completely through asymmetric deliver
     await expect(
       b.getByRole("button", { name: "Mic on", exact: true }),
     ).toBeEnabled();
-    await expect(a.locator(".caption-heading .caption-status")).toHaveText(
-      "Speaking",
-    );
+
     await expect(a.locator(".turn-label")).toHaveCount(0);
     await openMedia(a);
     // Bonk mute is gain-only: completion must still account for the full utterance.
@@ -3003,9 +3112,6 @@ test("two players render a long judge line completely through asymmetric deliver
         ),
       ).toBe(true);
     }
-  } finally {
-    await aContext.close();
-    await bContext.close();
-    await second?.close();
-  }
-});
+    failed = false;
+  },
+);

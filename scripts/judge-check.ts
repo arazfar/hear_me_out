@@ -34,6 +34,7 @@ for (const [name, other, text, reverseOrder] of fixtures) {
   const g = new Game("1234");
   const a = g.addPlayer(name),
     b = g.addPlayer(other);
+  a.mediaReady = b.mediaReady = true;
   g.startMatch();
   g.state.headsId = reverseOrder ? b.id : a.id;
   g.state.tailsId = reverseOrder ? a.id : b.id;
@@ -66,7 +67,6 @@ for (const [name, other, text, reverseOrder] of fixtures) {
   };
   g.registerSegment(s);
   const began = Date.now();
-  let firstScoreAt = 0;
   const result = await judge(
     g.snapshot(),
     [s],
@@ -76,10 +76,6 @@ for (const [name, other, text, reverseOrder] of fixtures) {
     [],
     "test",
     ["a", "b"],
-    (s) => {
-      firstScoreAt ||= Date.now();
-      g.score(s);
-    },
   );
   for (const score of result.scores) g.score(score);
   console.log(
@@ -88,7 +84,7 @@ for (const [name, other, text, reverseOrder] of fixtures) {
       name,
       speakingOrder: reverseOrder ? "second" : "first",
       text,
-      firstScoreMs: firstScoreAt - began,
+      firstScoreMs: Date.now() - began,
       latencyMs: Date.now() - began,
       score: g.player(a.id).scoreUnits / 4,
       intervention: result.intervention,

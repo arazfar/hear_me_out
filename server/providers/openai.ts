@@ -3,11 +3,18 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import {
   CAPS,
+  CRITERIA,
   type Claim,
   type Opportunity,
   type Segment,
   type Snapshot,
 } from "../../shared/domain.js";
+
+import {
+  JudgeFailure,
+  judgeFailure,
+  withJudgeDeadline,
+} from "./judge-request.js";
 
 export const scoreSchema = z
   .object({
@@ -23,7 +30,15 @@ export const scoreSchema = z
 export const proposalSchema = z
   .object({
     jobId: z.string(),
-    scores: z.array(scoreSchema).length(5),
+    scores: z
+      .array(scoreSchema)
+      .length(5)
+      .refine(
+        (scores) =>
+          new Set(scores.map((score) => score.criterion)).size ===
+          CRITERIA.length,
+        "Each criterion must appear exactly once",
+      ),
     arguments: z
       .array(
         z
@@ -95,12 +110,17 @@ export function shortSentence(text: string, max = 100) {
   const clipped = clean.slice(0, max - 1);
   return clipped.slice(0, clipped.lastIndexOf(" ")) + ".";
 }
-export const openai = () =>
-  new OpenAI({
+export const openai = () => {
+  if (!process.env.OPENAI_API_KEY)
+    throw new JudgeFailure("authentication", false);
+  return new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
     timeout: 12000,
     maxRetries: 0,
+    // SDK parse errors can log response chunks; diagnostics use bounded categories.
+    logLevel: "off",
   });
+};
 const model = () => process.env.JUDGE_MODEL || "gpt-6-luna";
 const reasoning = () =>
   (process.env.JUDGE_REASONING || "none") as "low" | "none";
@@ -113,9 +133,38 @@ export async function judge(
   claims: Claim[],
   jobId: string,
   newClaimIds: string[],
-  onScore?: (score: z.infer<typeof scoreSchema>) => void,
   recentReactions: string[] = [],
   signal?: AbortSignal,
+) {
+  return withJudgeDeadline(
+    (requestSignal) =>
+      judgeResponse(
+        state,
+        segments,
+        kind,
+        targets,
+        recent,
+        claims,
+        jobId,
+        newClaimIds,
+        recentReactions,
+        requestSignal,
+      ),
+    signal,
+  );
+}
+
+async function judgeResponse(
+  state: Snapshot,
+  segments: Segment[],
+  kind: Opportunity,
+  targets: Record<string, number>,
+  recent: Segment[],
+  claims: Claim[],
+  jobId: string,
+  newClaimIds: string[],
+  recentReactions: string[],
+  signal: AbortSignal,
 ) {
   const current = segments[0];
   // Compact per-job aliases reduce generated tokens. They map only to server supplied evidence.
@@ -183,98 +232,98 @@ export async function judge(
     },
     { signal },
   );
-  let output = "",
-    emitted = 0;
+  let output = "";
   let completed = false;
   for await (const event of stream) {
     if (event.type === "response.output_text.delta") {
       output += event.delta;
-      if (output.length > 20000)
-        throw new Error("Judge output exceeded bounds");
-      const objects = /"jobId"\s*:\s*"job"/.test(output)
-        ? completeScoreObjects(output)
-        : [];
-      for (; emitted < objects.length; emitted++) {
-        const score = wireSchema.shape.scores.element.safeParse(
-          objects[emitted],
-        );
-        if (score.success) onScore?.(mapScore(score.data));
-      }
+      if (output.length > 20000) throw new JudgeFailure("invalid_output");
     }
-    if (event.type === "response.completed") completed = true;
-    if (
-      event.type === "response.failed" ||
-      event.type === "response.incomplete"
-    )
-      throw new Error("Judge did not complete");
+    if (event.type === "response.completed") {
+      completed = true;
+      // Completion is authoritative; breaking also closes the SDK transport.
+      break;
+    }
+    if (event.type === "response.failed")
+      throw judgeFailure(event.response.error);
+    if (event.type === "response.incomplete")
+      throw new JudgeFailure("invalid_output");
   }
-  if (!completed) throw new Error("Judge stream ended before completion");
-  const p = wireSchema.parse(JSON.parse(output));
-  return {
-    ...p,
-    jobId: p.jobId === "job" ? jobId : "__invalid__",
-    scores: p.scores.map(mapScore),
-    arguments: p.arguments.map((a) => ({
-      ...a,
-      claimId: reverse(claimAliases, a.claimId),
-      playerId: reverse(playerAliases, a.playerId),
-      segmentId: reverse(segmentAliases, a.segmentId),
-      summary: shortSentence(a.summary, 160),
-      answersClaimId: a.answersClaimId
-        ? reverse(claimAliases, a.answersClaimId)
+  if (!completed) throw new JudgeFailure("transport");
+  let p: z.infer<typeof wireSchema>;
+  try {
+    p = wireSchema.parse(JSON.parse(output));
+  } catch {
+    throw new JudgeFailure("invalid_output");
+  }
+  return validateProposal(
+    {
+      ...p,
+      jobId: p.jobId === "job" ? jobId : "__invalid__",
+      scores: p.scores.map(mapScore),
+      arguments: p.arguments.map((a) => ({
+        ...a,
+        claimId: reverse(claimAliases, a.claimId),
+        playerId: reverse(playerAliases, a.playerId),
+        segmentId: reverse(segmentAliases, a.segmentId),
+        summary: shortSentence(a.summary, 160),
+        answersClaimId: a.answersClaimId
+          ? reverse(claimAliases, a.answersClaimId)
+          : null,
+      })),
+      reaction: p.reaction
+        ? {
+            segmentId: reverse(segmentAliases, p.reaction.segmentId),
+            text: shortSentence(p.reaction.text),
+          }
         : null,
-    })),
-    reaction: p.reaction
-      ? {
-          segmentId: reverse(segmentAliases, p.reaction.segmentId),
-          text: shortSentence(p.reaction.text),
-        }
-      : null,
-    intervention: p.intervention
-      ? {
-          ...p.intervention,
-          targetPlayerId: reverse(playerAliases, p.intervention.targetPlayerId),
-          claimId: p.intervention.claimId
-            ? reverse(claimAliases, p.intervention.claimId)
-            : null,
-        }
-      : null,
-  };
+      intervention: p.intervention
+        ? {
+            ...p.intervention,
+            targetPlayerId: reverse(
+              playerAliases,
+              p.intervention.targetPlayerId,
+            ),
+            claimId: p.intervention.claimId
+              ? reverse(claimAliases, p.intervention.claimId)
+              : null,
+          }
+        : null,
+    },
+    jobId,
+    segments,
+  );
 }
-// Each returned object is complete JSON from the scores array, never a provisional text fragment.
-export function completeScoreObjects(text: string): unknown[] {
-  const at = text.indexOf('"scores"');
-  if (at < 0) return [];
-  const start = text.indexOf("[", at);
-  if (start < 0) return [];
-  const result: unknown[] = [];
-  let depth = 0,
-    quoted = false,
-    escape = false,
-    objectAt = -1;
-  for (let i = start + 1; i < text.length; i++) {
-    const c = text[i];
-    if (quoted) {
-      if (escape) escape = false;
-      else if (c === "\\") escape = true;
-      else if (c === '"') quoted = false;
-      continue;
-    }
-    if (c === '"') {
-      quoted = true;
-      continue;
-    }
-    if (c === "{") {
-      if (depth++ === 0) objectAt = i;
-    } else if (c === "}") {
-      if (--depth === 0) {
-        try {
-          result.push(JSON.parse(text.slice(objectAt, i + 1)));
-        } catch {
-          return result;
-        }
-      }
-    } else if (c === "]" && depth === 0) break;
-  }
-  return result;
+
+/** Validate all scoring before the caller can touch the authoritative ledger.
+ * Optional commentary IDs are still independently filtered by the room. */
+export function validateProposal(
+  value: unknown,
+  jobId: string,
+  batch: Segment[],
+): Proposal {
+  const parsed = proposalSchema.safeParse(value);
+  const first = batch[0];
+  if (
+    !parsed.success ||
+    !first ||
+    parsed.data.jobId !== jobId ||
+    parsed.data.scores.some(
+      (score) =>
+        score.playerId !== first.playerId ||
+        score.roundId !== first.roundId ||
+        score.turnId !== first.turnId ||
+        !batch.some(
+          (segment) =>
+            segment.id === score.segmentId &&
+            segment.eligible &&
+            segment.source === "voice" &&
+            segment.playerId === score.playerId &&
+            segment.roundId === score.roundId &&
+            segment.turnId === score.turnId,
+        ),
+    )
+  )
+    throw new JudgeFailure("invalid_output");
+  return parsed.data;
 }

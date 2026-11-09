@@ -80,7 +80,10 @@ export function createApp(
       express.static(dist, {
         maxAge: "1h",
         setHeaders: (res, path) => {
-          if (path.endsWith("index.html"))
+          if (
+            path.endsWith("index.html") ||
+            AUDIO_WORKLETS.some((file) => path === resolve(dist, file))
+          )
             res.setHeader("Cache-Control", "no-store");
         },
       }),

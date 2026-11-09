@@ -16,6 +16,7 @@
     "verify:match": "tsx scripts/socket-check.ts",
     "verify:idle": "tsx scripts/idle-check.ts",
     "test:ui": "playwright test",
+    "test:browser-diagnostics": "node --test tests/browser-diagnostics.test.mjs",
     "ui:review": "node tools/ui-review/server.mjs",
     "test:ui-review": "node --test tools/ui-review/tests/*.test.mjs && playwright test --config tools/ui-review/playwright.config.mjs"
   },

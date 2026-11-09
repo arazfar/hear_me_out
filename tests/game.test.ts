@@ -233,13 +233,6 @@ test("reconnect during judge pause restores clock and timed intro resumes", () =
   g.selectTopic();
   assert.equal(g.state.phase, "TOPIC_SELECT");
 });
-test("complete score JSON objects stream atomically despite braces and escaped quotes in reasons", async () => {
-  const { completeScoreObjects } = await import("../server/providers/index");
-  const text =
-    '{"jobId":"job","scores":[{"reason":"a {real} reason with \\"quotes\\"","quality":3},{"reason":"pending';
-  assert.equal(completeScoreObjects(text).length, 1);
-  assert.equal(completeScoreObjects('{"jobId":"job"').length, 0);
-});
 test("settlement cannot advance a floor until judge playback finishes", () => {
   const { g, advance } = setup();
   const t = g.state.turn!;

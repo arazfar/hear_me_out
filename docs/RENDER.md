@@ -76,6 +76,10 @@ Any remaining live handle is bounded by a 25-second process deadline (Render's
 deadline is 30 seconds).
 The Blueprint omits `maxShutdownDelaySeconds`: Render rejects that setting on Free.
 
+Release the scoring/deadline, worklet-cache, and lobby-lease changes as one matching client/server build between matches. Judge scores now publish per completed, validated batch; monitor `scoringMs`, `judgment_timeout`, and other `judgment_*` counters during provider qualification. Logical judging has one 12-second budget including retry. Lobby reservations and disconnected seats expire after 60 seconds; authenticated control/audio/video connections retain their seat while permissions are pending. Active-match recovery limits and finished verdict retention are unchanged.
+
+All three stable worklet URLs are served and fetched with `no-store`; fingerprinted assets retain caching. Validate both a warm-cache upgrade and rollback with an ordinary refresh. Rolling back to a build predating this cache fix restores its old caching policy, so require a hard refresh if that build serves stale worklets. No protocol or data migration is needed. Keep the hosted no-retry repetition and physical/provider matrix outstanding until actually run; do not infer either from synthetic CI. Restarts/rollbacks still discard the in-memory rooms.
+
 ## Free-tier limits
 
 Only one match may run at once. There is no durable room storage or horizontal
