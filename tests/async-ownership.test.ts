@@ -1,4 +1,3 @@
-import { CRITERIA } from "../shared/domain";
 import { encodeMicrophone } from "../shared/media";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -63,12 +62,13 @@ for (const transition of ["rematch", "dispose", "recovery"] as const) {
     room.close();
   });
 }
-test("same-match recovery scores retained evidence only once", async () => {
-  const old = deferred<Proposal>();
-  let calls = 0;
+test("a canceled judgment cannot release its replacement or score retained evidence twice", async (t) => {
+  const old = deferred<void>();
+  const replacement = deferred<void>();
+  const batches: string[][] = [];
   const { room } = roomFixture({
     judge: async (
-      state,
+      _state,
       segments,
       _kind,
       _targets,
@@ -76,35 +76,43 @@ test("same-match recovery scores retained evidence only once", async () => {
       _claims,
       jobId,
     ) => {
-      if (++calls === 1) return old.promise;
-      const s = segments[0];
-      return {
-        jobId,
-        scores: CRITERIA.map((criterion) => ({
-          playerId: s.playerId,
-          roundId: s.roundId,
-          turnId: s.turnId!,
-          segmentId: s.id,
-          criterion,
-          quality: criterion === "reasoning" ? 3 : 0,
-          reason: "Syrup pockets distribute sweetness.",
-        })),
-        arguments: [],
-        reaction: { segmentId: s.id, text: "Those pockets came prepared." },
-        intervention: null,
-      };
+      batches.push(segments.map((segment) => segment.id));
+      await (batches.length === 1 ? old.promise : replacement.promise);
+      const result = proposal(jobId, segments[0], 0);
+      const reasoning = result.scores.find(
+        (score) => score.criterion === "reasoning",
+      )!;
+      reasoning.quality = 3;
+      return result;
     },
   });
-  room.judging.onSegment(evidence(room.game));
+  t.after(() => room.close());
+  const segment = evidence(room.game);
+  room.judging.onSegment(segment);
   room.game.recover("Offline");
+  assert.deepEqual(room.judging.queue, [segment]);
+  assert.equal(room.judging.busy, false);
+  assert.equal(room.game.state.judgePending, true);
+
   room.game.resumeRecovery();
+  old.resolve();
   await flush();
-  old.reject(new Error("Cancelled old job"));
+  assert.equal(batches.length, 2);
+  assert.equal(room.judging.busy, true);
+  assert.equal(room.game.state.judgePending, true);
+  assert.equal(room.game.state.ledger.length, 0);
+
+  replacement.resolve();
   await flush();
   assert.equal(room.game.state.phase, "ROUND");
-  assert.equal(room.game.state.ledger.length, 1);
+  assert.deepEqual(batches, [[segment.id], [segment.id]]);
+  assert.deepEqual(
+    room.game.state.ledger.map((award) => award.segmentId),
+    [segment.id],
+  );
+  assert.deepEqual(room.judging.queue, []);
+  assert.equal(room.judging.busy, false);
   assert.equal(room.game.state.judgePending, false);
-  room.close();
 });
 test("match reset clears transcript context, captions, reactions and queued evidence", () => {
   const { room } = roomFixture();

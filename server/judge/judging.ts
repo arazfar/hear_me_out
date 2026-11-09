@@ -9,12 +9,17 @@ import {
   voiceSettingsKey,
 } from "./personality.js";
 import { PreparedVoice } from "./voice-cache.js";
+
+type JudgmentJob = { controller: AbortController; batch: Segment[] };
+
 export class Judging {
   constructor(readonly room: RoomController) {}
   recent: Segment[] = [];
   queue: Segment[] = [];
-  busy = false;
-  judgeRequest: AbortController | null = null;
+  private activeJob: JudgmentJob | null = null;
+  get busy() {
+    return this.activeJob !== null;
+  }
   reactions = new Map<
     string,
     { segmentId: string; text: string; revision: number }
@@ -39,15 +44,14 @@ export class Judging {
     }
   >();
   cancelJudgment(preserve = false) {
-    this.judgeRequest?.abort();
-    this.judgeRequest = null;
-    if (preserve) this.queue.unshift(...this.activeBatch);
-    else this.queue = [];
-    this.activeBatch = [];
-    this.busy = false;
-    this.room.game.setJudgePending(!!this.queue.length);
+    const job = this.activeJob;
+    // Retire the job before abort listeners can run.
+    this.activeJob = null;
+    if (!preserve) this.queue = [];
+    else if (job) this.queue.unshift(...job.batch);
+    this.room.game.setJudgePending(this.queue.length > 0);
+    job?.controller.abort();
   }
-  activeBatch: Segment[] = [];
   onSegment(segment: Segment) {
     if (!this.room.game.registerSegment(segment)) return;
     this.room.trace("transcript_final", {
@@ -79,22 +83,23 @@ export class Judging {
       this.room.game.state.phase === "RECOVERING"
     )
       return;
-    const request = (this.judgeRequest = new AbortController());
+    const job: JudgmentJob = { controller: new AbortController(), batch: [] };
+    this.activeJob = job;
     const matchId = this.room.game.state.matchId;
     const roundId = this.room.game.state.roundId;
     const current = () =>
       !this.room.closed &&
-      !request.signal.aborted &&
-      this.judgeRequest === request &&
+      !job.controller.signal.aborted &&
+      this.activeJob === job &&
       this.room.game.state.matchId === matchId &&
       this.room.game.state.roundId === roundId;
-    this.busy = true;
     this.room.game.setJudgePending(true);
     this.room.game.emit("judge_thinking");
+    if (!current()) return;
     const first = this.queue[0],
       batch = this.queue.filter((s) => s.turnId === first.turnId).slice(0, 4);
     this.queue = this.queue.filter((s) => !batch.includes(s));
-    this.activeBatch = batch;
+    job.batch = batch;
     const record = first.turnId ? this.room.game.turns.get(first.turnId) : null;
     const jobId = randomUUID(),
       claimIds: string[] = [randomUUID(), randomUUID()];
@@ -134,7 +139,7 @@ export class Judging {
             }
           }
         },
-        request.signal,
+        job.controller.signal,
         this.room.services,
       );
       if (!current()) return;
@@ -194,9 +199,7 @@ export class Judging {
       this.room.game.abort("Bonk couldn’t finish scoring. Try a new match.");
     } finally {
       if (!current()) return;
-      this.judgeRequest = null;
-      this.activeBatch = [];
-      this.busy = false;
+      this.activeJob = null;
       this.room.game.setJudgePending(this.queue.length > 0);
       if (
         this.room.game.state.turn?.sealing &&
