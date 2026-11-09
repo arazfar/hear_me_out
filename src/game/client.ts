@@ -1,8 +1,4 @@
-import {
-  decodeMicrophone,
-  decodeVideo,
-  RELAY_AUDIO_MAX_AGE_MS,
-} from "../../shared/media";
+import { decodeMicrophone, RELAY_AUDIO_MAX_AGE_MS } from "../../shared/media";
 import {
   PROTOCOL_VERSION,
   serverMessageSchema,
@@ -197,23 +193,7 @@ export class Client {
         if (typeof event.data === "string")
           this.message(JSON.parse(event.data));
         else if (channel === "audio") this.audio(event.data);
-        else if (channel === "video") {
-          const frame = event.data as ArrayBuffer;
-          const decoded = decodeVideo(new Uint8Array(frame));
-          if (
-            !this.state ||
-            !decoded ||
-            decoded.epoch !== this.state.mediaEpoch
-          )
-            return;
-          if (decoded.probe) {
-            void this.video.probe(frame);
-            return;
-          }
-          if (this.state.mediaMode === "rtc") return;
-          this.video.pendingVideo = frame;
-          void this.video.decodeVideo();
-        }
+        else if (channel === "video") void this.video.receive(event.data);
       };
       ws.onclose = (event) => {
         if (current() && event.code === 4406) {

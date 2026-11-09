@@ -221,22 +221,26 @@ test("failed or obsolete camera Blob reads are discarded and the encoder can ret
 });
 
 function decodeFixture(t: TestContext) {
-  const decoded: { finish: () => void }[] = [];
+  const decoded: { finish: () => void; fail: () => void }[] = [];
+  const acknowledgements: unknown[] = [];
   let closed = 0,
     drawn = 0,
-    acknowledgements = 0;
+    cleared = 0;
   const doc = {
     hidden: false,
     createElement: () => ({
       width: 256,
       height: 144,
-      getContext: () => ({ drawImage: () => drawn++, clearRect: () => {} }),
+      getContext: () => ({
+        drawImage: () => drawn++,
+        clearRect: () => cleared++,
+      }),
     }),
   };
   for (const [key, value] of Object.entries({
     document: doc,
     createImageBitmap: () =>
-      new Promise((resolve) => {
+      new Promise((resolve, reject) => {
         decoded.push({
           finish: () =>
             resolve({
@@ -244,6 +248,7 @@ function decodeFixture(t: TestContext) {
               height: 144,
               close: () => closed++,
             }),
+          fail: () => reject(new Error("JPEG could not be decoded")),
         });
       }),
   })) {
@@ -257,54 +262,100 @@ function decodeFixture(t: TestContext) {
   const client = new Client();
   client.state = { mediaMode: "wss", mediaEpoch: 7 } as Snapshot;
   client.video.captureGeneration = 2;
-  client.send = () => {
-    acknowledgements++;
-  };
+  client.send = (message) => void acknowledgements.push(message);
   return {
+    client,
     video: client.video,
     doc,
     decoded,
-    counts: () => ({ closed, drawn, acknowledgements }),
-    frame: (seq: number, probe = false) =>
-      encodeVideo(7, seq, Date.now(), new Uint8Array([1]), probe, 2).buffer,
+    acknowledgements,
+    counts: () => ({ closed, drawn, cleared }),
+    frame: (seq: number, { probe = false, epoch = 7, generation = 2 } = {}) =>
+      encodeVideo(
+        epoch,
+        seq,
+        Date.now(),
+        new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
+        probe,
+        generation,
+      ).buffer,
   };
 }
+
+test("video ingress validates packets and still accepts camera probes in RTC mode", async (t) => {
+  const f = decodeFixture(t);
+  f.client.state!.mediaMode = "rtc";
+  const ignored = [
+    f.frame(1, { probe: true }).slice(0, -1),
+    f.frame(2, { probe: true, epoch: 6 }),
+    f.frame(3, { probe: true, generation: 1 }),
+    f.frame(4),
+  ].map((frame) => f.video.receive(frame));
+  assert.equal(f.decoded.length, 0);
+  await Promise.all(ignored);
+  assert.deepEqual(f.acknowledgements, []);
+
+  const probe = f.video.receive(f.frame(5, { probe: true }));
+  f.decoded[0].finish();
+  await probe;
+  assert.deepEqual(f.acknowledgements, [
+    { type: "video_ack", probe: true, seq: 5, mediaEpoch: 7 },
+  ]);
+  assert.deepEqual(f.counts(), { closed: 1, drawn: 0, cleared: 0 });
+});
+
+test("a failed relay decode keeps the last good frame and sends no receipt", async (t) => {
+  const f = decodeFixture(t);
+  const first = f.video.receive(f.frame(1));
+  f.decoded[0].finish();
+  await first;
+
+  const broken = f.video.receive(f.frame(2));
+  f.decoded[1].fail();
+  await broken;
+  assert(f.video.remoteFrame);
+  assert.equal(f.video.remoteFrameSeq, 1);
+  assert.deepEqual(f.acknowledgements, [
+    { type: "video_ack", seq: 1, mediaEpoch: 7 },
+  ]);
+  assert.deepEqual(f.counts(), { closed: 1, drawn: 1, cleared: 0 });
+});
 
 test("hidden or navigating documents discard relay frames and probes before creating Blobs", async (t) => {
   const f = decodeFixture(t);
   f.video.setPageActive(false);
-  f.video.pendingVideo = f.frame(1);
-  await f.video.decodeVideo();
-  await f.video.probe(f.frame(2, true));
-  assert.equal(f.video.pendingVideo, null);
+  await f.video.receive(f.frame(1));
+  await f.video.receive(f.frame(2, { probe: true }));
   assert.equal(f.decoded.length, 0, "beforeunload precedes document.hidden");
   f.video.setPageActive(true);
   f.doc.hidden = true;
-  f.video.pendingVideo = f.frame(3);
-  await f.video.decodeVideo();
-  await f.video.probe(f.frame(4, true));
+  await f.video.receive(f.frame(3));
+  await f.video.receive(f.frame(4, { probe: true }));
   assert.equal(f.decoded.length, 0);
-  assert.equal(f.counts().acknowledgements, 0);
+  assert.deepEqual(f.acknowledgements, []);
 });
 
 test("page restoration accepts fresh video but never renders or acknowledges obsolete decodes", async (t) => {
   const f = decodeFixture(t);
-  f.video.pendingVideo = f.frame(1);
-  const receiving = f.video.decodeVideo();
-  const probing = f.video.probe(f.frame(2, true));
-  f.video.pendingVideo = f.frame(3);
+  const receiving = f.video.receive(f.frame(1));
+  const probing = f.video.receive(f.frame(2, { probe: true }));
+  await f.video.receive(f.frame(3));
   f.video.setPageActive(false);
   f.video.setPageActive(true);
   f.decoded.forEach((decode) => decode.finish());
   await Promise.all([receiving, probing]);
-  assert.deepEqual(f.counts(), { closed: 2, drawn: 0, acknowledgements: 0 });
-  assert.equal(f.video.pendingVideo, null);
-  f.video.pendingVideo = f.frame(4);
-  const fresh = f.video.decodeVideo();
+  assert.deepEqual(f.counts(), { closed: 2, drawn: 0, cleared: 0 });
+  assert.equal(f.decoded.length, 2, "navigation drops the queued frame too");
+  assert.deepEqual(f.acknowledgements, []);
+  const fresh = f.video.receive(f.frame(4));
   f.decoded[2].finish();
   await fresh;
-  const freshProbe = f.video.probe(f.frame(5, true));
+  const freshProbe = f.video.receive(f.frame(5, { probe: true }));
   f.decoded[3].finish();
   await freshProbe;
-  assert.deepEqual(f.counts(), { closed: 4, drawn: 1, acknowledgements: 2 });
+  assert.deepEqual(f.counts(), { closed: 4, drawn: 1, cleared: 0 });
+  assert.deepEqual(f.acknowledgements, [
+    { type: "video_ack", seq: 4, mediaEpoch: 7 },
+    { type: "video_ack", probe: true, seq: 5, mediaEpoch: 7 },
+  ]);
 });

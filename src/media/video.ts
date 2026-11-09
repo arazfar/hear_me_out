@@ -1,5 +1,8 @@
-import { encodeVideo } from "../../shared/media";
+import { decodeVideo, encodeVideo } from "../../shared/media";
 import type { Client } from "../game/client";
+
+type VideoPacket = NonNullable<ReturnType<typeof decodeVideo>>;
+
 export class RelayVideo {
   constructor(readonly client: Client) {}
   localFrames = 0;
@@ -8,9 +11,9 @@ export class RelayVideo {
   remoteFrame = false;
   remoteCanvas: HTMLCanvasElement | null = null;
   remoteFrameAt = 0;
-  pendingVideo: ArrayBuffer | null = null;
-  decodingVideo = false;
-  videoGeneration = 0;
+  private pendingVideo: VideoPacket | null = null;
+  private decodingVideo = false;
+  private videoGeneration = 0;
   remoteFrameSeq = 0;
   videoSeq = 0;
   videoInFlight = new Map<number, number>();
@@ -61,7 +64,16 @@ export class RelayVideo {
     this.videoInFlight.clear();
     this.remoteCanvas?.getContext("2d")?.clearRect(0, 0, 256, 144);
   }
-  async decodeVideo() {
+  async receive(raw: ArrayBuffer) {
+    const frame = decodeVideo(new Uint8Array(raw));
+    const state = this.client.state;
+    if (!frame || !state || frame.epoch !== state.mediaEpoch) return;
+    if (frame.probe) return this.probe(frame);
+    if (state.mediaMode === "rtc") return;
+    this.pendingVideo = frame;
+    return this.decodePending();
+  }
+  private async decodePending() {
     if (this.decodingVideo) return;
     this.decodingVideo = true;
     try {
@@ -70,31 +82,29 @@ export class RelayVideo {
         this.pendingVideo = null;
         if (!this.canProcessFrames) continue;
         const generation = this.videoGeneration;
-        const header = new DataView(frame);
         let bitmap: ImageBitmap | null = null;
         try {
           bitmap = await createImageBitmap(
-            new Blob([frame.slice(21)], { type: "image/jpeg" }),
+            new Blob([frame.jpeg.slice()], { type: "image/jpeg" }),
           );
-          const seq = header.getUint32(5, true);
           if (
             !this.canProcessFrames ||
             generation !== this.videoGeneration ||
-            header.getUint32(1, true) !== this.client.state?.mediaEpoch ||
-            seq <= this.remoteFrameSeq
+            frame.epoch !== this.client.state?.mediaEpoch ||
+            frame.seq <= this.remoteFrameSeq
           )
             continue;
           this.remoteCanvas ||= document.createElement("canvas");
           if (this.remoteCanvas.width !== 256) this.remoteCanvas.width = 256;
           if (this.remoteCanvas.height !== 144) this.remoteCanvas.height = 144;
           this.remoteCanvas.getContext("2d")!.drawImage(bitmap, 0, 0, 256, 144);
-          this.remoteFrameSeq = seq;
+          this.remoteFrameSeq = frame.seq;
           this.remoteFrame = true;
           this.remoteFrameAt = Date.now();
           this.client.send({
             type: "video_ack",
-            seq,
-            mediaEpoch: header.getUint32(1, true),
+            seq: frame.seq,
+            mediaEpoch: frame.epoch,
           });
           this.client.notify({ media: true });
         } catch {
@@ -107,14 +117,13 @@ export class RelayVideo {
       this.decodingVideo = false;
     }
   }
-  async probe(frame: ArrayBuffer) {
+  private async probe(frame: VideoPacket) {
     const generation = this.videoGeneration;
     try {
-      if (new DataView(frame).getUint32(17, true) !== this.captureGeneration)
-        return;
+      if (frame.generation !== this.captureGeneration) return;
       if (!this.canProcessFrames) return;
       const bitmap = await createImageBitmap(
-        new Blob([frame.slice(21)], { type: "image/jpeg" }),
+        new Blob([frame.jpeg.slice()], { type: "image/jpeg" }),
       );
       const valid = bitmap.width > 0 && bitmap.height > 0;
       bitmap.close();
@@ -122,8 +131,8 @@ export class RelayVideo {
         this.client.send({
           type: "video_ack",
           probe: true,
-          seq: new DataView(frame).getUint32(5, true),
-          mediaEpoch: new DataView(frame).getUint32(1, true),
+          seq: frame.seq,
+          mediaEpoch: frame.epoch,
         });
     } catch {
       /* A failed decode is not a delivery receipt. */

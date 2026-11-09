@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { encodeMicrophone } from "../shared/media";
+import { encodeMicrophone, encodeVideo } from "../shared/media";
 import { RoomController, type Seat } from "../server/rooms/room";
 import { judgeIsListening, scoreShare, type Turn } from "../shared/domain";
 import { Client } from "../src/game/client";
@@ -105,18 +105,16 @@ test("relay decode retains delayed frames, coalesces pending work and rejects ol
       }),
     }),
   };
-  const frame = (seq: number) => {
-    const f = new ArrayBuffer(22),
-      v = new DataView(f);
-    v.setUint32(1, client.state!.mediaEpoch, true);
-    v.setUint32(5, seq, true);
-    v.setFloat64(9, Date.now() - 5000, true);
-    v.setUint8(21, seq);
-    return f;
-  };
+  const frame = (seq: number) =>
+    encodeVideo(
+      client.state!.mediaEpoch,
+      seq,
+      Date.now() - 5000,
+      new Uint8Array([0xff, 0xd8, seq, 0xff, 0xd9]),
+    ).buffer;
   let release!: () => void;
   (globalThis as any).createImageBitmap = async (blob: Blob) => {
-    const seq = new Uint8Array(await blob.arrayBuffer())[0];
+    const seq = new Uint8Array(await blob.arrayBuffer())[2];
     if (seq === 1)
       await new Promise<void>((r) => {
         release = r;
@@ -124,22 +122,20 @@ test("relay decode retains delayed frames, coalesces pending work and rejects ol
     return { seq, close: () => closed++ };
   };
   try {
-    client.video.pendingVideo = frame(1);
-    const decoding = client.video.decodeVideo();
+    const decoding = client.video.receive(frame(1));
     while (!release) await new Promise((r) => setImmediate(r));
-    client.video.pendingVideo = frame(2);
-    client.video.pendingVideo = frame(3);
+    await client.video.receive(frame(2));
+    await client.video.receive(frame(3));
     release();
     await decoding;
     assert.deepEqual(drawn, [1, 3]);
     assert.equal(client.video.remoteFrameSeq, 3);
     assert(client.video.remoteFrame);
-    client.video.pendingVideo = frame(4);
-    const old = client.video.decodeVideo();
-    client.video.resetVideo();
+    const old = client.video.receive(frame(4));
+    client.state = { ...client.state, mediaEpoch: client.state.mediaEpoch + 1 };
     await old;
     assert.deepEqual(drawn, [1, 3]);
-    assert.equal(client.video.remoteFrameSeq, 0);
+    assert.equal(client.video.remoteFrameSeq, 3);
     assert.equal(closed, 3);
   } finally {
     globalThis.createImageBitmap = savedBitmap;
