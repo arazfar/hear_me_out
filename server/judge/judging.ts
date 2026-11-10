@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { type Segment } from "../../shared/domain.js";
+import type { Opportunity, Segment } from "../../shared/domain.js";
 import { validateProposal, type Proposal } from "../providers/index.js";
 import { judgeFailure, withJudgeDeadline } from "../providers/judge-request.js";
 import type { RoomController } from "../rooms/room.js";
@@ -8,7 +8,7 @@ import {
   safeReaction,
   voiceSettingsKey,
 } from "./personality.js";
-import { PreparedVoice } from "./voice-cache.js";
+import type { PreparedVoice } from "./voice-cache.js";
 
 type JudgmentJob = { controller: AbortController; batch: Segment[] };
 
@@ -25,17 +25,7 @@ export class Judging {
     { segmentId: string; text: string; revision: number }
   >();
   argumentRevision = new Map<string, number>();
-  candidate: {
-    key: string;
-    text: string;
-    turnId: string;
-    matchId: string | null;
-    roundId: string | null;
-    revision: number;
-    playerId: string;
-    kind: string;
-    voice: PreparedVoice;
-  } | null = null;
+  private candidate: { key: string; voice: PreparedVoice } | null = null;
   planned = new Map<
     string,
     NonNullable<Proposal["intervention"]> & {
@@ -315,6 +305,42 @@ export class Judging {
       intervention: false,
     };
   }
+  private handoffKey(
+    sourceTurnId: string,
+    playerId: string,
+    kind: Opportunity,
+    text: string,
+  ) {
+    const { matchId, roundId } = this.room.game.state;
+    return JSON.stringify([
+      matchId,
+      roundId,
+      sourceTurnId,
+      this.argumentRevision.get(sourceTurnId) || 0,
+      playerId,
+      kind,
+      text,
+      voiceSettingsKey(),
+    ]);
+  }
+  takePreparedHandoff(
+    sourceTurnId: string | null,
+    playerId: string,
+    kind: Opportunity,
+    text: string,
+  ) {
+    const candidate = this.candidate;
+    if (
+      candidate &&
+      sourceTurnId &&
+      candidate.key === this.handoffKey(sourceTurnId, playerId, kind, text)
+    ) {
+      // Playback owns the selected clip from here.
+      this.candidate = null;
+      return candidate.voice;
+    }
+    this.invalidateCandidate();
+  }
   prepareHandoff() {
     const { game } = this.room;
     const turn = game.state.turn;
@@ -324,18 +350,11 @@ export class Judging {
     if (!next) return;
     const handoff = this.handoff(next.playerId, next.kind, turn.id);
     const text = completeSpeech(handoff.text, 27);
-    const key = `${game.state.matchId}:${game.state.roundId}:${turn.id}:${this.argumentRevision.get(turn.id) || 0}:${next.playerId}:${next.kind}:${text}:${voiceSettingsKey()}`;
+    const key = this.handoffKey(turn.id, next.playerId, next.kind, text);
     if (this.candidate?.key === key) return;
     this.invalidateCandidate();
     this.candidate = {
       key,
-      text,
-      turnId: turn.id,
-      matchId: game.state.matchId,
-      roundId: game.state.roundId,
-      revision: this.argumentRevision.get(turn.id) || 0,
-      playerId: next.playerId,
-      kind: next.kind,
       voice: this.room.services.prepareVoice(text),
     };
   }

@@ -8,11 +8,7 @@ import {
   JUDGE_RATE,
 } from "../../shared/media.js";
 import type { RoomController } from "../rooms/room.js";
-import {
-  completeSpeech,
-  HostPhrases,
-  voiceSettingsKey,
-} from "./personality.js";
+import { completeSpeech, HostPhrases } from "./personality.js";
 import { PreparedVoice } from "./voice-cache.js";
 
 type Speech = {
@@ -145,24 +141,13 @@ export class JudgePlayback {
       return;
     }
     this.pendingHandoff = null;
-    const text = completeSpeech(handoff.text, 27),
-      candidate = this.room.judging.candidate;
-    const prepared =
-      candidate &&
-      candidate.turnId === this.lastSealedTurnId &&
-      candidate.matchId === state.matchId &&
-      candidate.roundId === state.roundId &&
-      candidate.revision ===
-        (this.room.judging.argumentRevision.get(candidate.turnId) || 0) &&
-      candidate.playerId === handoff.playerId &&
-      candidate.kind === state.turn.kind &&
-      candidate.text === text &&
-      candidate.key.endsWith(voiceSettingsKey())
-        ? candidate.voice
-        : undefined;
-    // A selected clip transfers ownership. Later evidence cannot cancel active playback.
-    if (prepared) this.room.judging.candidate = null;
-    else this.room.judging.invalidateCandidate();
+    const text = completeSpeech(handoff.text, 27);
+    const prepared = this.room.judging.takePreparedHandoff(
+      this.lastSealedTurnId,
+      handoff.playerId,
+      state.turn.kind,
+      text,
+    );
     void this.say(text, handoff.playerId, handoff.intervention, 20, prepared);
   }
   async say(

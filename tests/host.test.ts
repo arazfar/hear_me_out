@@ -300,7 +300,16 @@ test("a late rebuttal score changes the first Closing preview until the order is
   const { room } = roomFixture();
   t.after(() => room.close());
   const { game, judging } = room;
-  room.playback.say = async () => {};
+  const previews: PreparedVoice[] = [];
+  room.services.prepareVoice = (text, seconds) => {
+    const voice = new PreparedVoice(text, seconds, fakeVoice);
+    previews.push(voice);
+    return voice;
+  };
+  let played: PreparedVoice | undefined;
+  room.playback.say = async (_text, _target, _intervention, _seconds, voice) => {
+    played = voice;
+  };
   const settle = () => {
     game.setSettlement("ready");
     game.tick();
@@ -316,8 +325,12 @@ test("a late rebuttal score changes the first Closing preview until the order is
   const opener = game.other(responder.id);
   game.endTurn(responder.id, rebuttal.id);
   judging.prepareHandoff();
-  assert.equal(judging.candidate?.playerId, responder.id);
-  assert.equal(judging.candidate?.kind, "closing");
+  const tiedPreview = previews.at(-1)!;
+  assert.equal(tiedPreview.text, `${responder.name}, your closing argument.`);
+  const previewCount = previews.length;
+  judging.prepareHandoff();
+  assert.equal(previews.length, previewCount);
+  assert.equal(tiedPreview.cancelled, false);
   assert.equal(game.order.length, 4);
   assert.equal(
     game.nextTurnId,
@@ -338,13 +351,23 @@ test("a late rebuttal score changes the first Closing preview until the order is
     }),
   );
   judging.prepareHandoff();
-  assert.equal(judging.candidate?.playerId, opener.id);
+  const selected = previews.at(-1)!;
+  assert.equal(selected.text, `${opener.name}, your closing argument.`);
+  assert.equal(tiedPreview.cancelled, true);
   assert.equal(game.order.length, 4);
   settle();
 
   const closing = game.state.turn!;
   assert.equal(closing.playerId, opener.id);
   assert.equal(closing.kind, "closing");
+  assert.equal(played, selected);
+  judging.prepareHandoff();
+  const laterPreview = previews.at(-1)!;
+  assert.notEqual(laterPreview, selected);
+  judging.invalidateCandidate();
+  assert.equal(laterPreview.cancelled, true);
+  assert.equal(selected.cancelled, false);
+
   const reversal = evidence(game, "first Closing");
   assert(game.registerSegment(reversal));
   assert(
@@ -363,39 +386,31 @@ test("a late rebuttal score changes the first Closing preview until the order is
   assert.equal(game.state.turn?.playerId, responder.id);
   assert.equal(game.state.turn?.kind, "closing");
 });
-test("a prefetched handoff from another match is cancelled rather than played", () => {
-  const { room: c, turn } = roomFixture();
-  c.playback.lastSealedTurnId = "old";
-  let cancelled = false,
-    prepared: unknown = "unset";
-  c.judging.candidate = {
-    key: "old",
-    text: "Alex, your turn.",
-    turnId: "old",
-    matchId: "previous",
-    roundId: c.game.state.roundId,
-    revision: 1,
-    playerId: turn.playerId,
-    kind: turn.kind,
-    voice: Object.assign(new PreparedVoice("old", 4.5, fakeVoice), {
-      cancel: () => {
-        cancelled = true;
-      },
-    }),
+test("a prefetched handoff from another match is cancelled rather than played", (t) => {
+  const { room, turn } = roomFixture();
+  t.after(() => room.close());
+  const { game, judging, playback } = room;
+  const preview = new PreparedVoice(
+    `${game.other(turn.playerId).name}, make your case.`,
+    20,
+    fakeVoice,
+  );
+  room.services.prepareVoice = (text) => {
+    assert.equal(text, preview.text);
+    return preview;
   };
-  c.playback.pendingHandoff = {
-    matchId: c.game.state.matchId,
-    roundId: c.game.state.roundId,
-    turnId: turn.id,
-    playerId: turn.playerId,
-    text: "Alex, your turn.",
-    intervention: false,
+  let played: { text: string; voice: PreparedVoice | undefined } | undefined;
+  playback.say = async (text, _target, _intervention, _seconds, voice) => {
+    played = { text, voice };
   };
-  c.playback.say = async (_text, _target, _intervention, _seconds, voice) => {
-    prepared = voice;
-  };
-  c.playback.startHandoff();
-  assert(cancelled);
-  assert.equal(prepared, undefined);
-  c.close();
+  game.endTurn(turn.playerId, turn.id);
+  judging.prepareHandoff();
+
+  // Isolate match identity while leaving the rest of the cue identical.
+  game.state.matchId = "replacement";
+  game.setSettlement("ready");
+  game.tick();
+
+  assert.equal(preview.cancelled, true);
+  assert.deepEqual(played, { text: preview.text, voice: undefined });
 });
