@@ -1,6 +1,7 @@
 import { ServerClock } from "../src/media/server-clock";
 import assert from "node:assert/strict";
 import test from "node:test";
+import { Game } from "../server/game/game";
 import {
   decodeJudgeAudio,
   decodeMicrophone,
@@ -13,7 +14,9 @@ import {
   authSchema,
   auxiliarySchema,
   commandEnvelopeSchema,
+  gameEventSchema,
   PROTOCOL_VERSION,
+  serverMessageSchema,
 } from "../shared/protocol";
 import { fakeVoice, flush, roomFixture } from "./fixtures";
 
@@ -97,6 +100,54 @@ test("shared schemas reject missing versions, nonfinite clocks, oversized signal
       command: { type: "barge_in", utteranceId: "u", speechEpoch: 1 },
     }).success,
   );
+});
+test("game events retain required null, typed, and nullable payloads", () => {
+  const snapshot = new Game("1234").snapshot();
+  const envelope = {
+    roomId: snapshot.roomId,
+    matchId: snapshot.matchId,
+    seq: snapshot.seq,
+    serverNowMs: snapshot.serverNow,
+    phaseVersion: snapshot.phaseVersion,
+    snapshot,
+  };
+  const sealed = {
+    type: "turn_sealed",
+    payload: {
+      turnId: "turn",
+      playerId: "player",
+      lastAudioSeq: -1,
+      capturedBefore: snapshot.serverNow,
+    },
+  };
+  for (const event of [
+    { type: "judge_alignment", payload: null },
+    sealed,
+    { type: "transcript", payload: null },
+    {
+      type: "transcript",
+      payload: {
+        playerId: "player",
+        text: "A final argument.",
+        final: true,
+        turnId: null,
+      },
+    },
+  ]) {
+    const message = { ...envelope, ...event };
+    assert.deepEqual(gameEventSchema.parse(message), message);
+    assert.deepEqual(serverMessageSchema.parse(message), message);
+  }
+  for (const event of [
+    { type: "judge_alignment" },
+    { type: "judge_alignment", payload: {} },
+    { ...sealed, payload: { ...sealed.payload, lastAudioSeq: -2 } },
+    { type: "unknown_event", payload: null },
+  ]) {
+    const message = { ...envelope, ...event };
+    assert.equal(gameEventSchema.safeParse(message).success, false);
+    assert.equal(serverMessageSchema.safeParse(message).success, false);
+  }
 });
 test("missing audio recipient cancels shared speech instead of silently dropping one copy", async () => {
   const { room } = roomFixture({ streamVoice: fakeVoice });

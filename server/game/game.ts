@@ -1,5 +1,5 @@
 import { randomInt, randomUUID } from "node:crypto";
-import { gameEventSchema, type eventPayloads } from "../../shared/protocol.js";
+import { gameEventSchema, type GameEvent } from "../../shared/protocol.js";
 import {
   CAPS,
   CRITERIA,
@@ -14,7 +14,6 @@ import {
   type Snapshot,
   type Turn,
 } from "../../shared/domain.js";
-import { type GameEvent } from "../../shared/protocol.js";
 
 export class RuleError extends Error {}
 type StoredTurn = {
@@ -164,7 +163,7 @@ export class Game {
     this.state.serverNow = this.now();
     return structuredClone(this.state);
   }
-  emit(type: keyof typeof eventPayloads, payload: unknown = null) {
+  emit(type: GameEvent["type"], payload: unknown = null) {
     this.state.seq++;
     this.state.serverNow = this.now();
     this.onEvent(
