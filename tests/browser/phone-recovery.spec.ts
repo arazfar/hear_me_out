@@ -76,6 +76,7 @@ test("phone layouts: transcript dismissal resolves current focus without losing 
       for (const dismissal of ["escape", "close", "backdrop"] as const) {
         await page.evaluate(() => window.presentation.show("aligned-caption"));
         const trigger = page.locator(".caption-surface");
+        await expect(trigger).toBeVisible();
         const videos = await page.locator(".face video").elementHandles();
         const pictures = () =>
           page
