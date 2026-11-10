@@ -149,7 +149,7 @@ test("authenticated audio reconnection preserves a private check and keeps its t
     id: "obsolete",
     text: "Old private result",
   });
-  assert.equal(room.readiness.get(id).passed, false);
+  assert.equal(room.readiness.get(id).setup, "checking");
   connected = false;
   await connect(resumed.session, "control");
   audio = await connect(resumed.session, "audio");
@@ -184,7 +184,7 @@ test("authenticated audio reconnection preserves a private check and keeps its t
       { purpose: "private", inputEpoch: room.readiness.get(id).inputEpoch },
     ),
   );
-  await waitFor(() => room.readiness.get(id).passed);
+  await waitFor(() => room.readiness.get(id).setup === "passed");
   assert.equal(current.sent, 1);
   assert.deepEqual(room.game.state.captions, {});
   assert.equal(room.game.turns.get(turn.id)!.segments.size, 1);

@@ -15,7 +15,6 @@ type Health = {
   probeAt: number;
   healthySince: number | null;
   progress?: { localFrames: number; remoteAt: number; probeAt: number };
-  passed: boolean;
   setup: "needed" | "checking" | "passed" | "failed";
   checkId: string;
   inputEpoch: number;
@@ -45,7 +44,6 @@ export class Readiness {
         remoteAt: -Infinity,
         probeAt: -Infinity,
         healthySince: null,
-        passed: false,
         setup: "needed",
         checkId: "",
         inputEpoch: 0,
@@ -67,7 +65,6 @@ export class Readiness {
     const now = this.room.services.now();
     if (r.captureId !== observation.captureId) {
       this.cancel(id);
-      r.passed = false;
       r.setup = "needed";
       r.captureId = observation.captureId;
       r.healthySince = null;
@@ -79,9 +76,8 @@ export class Readiness {
       this.room.transcription.stopCheck(id);
       this.result(id, "failed", "Your mic stopped. Reconnect it and retry.");
     }
-    if (observation.micSource === false && r.passed) {
+    if (observation.micSource === false && r.setup === "passed") {
       this.cancel(id);
-      r.passed = false;
       r.setup = "needed";
     }
     if (
@@ -182,7 +178,6 @@ export class Readiness {
     r.checkId = checkId;
     r.inputEpoch = this.room.turnCoordinator.nextEpoch();
     r.setup = "checking";
-    r.passed = false;
     r.heard = r.listening = r.listened = false;
     r.checkDeadline = now + 10000;
     this.room.transcription.rotate(id, null, true);
@@ -192,7 +187,7 @@ export class Readiness {
     const r = this.get(id);
     if (checkId && r.checkId !== checkId) return;
     if (r.setup === "checking" || r.setup === "failed") {
-      r.setup = r.passed ? "passed" : "needed";
+      r.setup = "needed";
       this.room.transcription.stopCheck(id);
     }
     r.checkId = "";
@@ -227,7 +222,6 @@ export class Readiness {
     if (!r.checkDeadline || now < r.checkDeadline) return;
     r.checkDeadline = 0;
     r.setup = "failed";
-    r.passed = false;
     this.result(
       id,
       "failed",
@@ -258,7 +252,6 @@ export class Readiness {
     )
       return;
     r.setup = "passed";
-    r.passed = true;
     r.listening = false;
     this.room.transcription.retries.delete(id);
     r.checkDeadline = 0;
@@ -271,7 +264,6 @@ export class Readiness {
     message = "Bonk couldn’t hear that. Try the mic check again.",
   ) {
     const r = this.get(id);
-    r.passed = false;
     r.setup = "failed";
     r.healthySince = null;
     r.checkDeadline = 0;
@@ -307,7 +299,8 @@ export class Readiness {
         now - (this.room.seats.get(p.id)?.lastAudioAt ?? 0) < 3000;
       const camera = fresh && !!o?.camera && now - r.localAt < 3000;
       const provider = !!stream?.connected && !stream.failed && !stream.closing;
-      const rotating = r.passed && this.room.transcription.connecting(p.id);
+      const speechPassed = r.setup === "passed";
+      const rotating = speechPassed && this.room.transcription.connecting(p.id);
       const sealing =
         game.state.turn?.playerId === p.id && game.state.turn.sealing;
       const blockers: string[] = [];
@@ -315,7 +308,7 @@ export class Readiness {
       if (!o?.foreground) blockers.push("foreground");
       if (!mic) blockers.push("microphone");
       if (!camera) blockers.push("camera");
-      if (!r.passed) blockers.push("speech_check");
+      if (!speechPassed) blockers.push("speech_check");
       if (
         !provider &&
         !sealing &&

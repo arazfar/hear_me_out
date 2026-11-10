@@ -236,9 +236,9 @@ test("private speech proof requires captured audio and a final transcript; it ca
   f.report(id);
   f.room.readiness.start(id, "silent", id + ":mic");
   f.room.readiness.transcript(id, "Invented result without captured audio");
-  assert.equal(f.room.readiness.get(id).passed, false);
+  assert.equal(f.room.readiness.get(id).setup, "checking");
   f.pass(id);
-  assert.equal(f.room.readiness.get(id).passed, true);
+  assert.equal(f.room.readiness.get(id).setup, "passed");
   assert.equal(f.room.game.state.ledger.length, 0);
   assert.deepEqual(f.room.game.state.captions, {});
   assert.equal(f.room.judging.queue.length, 0);
@@ -315,8 +315,9 @@ test("stale observations and a resumed connection cannot reuse old video receipt
   f.room.game.resumePlayer(p.id);
   f.report(p.id);
   assert(!f.room.game.allMediaReady());
-  assert(
-    f.room.readiness.get(p.id).passed,
+  assert.equal(
+    f.room.readiness.get(p.id).setup,
+    "passed",
     "healthy capture proof survives a transport reconnect",
   );
   f.room.close();
@@ -326,7 +327,7 @@ test("replaced microphones, cancelled checks, and late provider replies cannot p
     id = f.players[0].id;
   f.pass(id);
   f.report(id, { captureId: "replacement" });
-  assert(!f.room.readiness.get(id).passed);
+  assert.equal(f.room.readiness.get(id).setup, "needed");
   f.room.readiness.start(id, "new", "replacement");
   const old = f.callbacks.get(id)!;
   f.room.readiness.cancel(id, "new");
@@ -341,7 +342,7 @@ test("replaced microphones, cancelled checks, and late provider replies cannot p
     stableAt: Date.now(),
     text: "Old result",
   });
-  assert(!f.room.readiness.get(id).passed);
+  assert.equal(f.room.readiness.get(id).setup, "needed");
   f.room.close();
 });
 test("provider connection and speech tests time out without unlocking play", () => {
@@ -370,7 +371,7 @@ test("transcription loss requires a new private speech check before resuming", (
   const id = f.room.game.state.turn!.playerId;
   f.room.transcription.sttFailure(id, f.room.game.state.turn!.id);
   assert.equal(f.room.game.state.phase, "RECOVERING");
-  assert(!f.room.readiness.get(id).passed);
+  assert.equal(f.room.readiness.get(id).setup, "failed");
   f.refresh(1001);
   assert.equal(f.room.game.state.phase, "RECOVERING");
   f.pass(id);
@@ -433,9 +434,9 @@ test("source interruption invalidates speech proof while a privacy mute preserve
   f.ready();
   const id = f.players[0].id;
   f.report(id, { mic: false, micSource: true });
-  assert(f.room.readiness.get(id).passed);
+  assert.equal(f.room.readiness.get(id).setup, "passed");
   f.report(id, { mic: false, micSource: false });
-  assert(!f.room.readiness.get(id).passed);
+  assert.equal(f.room.readiness.get(id).setup, "needed");
   f.refresh(1001);
   assert(!f.room.game.allMediaReady());
   f.room.close();
@@ -509,7 +510,7 @@ test("a private check owns reconnect transcription; private callbacks never beco
   assert.equal(room.transcription.ink.get(id)!.turnId, null);
   assert.equal(room.readiness.get(id).checkDeadline, deadline);
   old.segment({ ...evidence(room.game, "old-private"), text: "Old check" });
-  assert.equal(room.readiness.get(id).passed, false);
+  assert.equal(room.readiness.get(id).setup, "checking");
   const current = f.callbacks.get(id)!;
   f.audio(id);
   current.caption("Bonk, hear", false);
@@ -521,7 +522,7 @@ test("a private check owns reconnect transcription; private callbacks never beco
     ...evidence(room.game, "private"),
     text: "Testing my microphone with entirely different words.",
   });
-  assert.equal(room.readiness.get(id).passed, true);
+  assert.equal(room.readiness.get(id).setup, "passed");
   assert.deepEqual(room.game.state.captions, {});
   assert.equal(room.game.turns.get(frozen.turn)!.segments.size, 0);
   assert.equal(room.judging.queue.length, 0);
@@ -617,7 +618,6 @@ test("reconnected private checks retain provider and speech deadlines, including
     f.advance((listening ? 15000 : 10000) - 3000);
     assert.equal(r.setup, "failed");
     assert.equal(r.listening, false);
-    assert.equal(r.passed, false);
     assert.equal(f.room.transcription.ink.has(id), false);
     const message = r.result;
     f.room.readiness.start(id, "deadline", id + ":mic");
@@ -649,8 +649,24 @@ test("lost private results replay without providers or deadlines and source fail
   f.report(id, { micSource: false, mic: false });
   assert.equal(r.result, undefined);
   assert.equal(r.checkId, "");
-  assert.equal(r.passed, false);
+  assert.equal(r.setup, "needed");
   f.room.close();
+});
+
+test("cancelling a completed private check discards its result and retains speech proof", (t) => {
+  const f = fixture(),
+    id = f.players[0].id;
+  t.after(() => f.room.close());
+  f.ready();
+  const record = f.room.readiness.get(id);
+  assert.equal(record.result?.status, "passed");
+
+  f.room.readiness.cancel(id, record.checkId);
+  f.room.readiness.tick();
+  assert.equal(record.checkId, "");
+  assert.equal(record.result, undefined);
+  assert.equal(record.setup, "passed");
+  assert(f.room.game.allMediaReady());
 });
 
 test("private reconnect callbacks lose ownership on replacement, cancellation, and departure", () => {
@@ -676,7 +692,7 @@ test("private reconnect callbacks lose ownership on replacement, cancellation, a
       source: "voice",
       eligible: false,
     });
-    assert.equal(f.room.readiness.records.get(id)?.passed ?? false, false);
+    assert.notEqual(f.room.readiness.records.get(id)?.setup, "passed");
     assert.deepEqual(f.room.game.state.captions, {});
     assert.equal(f.room.judging.queue.length, 0);
     f.room.close();
@@ -696,7 +712,7 @@ test("a pre-check gameplay session may still drain its legitimate final evidence
   gameplay.segment(original);
   assert(f.room.game.turns.get(original.turnId!)!.segments.has(original.id));
   assert.deepEqual(f.room.judging.queue, [original]);
-  assert.equal(f.room.readiness.get(id).passed, false);
+  assert.equal(f.room.readiness.get(id).setup, "checking");
   f.room.close();
 });
 test("long reasons remain in the ledger without creating noisy Bonk asides", () => {
@@ -753,7 +769,7 @@ for (const mode of ["rtc", "wss"] as const) {
     }
     assert.equal(f.room.game.state.phase, "ROUND");
     assert.equal(f.room.game.remaining(), held.turn!.remainingMs);
-    assert.equal(f.room.readiness.get(id).passed, true);
+    assert.equal(f.room.readiness.get(id).setup, "passed");
     f.room.close();
   });
 }

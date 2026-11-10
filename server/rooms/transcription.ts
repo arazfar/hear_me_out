@@ -47,8 +47,7 @@ export class Transcription {
     if (!["ROUND", "RECOVERING"].includes(phase)) return { kind: "idle" };
     const turnId =
       requestedTurn === undefined
-        ? check.passed &&
-          ["ROUND", "RECOVERING"].includes(phase) &&
+        ? check.setup === "passed" &&
           turn?.playerId === id &&
           !turn.sealing
           ? turn.id

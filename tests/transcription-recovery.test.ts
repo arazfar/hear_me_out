@@ -71,7 +71,7 @@ async function fixture(t: TestContext) {
   room.judging.prepareHandoff = () => {};
   const id = turn.playerId;
   room.seats.get(id)!.sockets.set("audio", { close() {} } as WebSocket);
-  room.readiness.get(id).passed = true;
+  room.readiness.get(id).setup = "passed";
   room.transcription.rotate(id, turn.id);
   await flush();
   let seq = 0,
@@ -102,7 +102,7 @@ async function fixture(t: TestContext) {
     room.game.state.players.forEach((p) => {
       p.mediaReady = true;
     });
-    room.readiness.get(id).passed = true;
+    room.readiness.get(id).setup = "passed";
     room.transcription.rotate(id, turn.id);
     await flush();
     room.game.resumeRecovery();

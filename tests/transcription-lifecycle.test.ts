@@ -93,7 +93,7 @@ test("aborting retires gameplay streams and pending preparation, but permits pri
   t.after(() => room.close());
   const id = turn.playerId;
   room.seats.get(id)!.sockets.set("audio", { close() {} } as WebSocket);
-  room.readiness.get(id).passed = true;
+  room.readiness.get(id).setup = "passed";
   for (let i = 0; i < 4; i++) room.transcription.rotate(id, turn.id, true);
   room.transcription.rotate(id, "pending-turn", true);
   room.game.abort("Fixture abort");
