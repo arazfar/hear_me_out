@@ -221,7 +221,7 @@ test("failed or obsolete camera Blob reads are discarded and the encoder can ret
 });
 
 function decodeFixture(t: TestContext) {
-  const decoded: { finish: () => void; fail: () => void }[] = [];
+  const decoded: { blob: Blob; finish: () => void; fail: () => void }[] = [];
   const acknowledgements: unknown[] = [];
   let closed = 0,
     drawn = 0,
@@ -239,9 +239,10 @@ function decodeFixture(t: TestContext) {
   };
   for (const [key, value] of Object.entries({
     document: doc,
-    createImageBitmap: () =>
+    createImageBitmap: (blob: Blob) =>
       new Promise((resolve, reject) => {
         decoded.push({
+          blob,
           finish: () =>
             resolve({
               width: 256,
@@ -270,12 +271,20 @@ function decodeFixture(t: TestContext) {
     decoded,
     acknowledgements,
     counts: () => ({ closed, drawn, cleared }),
-    frame: (seq: number, { probe = false, epoch = 7, generation = 2 } = {}) =>
+    frame: (
+      seq: number,
+      {
+        probe = false,
+        epoch = 7,
+        generation = 2,
+        capturedAt = Date.now(),
+      } = {},
+    ) =>
       encodeVideo(
         epoch,
         seq,
-        Date.now(),
-        new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
+        capturedAt,
+        new Uint8Array([0xff, 0xd8, seq, 0xff, 0xd9]),
         probe,
         generation,
       ).buffer,
@@ -302,6 +311,68 @@ test("video ingress validates packets and still accepts camera probes in RTC mod
     { type: "video_ack", probe: true, seq: 5, mediaEpoch: 7 },
   ]);
   assert.deepEqual(f.counts(), { closed: 1, drawn: 0, cleared: 0 });
+});
+
+test("a probe that finishes after camera replacement closes without a receipt", async (t) => {
+  const f = decodeFixture(t);
+  const obsolete = f.video.receive(f.frame(1, { probe: true }));
+  assert.equal(f.decoded.length, 1);
+  const generation = ++f.video.captureGeneration;
+  f.decoded[0].finish();
+  await obsolete;
+  assert.equal(f.counts().closed, 1);
+  assert.deepEqual(f.acknowledgements, []);
+
+  const fresh = f.video.receive(f.frame(2, { probe: true, generation }));
+  f.decoded[1].finish();
+  await fresh;
+  assert.deepEqual(f.acknowledgements, [
+    { type: "video_ack", probe: true, seq: 2, mediaEpoch: 7 },
+  ]);
+  assert.deepEqual(f.counts(), { closed: 2, drawn: 0, cleared: 0 });
+});
+
+test("relay video coalesces queued frames and discards old epochs", async (t) => {
+  const f = decodeFixture(t);
+  const first = f.video.receive(f.frame(1, { capturedAt: Date.now() - 5000 }));
+  assert.equal(
+    f.decoded.length,
+    1,
+    "the first valid relay packet starts decoding",
+  );
+  const second = f.video.receive(f.frame(2));
+  const latest = f.video.receive(f.frame(3));
+  assert.equal(f.decoded.length, 1, "only one relay frame decodes at a time");
+
+  f.decoded[0].finish();
+  await Promise.resolve();
+  assert.equal(f.decoded.length, 2, "the latest queued frame starts next");
+  const payloads = await Promise.all(
+    f.decoded.map(async ({ blob }) => [
+      ...new Uint8Array(await blob.arrayBuffer()),
+    ]),
+  );
+  assert.deepEqual(payloads, [
+    [0xff, 0xd8, 1, 0xff, 0xd9],
+    [0xff, 0xd8, 3, 0xff, 0xd9],
+  ]);
+  f.decoded[1].finish();
+  await Promise.resolve();
+  assert.equal(f.decoded.length, 2, "the superseded frame never decodes");
+  await Promise.all([first, second, latest]);
+
+  const obsolete = f.video.receive(f.frame(4));
+  assert.equal(f.decoded.length, 3);
+  f.client.state!.mediaEpoch++;
+  f.decoded[2].finish();
+  await obsolete;
+  assert(f.video.remoteFrame);
+  assert.equal(f.video.remoteFrameSeq, 3);
+  assert.deepEqual(f.acknowledgements, [
+    { type: "video_ack", seq: 1, mediaEpoch: 7 },
+    { type: "video_ack", seq: 3, mediaEpoch: 7 },
+  ]);
+  assert.deepEqual(f.counts(), { closed: 3, drawn: 2, cleared: 0 });
 });
 
 test("a failed relay decode keeps the last good frame and sends no receipt", async (t) => {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { encodeMicrophone, encodeVideo } from "../shared/media";
+import { encodeMicrophone } from "../shared/media";
 import { RoomController, type Seat } from "../server/rooms/room";
 import { judgeIsListening, scoreShare, type Turn } from "../shared/domain";
 import { Client } from "../src/game/client";
@@ -87,62 +87,6 @@ test("floor assignment is held atomically; stale finish and cancellation cannot 
   assert(!judgeIsListening(c.game.state, turn.playerId));
   c.close();
 });
-test("relay decode retains delayed frames, coalesces pending work and rejects old epochs", async () => {
-  const { c } = setup();
-  const client = new Client();
-  client.state = c.game.state;
-  const drawn: number[] = [];
-  let closed = 0;
-  const savedBitmap = globalThis.createImageBitmap,
-    savedDocument = globalThis.document;
-  (globalThis as any).document = {
-    createElement: () => ({
-      width: 256,
-      height: 144,
-      getContext: () => ({
-        drawImage: (b: any) => drawn.push(b.seq),
-        clearRect: () => {},
-      }),
-    }),
-  };
-  const frame = (seq: number) =>
-    encodeVideo(
-      client.state!.mediaEpoch,
-      seq,
-      Date.now() - 5000,
-      new Uint8Array([0xff, 0xd8, seq, 0xff, 0xd9]),
-    ).buffer;
-  let release!: () => void;
-  (globalThis as any).createImageBitmap = async (blob: Blob) => {
-    const seq = new Uint8Array(await blob.arrayBuffer())[2];
-    if (seq === 1)
-      await new Promise<void>((r) => {
-        release = r;
-      });
-    return { seq, close: () => closed++ };
-  };
-  try {
-    const decoding = client.video.receive(frame(1));
-    while (!release) await new Promise((r) => setImmediate(r));
-    await client.video.receive(frame(2));
-    await client.video.receive(frame(3));
-    release();
-    await decoding;
-    assert.deepEqual(drawn, [1, 3]);
-    assert.equal(client.video.remoteFrameSeq, 3);
-    assert(client.video.remoteFrame);
-    const old = client.video.receive(frame(4));
-    client.state = { ...client.state, mediaEpoch: client.state.mediaEpoch + 1 };
-    await old;
-    assert.deepEqual(drawn, [1, 3]);
-    assert.equal(client.video.remoteFrameSeq, 3);
-    assert.equal(closed, 3);
-  } finally {
-    globalThis.createImageBitmap = savedBitmap;
-    globalThis.document = savedDocument;
-  }
-});
-
 test("score display remains safe when a player leaves an unfinished match", () => {
   assert.equal(scoreShare([]), 0.5);
   assert.equal(scoreShare([{ scoreUnits: 40 }]), 0.5);

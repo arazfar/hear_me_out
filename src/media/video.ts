@@ -127,7 +127,12 @@ export class RelayVideo {
       );
       const valid = bitmap.width > 0 && bitmap.height > 0;
       bitmap.close();
-      if (valid && this.canProcessFrames && generation === this.videoGeneration)
+      if (
+        valid &&
+        this.canProcessFrames &&
+        generation === this.videoGeneration &&
+        frame.generation === this.captureGeneration
+      )
         this.client.send({
           type: "video_ack",
           probe: true,
