@@ -266,7 +266,9 @@ test("failed writes preserve drafts, exports and progress across navigation and 
     .poll(async () => (await feedback(review)).comments.at(-1).text)
     .toBe("Offline draft");
   await expect(page.locator("#save-status")).toHaveText("Saved");
-  expect((await viewed(review)).length).toBeGreaterThan(0);
+  await expect
+    .poll(async () => (await viewed(review)).length)
+    .toBeGreaterThan(0);
 });
 
 test("late responses cannot overwrite newer text", async ({ page, review }) => {
