@@ -127,11 +127,12 @@ function interactions(runs, transport) {
       absent++;
       continue;
     }
-    const { observed, timeline } = run.interactions;
+    const { observed, timeline, nextTurn } = run.interactions;
     const cues = observed.map(
       (client) => new Map(client.cues.map((cue) => [cue.turn, cue])),
     );
     const turns = new Set([
+      ...(nextTurn ? [nextTurn] : []),
       ...cues.flatMap((seat) => [...seat.keys()]),
       ...timeline
         .filter((e) => e.stage === "input_first_capture")
@@ -257,6 +258,13 @@ for (const [transport, rounds] of transports) {
     ),
   );
   for (const configuration of configurations) line(configuration + ".\n");
+  for (const [round, pair] of entries)
+    pair.forEach((run, checkout) => {
+      for (const reason of run?.interactions?.failures ?? [])
+        line(
+          `Round ${round} ${checkout ? "candidate" : "baseline"} interaction gate failed: ${reason}.\n`,
+        );
+    });
   line(
     "| Round | Idle median ms, baseline → candidate | Quality, baseline → candidate (title / Case / awards / judge) | Title CPU counters, baseline → candidate | Eligible scenarios |",
   );

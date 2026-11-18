@@ -8,10 +8,14 @@ import { resolve, dirname } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
-import { chromium, type Browser, type Page } from "@playwright/test";
+import { chromium, errors, type Browser, type Page } from "@playwright/test";
 import { frontendReady } from "../server/frontend";
 import type { Snapshot } from "../shared/domain";
 import { sampleFrames } from "./frame-sample";
+import {
+  missingInteractions,
+  saveCompletedProfile,
+} from "./profile-interactions";
 
 const { values } = parseArgs({
   options: {
@@ -54,6 +58,8 @@ async function request<T>(path: string, body: object = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+class ProfileTimeout extends Error {}
+
 async function until<T>(
   label: string,
   read: () => Promise<T>,
@@ -66,7 +72,7 @@ async function until<T>(
     if (ready(value)) return value;
     await delay(100);
   } while (performance.now() < deadline);
-  throw Error("Timed out waiting for " + label);
+  throw new ProfileTimeout("Timed out waiting for " + label);
 }
 
 async function title(page: Page) {
@@ -279,35 +285,60 @@ async function measure(
         "Remote camera did not progress",
       );
     }
-    await speaker
-      .getByRole("button", { name: "I’m done", exact: true })
-      .click();
-    const next = await until(
-      "handoff after Done",
-      state,
-      (s) =>
-        s.phase === "ROUND" &&
-        s.turn?.id !== round.turn!.id &&
-        s.turn?.inputState === "open" &&
-        !s.turn.pausedReason,
-    );
+    await speaker.evaluate(() => window.armProfileDone());
+    const failures: string[] = [];
+    let nextTurn: string | null = null;
+    try {
+      await speaker
+        .getByRole("button", { name: "I’m done", exact: true })
+        .click();
+      const next = await until(
+        "handoff after Done",
+        state,
+        (s) =>
+          s.phase === "ROUND" &&
+          s.turn?.id !== round.turn!.id &&
+          s.turn?.inputState === "open" &&
+          !s.turn.pausedReason,
+      );
+      nextTurn = next.turn!.id;
+    } catch (error) {
+      if (error instanceof errors.TimeoutError)
+        failures.push("Done click timed out");
+      else if (!(error instanceof ProfileTimeout)) throw error;
+    }
     const observed = await Promise.all(
-      [a, b].map((p) =>
-        until(
-          "visible recipient cue",
-          () => p.evaluate(() => window.gameInteractions),
-          (events) => events.cues.some((cue) => cue.turn === next.turn!.id),
-        ),
-      ),
+      [a, b].map(async (p) => {
+        try {
+          await p.waitForFunction(
+            ({ turn, clicking }) => {
+              const { cueEvidence, doneEvidence } = window.gameInteractions;
+              return (
+                (!turn ||
+                  cueEvidence.some(
+                    (cue) => cue.turn === turn && cue.status !== "waiting",
+                  )) &&
+                (!clicking || doneEvidence.every((d) => d.status !== "waiting"))
+              );
+            },
+            { turn: nextTurn, clicking: p === speaker },
+            { timeout: 30000, polling: 100 },
+          );
+        } catch (error) {
+          if (!(error instanceof errors.TimeoutError)) throw error;
+        }
+        return p.evaluate(() => window.gameInteractions);
+      }),
     );
-    assert.equal(
-      observed[speaker === a ? 0 : 1].done.length,
-      1,
-      "Missing visible Done acknowledgment",
+    failures.push(
+      ...missingInteractions(observed, speaker === a ? 0 : 1, nextTurn),
     );
     const receipt = await timeline();
     const interactions = {
       observed,
+      clickedTurn: round.turn!.id,
+      nextTurn,
+      failures,
       timeline: receipt.filter((e) =>
         [
           "input_grant",
@@ -451,5 +482,4 @@ for (let round = 1; round <= runs; round++) {
     }
   }
 }
-report.completed = true;
-await writeFile(output, JSON.stringify(report));
+await saveCompletedProfile(output, report);

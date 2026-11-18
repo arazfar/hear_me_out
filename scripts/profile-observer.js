@@ -3,29 +3,105 @@ function installFrameObserver() {
   const progress = { local: 0, remote: 0, relay: 0 };
   const cues = [];
   const done = [];
-  window.gameInteractions = { cues, done };
-  function observeVisible(received, check, record) {
-    const tick = () => {
-      const now = performance.now();
-      if (check()) record(now - received, performance.timeOrigin + now);
-      else if (now - received < 2000) requestAnimationFrame(tick);
+  const cueEvidence = [];
+  const doneEvidence = [];
+  window.gameInteractions = { cues, done, cueEvidence, doneEvidence };
+  const frameEvidence = () => ({
+    status: "waiting",
+    frames: 0,
+    firstFrameMs: null,
+    lastFrameMs: null,
+    hidden: document.hidden,
+  });
+  function observeVisible(received, evidence, check, record, cleanup) {
+    let frame;
+    const finish = (status) => {
+      evidence.status = status;
+      clearTimeout(timeout);
+      cancelAnimationFrame(frame);
+      cleanup?.();
     };
-    requestAnimationFrame(tick);
+    const tick = () => {
+      const now = performance.now(),
+        ms = now - received;
+      evidence.frames++;
+      evidence.firstFrameMs ??= ms;
+      evidence.lastFrameMs = ms;
+      evidence.hidden ||= document.hidden;
+      if (ms <= 2000 && !document.hidden && check()) {
+        record(ms, performance.timeOrigin + now);
+        finish("visible");
+      } else if (ms < 2000) frame = requestAnimationFrame(tick);
+      else finish("missed");
+    };
+    const timeout = setTimeout(
+      () => finish("missed"),
+      Math.max(0, received + 2000 - performance.now()),
+    );
+    frame = requestAnimationFrame(tick);
   }
   // Attach once per control socket. Skip binary channels entirely.
   const observedSockets = new WeakSet();
+  window.armProfileDone = () =>
+    doneEvidence.push({
+      ...frameEvidence(),
+      status: "armed",
+      clicked: false,
+      clickedAt: null,
+      target: null,
+      panelAtClick: null,
+      settlingCommitted: false,
+      lastPanelClass: null,
+    });
   document.addEventListener(
     "click",
     (event) => {
-      if (
-        event.target instanceof Element &&
-        event.target.closest(".yield-button")
-      )
-        observeVisible(
-          performance.now(),
-          () => !!document.querySelector(".turn-panel.is-settling"),
-          (ms) => done.push(ms),
-        );
+      const evidence = doneEvidence.at(-1);
+      if (evidence?.status !== "armed") return;
+      evidence.clicked = true;
+      evidence.clickedAt = event.timeStamp;
+      evidence.target =
+        event.target instanceof Element ? event.target.localName : null;
+      if (!(
+        event.target instanceof Element && event.target.closest(".yield-button")
+      )) {
+        evidence.status = "unmatched";
+        return;
+      }
+      evidence.status = "waiting";
+      const panel = document.querySelector(".turn-panel");
+      evidence.panelAtClick = panel?.className ?? null;
+      const readPanel = () => {
+        const active = document.querySelector(".turn-panel");
+        evidence.lastPanelClass = active?.className ?? null;
+        return active?.classList.contains("is-settling");
+      };
+      evidence.settlingCommitted = !!readPanel();
+      // A DOM commit may be superseded before any animation frame observes it.
+      // Record that distinction without counting the mutation as a visible cue.
+      const observer = new MutationObserver((changes) => {
+        evidence.settlingCommitted ||=
+          !!readPanel() ||
+          changes.some((change) =>
+            change.oldValue?.split(/\s+/).includes("is-settling"),
+          );
+      });
+      if (panel)
+        observer.observe(panel, {
+          attributes: true,
+          attributeFilter: ["class"],
+          attributeOldValue: true,
+        });
+      observeVisible(
+        event.timeStamp,
+        evidence,
+        readPanel,
+        (ms) => {
+          evidence.settlingCommitted = true;
+          done.push(ms);
+        },
+        () => observer.disconnect(),
+      );
     },
     true,
   );
@@ -42,16 +118,26 @@ function installFrameObserver() {
           const player = event.snapshot.players.find(
             (p) => p.id === event.payload.playerId,
           );
+          const evidence = {
+            ...frameEvidence(),
+            turn: event.payload.turnId,
+            receivedAt: timeStamp,
+            ownerMatched: false,
+            badgePresent: false,
+          };
+          cueEvidence.push(evidence);
           observeVisible(
             // Client.onmessage ran first. The native event timestamp includes
             // the synchronous parse, state update and subscriber work.
             timeStamp,
+            evidence,
             () => {
               const face = document.querySelector(".face.has-floor");
-              return (
-                face?.getAttribute("aria-label")?.split(",")[0] ===
-                  player?.name && !!face.querySelector(".listening-badge")
-              );
+              evidence.ownerMatched =
+                !!player &&
+                face?.getAttribute("aria-label")?.split(",")[0] === player.name;
+              evidence.badgePresent = !!face?.querySelector(".listening-badge");
+              return evidence.ownerMatched && evidence.badgePresent;
             },
             (ms, visibleAt) =>
               cues.push({ turn: event.payload.turnId, ms, visibleAt }),

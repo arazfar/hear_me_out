@@ -1,4 +1,5 @@
 import type { CDPSession, Page } from "@playwright/test";
+import type { InteractionObservations } from "./profile-interactions";
 
 interface CameraProgress {
   local: number;
@@ -22,10 +23,8 @@ interface FrameObserver {
 declare global {
   interface Window {
     gameFrameObserver: FrameObserver;
-    gameInteractions: {
-      cues: { turn: string; ms: number; visibleAt: number }[];
-      done: number[];
-    };
+    gameInteractions: InteractionObservations;
+    armProfileDone(): void;
   }
 }
 
