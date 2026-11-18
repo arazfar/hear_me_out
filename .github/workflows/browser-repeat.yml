@@ -91,6 +91,9 @@ jobs:
         run: pnpm exec playwright install --with-deps chrome
       - working-directory: candidate
         run: pnpm profile:game --app-root ../baseline --compare-root . --runs 5 --output output/profile/comparison.json
+      - name: Capture diagnostic CPU profiles outside the timed comparison
+        working-directory: candidate
+        run: pnpm profile:game --app-root ../baseline --compare-root . --cpu-profile --runs 1 --output output/profile/diagnostic.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
