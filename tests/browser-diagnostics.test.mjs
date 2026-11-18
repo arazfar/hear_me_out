@@ -11,7 +11,9 @@ import test from "node:test";
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const releaseOutput = process.env.BROWSER_DIAGNOSTICS_OUTPUT_DIR;
 const output = releaseOutput || join(repository, "output/browser-diagnostics");
-const cli = createRequire(import.meta.url).resolve("@playwright/test/cli");
+const require = createRequire(import.meta.url);
+const cli = require.resolve("@playwright/test/cli");
+const playwright = JSON.stringify(import.meta.resolve("@playwright/test"));
 
 test(
   "real Playwright failures retain diagnostics and close contexts",
@@ -37,7 +39,7 @@ test(
     await writeFile(
       join(output, "playwright.config.ts"),
       `
-import { defineConfig } from '@playwright/test';
+import { defineConfig } from ${playwright};
 export default defineConfig({
   testDir: '.', testMatch: 'failures.spec.ts', timeout: 10000,
   workers: 1, retries: 0, forbidOnly: true,
@@ -50,7 +52,7 @@ export default defineConfig({
     await writeFile(
       join(output, "failures.spec.ts"),
       `
-import { expect } from '@playwright/test';
+import { expect } from ${playwright};
 import { audioTest as test } from ${JSON.stringify(join(repository, "tests/browser/audio-test.ts"))};
 import { attachAudioDiagnostics } from ${JSON.stringify(join(repository, "tests/browser/audio-diagnostics.ts"))};
 import { finishBrowserTest } from ${JSON.stringify(join(repository, "tests/browser/cleanup.ts"))};

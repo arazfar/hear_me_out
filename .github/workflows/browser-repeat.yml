@@ -7,18 +7,34 @@ concurrency:
   group: browser-repeat-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      projects: ${{ steps.matrix.outputs.projects }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: matrix
+        run: pnpm verify:matrix
   repeat-browser:
+    needs: plan
     runs-on: macos-26
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        project: [rtc, relay, phone, phone-relay, webkit, webkit-relay]
+        project: ${{ fromJSON(needs.plan.outputs.projects) }}
     steps:
       - uses: actions/checkout@v4
       - name: Record tested revision
         run: |
-          echo "Hosted diagnostics. Run pnpm verify:release locally to qualify a deploy." >> "$GITHUB_STEP_SUMMARY"
+          echo "Hosted diagnostics. Run pnpm verify:release with the full SHA to qualify a deploy locally." >> "$GITHUB_STEP_SUMMARY"
           git rev-parse HEAD >> "$GITHUB_STEP_SUMMARY"
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -28,7 +44,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps ${{ startsWith(matrix.project, 'webkit') && 'webkit' || 'chrome' }}
-      - run: pnpm test:ui --project=${{ matrix.project }} --grep 'two players complete a scored match|two players render a long|expanded recovery|short landscape' --repeat-each=10 --retries=0
+      - run: node scripts/browser-matrix.mjs ${{ matrix.project }}
       - name: Summarize browser attempts
         if: always()
         run: node scripts/browser-summary.mjs

@@ -53,7 +53,7 @@ async function settledGeometry(page: Page) {
   });
 }
 
-test("phone layouts: transcript dismissal resolves current focus without losing its selected text", async ({
+test("phone layouts: transcript dismissal resolves current focus without losing its selected text", { tag: ["@mobile-matrix"] }, async ({
   page,
 }, info) => {
   const tab =
@@ -143,7 +143,7 @@ test("phone layouts: transcript dismissal resolves current focus without losing 
   await expect(page.getByRole("button", { name: "How to play" })).toBeFocused();
 });
 
-test("phone layouts: pinned recovery panels are complete and share one scroll owner", async ({
+test("phone layouts: pinned recovery panels are complete and share one scroll owner", { tag: ["@mobile-matrix"] }, async ({
   page,
 }) => {
   test.setTimeout(120000);
@@ -245,7 +245,7 @@ test("phone layouts: pinned recovery panels are complete and share one scroll ow
   }
 });
 
-test("phone layouts: expanded recovery scrolls together and retains reader and video nodes", async ({
+test("phone layouts: expanded recovery scrolls together and retains reader and video nodes", { tag: ["@mobile-matrix", "@case-expanded-recovery"] }, async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -343,7 +343,7 @@ test("phone layouts: expanded recovery scrolls together and retains reader and v
   await expect(page.locator(".recovery-panel")).toBeVisible();
 });
 
-test("phone layouts: short landscape notice keeps the complete turn reachable", async ({
+test("phone layouts: short landscape notice keeps the complete turn reachable", { tag: ["@mobile-matrix", "@case-short-landscape"] }, async ({
   page,
 }) => {
   await page.setViewportSize({ width: 844, height: 390 });
@@ -389,7 +389,7 @@ test("phone layouts: short landscape notice keeps the complete turn reachable", 
   ).toBeLessThanOrEqual(1);
 });
 
-test("phone layouts: fitting courts center while live content keeps faces anchored", async ({
+test("phone layouts: fitting courts center while live content keeps faces anchored", { tag: ["@mobile-matrix"] }, async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });

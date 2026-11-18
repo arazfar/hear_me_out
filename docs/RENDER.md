@@ -44,15 +44,37 @@ this setting if adding another proxy or changing ingress topology.
 
 ## Verification and operations
 
-1. Confirm **Auto-Deploy** is **Off** in the Render service settings before switching GitHub to Linux-only automatic checks. The Blueprint must also specify `autoDeployTrigger: 'off'`.
-2. Select a full commit SHA from `origin/main` with a successful **Verify game / verify** job. On an Apple silicon Mac, check out that exact SHA in a clean worktree, switch to the Node and pnpm versions pinned in the repo, and run `pnpm verify:release`. Check that the latest attempt's `qualification.json` has `status: "passed"` and the selected SHA. Use a fresh qualification for a different commit.
-3. Complete the [live-provider and physical-device checks](AUDIO_ACCEPTANCE.md#physicallive-provider-qualification) for that release. In Render, choose **Manual Deploy → Deploy a specific commit** and enter the full qualified SHA. In Deploys, verify that SHA is live and confirm `/readyz` succeeds.
+1. Confirm **Auto-Deploy** is **Off** in the Render service settings and in the Blueprint. Land changes through a PR with GitHub's `verify` check.
+2. On an interactive Apple silicon Mac, check out the full SHA from `main` using the pinned Node and pnpm. Run `pnpm verify:release --sha <full-sha>`. The command builds and tests in its own detached worktree. Run it again for a different release SHA.
+3. Run the [live-provider and physical-device checks](AUDIO_ACCEPTANCE.md#physicallive-provider-qualification) for that SHA, and save the provider smoke and signed-off reports as described below.
+4. Run `pnpm release:check --sha <full-sha>` with GitHub CLI authenticated. The command checks the GitHub push and all release evidence. Once it prints eligibility, the release owner chooses **Manual Deploy → Deploy a specific commit** in Render. Verify the exact commit in Deploys and confirm `/readyz` succeeds.
 
 Live-provider tests consume API usage and require keys in the process environment
-or a local ignored `.env`. Run `pnpm verify:providers`. Use `TEST_URL` with
+or a local ignored `.env`. From the clean candidate checkout, save the JSON output of
+`DOTENV_CONFIG_QUIET=true pnpm --silent verify:providers` as
+`output/release/<full-sha>/provider-smoke.json`. Use `TEST_URL` with
 `scripts/health-check.ts` and `pnpm verify:match` for public HTTPS/WSS and synthetic
 match checks. Keep `EXPORT_REHEARSAL` unset. Synthetic checks do not establish
 physical microphone/speaker quality or performance across two real networks.
+
+Save each physical session's generated audio report as a distinct JSON file in the
+same directory. After reviewing the evidence, the release owner creates `physical.json`
+with the full SHA, their name, approval timestamp, and the report filenames and device
+pairs. Use the codes `desktop-chrome`, `android-chrome`, and `iphone-safari`. List
+each of the three pairings on RTC and WSS, with at least 100 paired judge utterances
+per transport across their sessions. For example, this is one session entry in an
+otherwise incomplete sign-off.
+
+```json
+{
+  "sha": "0000000000000000000000000000000000000000",
+  "approvedBy": "Release owner",
+  "approvedAt": "2026-11-18T12:00:00Z",
+  "sessions": [
+    { "report": "rtc-desktop-iphone.json", "platforms": ["desktop-chrome", "iphone-safari"] }
+  ]
+}
+```
 
 In Render, inspect Deploys and Logs after release. Free compute does not expose
 CPU/RAM usage graphs, so passing smoke checks does not establish capacity headroom.

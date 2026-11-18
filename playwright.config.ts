@@ -45,17 +45,17 @@ export default defineConfig({
     },
     {
       name: "phone",
-      grep: /two players|phone layouts/,
+      grep: /@mobile-matrix\b/,
       use: { channel: "chrome", baseURL: rtcURL },
     },
     {
       name: "phone-relay",
-      grep: /two players|phone layouts/,
+      grep: /@mobile-matrix\b/,
       use: { channel: "chrome", baseURL: relayURL },
     },
     {
       name: "webkit",
-      grep: /two players|phone layouts/,
+      grep: /@mobile-matrix\b/,
       use: {
         browserName: "webkit",
         channel: undefined,
@@ -65,7 +65,7 @@ export default defineConfig({
     },
     {
       name: "webkit-relay",
-      grep: /two players|phone layouts/,
+      grep: /@mobile-matrix\b/,
       use: {
         browserName: "webkit",
         channel: undefined,
