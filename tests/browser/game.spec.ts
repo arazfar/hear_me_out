@@ -1791,7 +1791,20 @@ test("mandatory device setup, retries, cancellation, clipboard failure and missi
         () => document.documentElement.scrollHeight - innerHeight,
       ),
     ).toBeLessThanOrEqual(1);
-    await expect(help).toHaveCSS("justify-content", "flex-start");
+    const helpOffset = await help.evaluate((summary) => {
+      const text = document.createRange();
+      text.selectNodeContents(summary);
+      const style = getComputedStyle(summary);
+      const contentLeft =
+        summary.getBoundingClientRect().left +
+        parseFloat(style.borderLeftWidth) +
+        parseFloat(style.paddingLeft);
+      return Math.abs(text.getBoundingClientRect().left - contentLeft);
+    });
+    expect(
+      helpOffset,
+      "Device help text starts at its content edge",
+    ).toBeLessThanOrEqual(1);
     if (size.width <= 700)
       await expect(page.locator(".setup-preview")).toHaveCSS(
         "height",
