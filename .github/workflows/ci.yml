@@ -4,6 +4,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      no_retries:
+        description: Run the full browser release matrix with zero retries
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -45,7 +50,16 @@ jobs:
       - run: pnpm exec playwright install --with-deps ${{ startsWith(matrix.project, 'webkit') && 'webkit' || 'chrome' }}
       - if: matrix.project == 'rtc'
         run: pnpm test:browser-diagnostics
-      - run: pnpm test:ui --project=${{ matrix.project }}
+      - name: Run full browser suite
+        env:
+          PROJECT: ${{ matrix.project }}
+          NO_RETRIES: ${{ inputs.no_retries }}
+        run: |
+          if [[ "$NO_RETRIES" == "true" ]]; then
+            pnpm test:ui --project="$PROJECT" --retries=0
+          else
+            pnpm test:ui --project="$PROJECT"
+          fi
       - name: Summarize browser attempts
         if: always()
         run: node scripts/browser-summary.mjs

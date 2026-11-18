@@ -24,7 +24,7 @@ pnpm test:ui --retries=0
 pnpm test:ui-review
 ```
 
-Rebuild after editing the client. Use `-g '<test title>'` and `--project=<name>` for a focused reproduction, then `--repeat-each=10 --retries=0` for timing or recovery changes. The six gameplay projects are `rtc`, `relay`, `phone`, `phone-relay`, `webkit`, and `webkit-relay`. Inspect per-attempt results and attachments in `output/playwright/results.json`. Run the full and repetition GitHub workflows on the same candidate SHA. The optional `profile_baseline` input runs the paired profile on a dedicated runner. See [browser acceptance](tests/browser/README.md) and [physical/audio qualification](docs/AUDIO_ACCEPTANCE.md).
+Rebuild after editing the client. Use `-g '<test title>'` and `--project=<name>` for a focused reproduction, then `--repeat-each=10 --retries=0` for timing or recovery changes. The six gameplay projects are `rtc`, `relay`, `phone`, `phone-relay`, `webkit`, and `webkit-relay`. Inspect per-attempt results and attachments in `output/playwright/results.json`. Run the full and repetition GitHub workflows on the same candidate SHA. Set `no_retries=true` on the manually dispatched full workflow for release acceptance. The optional `profile_baseline` input runs the paired profile on a dedicated runner. See [browser acceptance](tests/browser/README.md) and [physical/audio qualification](docs/AUDIO_ACCEPTANCE.md).
 
 ## Measure frame pacing
 
