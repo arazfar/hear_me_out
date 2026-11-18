@@ -36,6 +36,8 @@ node scripts/profile-report.mjs output/profile/comparison.json
 
 Install and build each checkout first. The same driver starts each checkout's fixture on loopback, alternates build and transport order, and measures a fresh Chrome session per run. After the real coin flow, the profiling fixture assigns the creator the opening Case on both builds. Compare like quality tiers at similar idle cadence. Its JSON includes raw frame intervals, idle cadence, camera progress, quality tier, CPU timings and build hashes. Use `--port` to change the default 3242. Run profiles on an idle host, separately from tests or builds. Use `--cpu-profile` in a separate single-run diagnostic to capture a DevTools CPU profile during the active Case and awards.
 
+A missed Done acknowledgment or turn cue gives the command a failing exit after it saves the comparison. Inspect `measurement.interactions.failures` and the per-seat click, DOM and animation-frame observations in the JSON to reproduce it.
+
 ## Parallel ownership
 
 - Use one worktree per agent and give each browser investigation its own `TEST_RTC_PORT` and `TEST_RELAY_PORT`. The game fixture's reset is process-wide. Generated screenshots, traces and JSON stay in the worktree's ignored `output/`.
