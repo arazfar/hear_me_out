@@ -8,7 +8,7 @@ test.beforeEach(async ({ request }) => {
   await request.post("/__test/reset");
 });
 
-test("phone layouts: shared card rows and keyboard reachability", async ({
+test("phone layouts: shared card rows and keyboard reachability", { tag: ["@mobile-matrix"] }, async ({
   browser,
   baseURL,
   request,
@@ -736,7 +736,7 @@ test("phone layouts: shared card rows and keyboard reachability", async ({
   }
 });
 
-test("home diorama fits responsive containers", async ({
+test("home diorama fits responsive containers", { tag: ["@rtc-only"] }, async ({
   page,
   baseURL,
 }, info) => {
@@ -797,7 +797,7 @@ test("home diorama fits responsive containers", async ({
   await expect(page.getByLabel("Your name", { exact: true })).toBeEditable();
 });
 
-test("phone layouts: media disclosure keeps privacy, focus and dock clearance", async ({
+test("phone layouts: media disclosure keeps privacy, focus and dock clearance", { tag: ["@mobile-matrix"] }, async ({
   browser,
   baseURL,
 }, info) => {

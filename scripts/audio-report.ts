@@ -91,7 +91,10 @@ for (const event of timeline) {
     utterances.set(event.speechEpoch, new Map());
   utterances.get(event.speechEpoch)!.set(event.playerId, event);
 }
-const groups: Record<string, { cue: number[]; done: number[] }> = {};
+const groups: Record<
+  string,
+  { cue: number[]; done: number[]; pairedSamples: number }
+> = {};
 let incomplete = 0;
 for (const players of utterances.values()) {
   if (players.size !== 2) {
@@ -100,11 +103,14 @@ for (const players of utterances.values()) {
   }
   const events = [...players.values()],
     label = `${events[0].mediaMode}/${events[0].prepared ? "cached" : "uncached"}`;
-  const group = (groups[label] ||= { cue: [], done: [] });
-  if (events.every((e) => Number.isFinite(e.cueToRenderMs)))
+  const group = (groups[label] ||= { cue: [], done: [], pairedSamples: 0 });
+  const completeCue = events.every((e) => Number.isFinite(e.cueToRenderMs));
+  const completeDone = events.every((e) => Number.isFinite(e.doneToRenderMs));
+  if (completeCue)
     group.cue.push(Math.max(...events.map((e) => e.cueToRenderMs)));
-  if (events.every((e) => Number.isFinite(e.doneToRenderMs)))
+  if (completeDone)
     group.done.push(Math.max(...events.map((e) => e.doneToRenderMs)));
+  if (completeCue && completeDone) group.pairedSamples++;
 }
 console.log(
   JSON.stringify(
@@ -130,6 +136,7 @@ console.log(
         Object.entries(groups).map(([label, values]) => [
           label,
           {
+            pairedSamples: values.pairedSamples,
             cueToRenderMs: percentile(values.cue),
             latencyMisses: {
               cue: values.cue.filter(

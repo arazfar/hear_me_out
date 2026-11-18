@@ -5,7 +5,7 @@ services:
     plan: free
     region: oregon
     branch: main
-    autoDeployTrigger: checksPass
+    autoDeployTrigger: 'off'
     buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm build
     startCommand: node dist-server/index.js
     healthCheckPath: /readyz

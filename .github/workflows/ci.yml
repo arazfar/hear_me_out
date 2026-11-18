@@ -4,20 +4,17 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
-    inputs:
-      no_retries:
-        description: Run the full browser release matrix with zero retries
-        type: boolean
-        default: false
 permissions:
   contents: read
 concurrency:
-  group: verify-${{ github.ref }}
+  group: verify-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' }}
   cancel-in-progress: true
 jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      projects: ${{ steps.matrix.outputs.projects }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -28,16 +25,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - run: pnpm test
+      - run: pnpm test:release-harness
+      - id: matrix
+        run: pnpm verify:matrix
       - run: pnpm build
   browser:
     needs: verify
+    if: github.event_name == 'workflow_dispatch'
     # Native media clocks/codecs match the locally validated Safari/Chrome suite.
     runs-on: macos-26
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        project: [rtc, relay, phone, phone-relay, webkit, webkit-relay]
+        project: ${{ fromJSON(needs.verify.outputs.projects) }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -50,16 +51,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps ${{ startsWith(matrix.project, 'webkit') && 'webkit' || 'chrome' }}
       - if: matrix.project == 'rtc'
         run: pnpm test:browser-diagnostics
-      - name: Run full browser suite
-        env:
-          PROJECT: ${{ matrix.project }}
-          NO_RETRIES: ${{ inputs.no_retries }}
-        run: |
-          if [[ "$NO_RETRIES" == "true" ]]; then
-            pnpm test:ui --project="$PROJECT" --retries=0
-          else
-            pnpm test:ui --project="$PROJECT"
-          fi
+      - run: pnpm test:ui --project=${{ matrix.project }} --retries=0
       - name: Summarize browser attempts
         if: always()
         run: node scripts/browser-summary.mjs
@@ -76,6 +68,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   ui-review:
+    if: github.event_name == 'workflow_dispatch'
     # Synthetic review data only; no game build, providers or local review archives.
     runs-on: macos-26
     timeout-minutes: 10

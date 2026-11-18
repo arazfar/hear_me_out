@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { syntheticMicrophone } from "./synthetic-media";
 import type { Snapshot } from "../../shared/domain";
 
-test("phone layouts: shared draws, rematches, and departure preserve the outcome", async ({
+test("phone layouts: shared draws, rematches, and departure preserve the outcome", { tag: ["@mobile-matrix"] }, async ({
   browser,
   baseURL,
   request,

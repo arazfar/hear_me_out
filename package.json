@@ -19,7 +19,11 @@
     "test:ui": "playwright test",
     "test:browser-diagnostics": "node --test tests/browser-diagnostics.test.mjs",
     "ui:review": "node tools/ui-review/server.mjs",
-    "test:ui-review": "node --test tools/ui-review/tests/*.test.mjs && playwright test --config tools/ui-review/playwright.config.mjs"
+    "test:ui-review": "node --test tools/ui-review/tests/*.test.mjs && playwright test --config tools/ui-review/playwright.config.mjs",
+    "test:release-harness": "node --test tests/release-evidence.test.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
+    "verify:matrix": "node scripts/browser-matrix.mjs",
+    "release:check": "node scripts/release-check.mjs"
   },
   "dependencies": {
     "@cartesia/cartesia-js": "4.2.0",

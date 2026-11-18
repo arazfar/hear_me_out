@@ -1,8 +1,9 @@
 # Render deployment
 
 The `hear-me-out` Node service belongs in Kisora → kisora → Production, in Oregon.
-`render.yaml` defines Free compute, one instance, and deployments from `main` only
-after GitHub CI succeeds. Preview deployments are intentionally omitted/disabled.
+`render.yaml` defines Free compute, one instance, and automatic deployments off.
+Promote a qualified commit from `main` by SHA in the Render dashboard.
+Preview deployments are intentionally omitted/disabled.
 The frontend, API and four WebSocket channels share one HTTPS origin.
 
 ## Build and configuration
@@ -43,12 +44,37 @@ this setting if adding another proxy or changing ingress topology.
 
 ## Verification and operations
 
-Run `pnpm check`, `pnpm test`, `pnpm build`, and `pnpm test:ui` before merging.
+1. Confirm **Auto-Deploy** is **Off** in the Render service settings and in the Blueprint. Land changes through a PR with GitHub's `verify` check.
+2. On an interactive Apple silicon Mac, check out the full SHA from `main` using the pinned Node and pnpm. Run `pnpm verify:release --sha <full-sha>`. The command builds and tests in its own detached worktree. Run it again for a different release SHA.
+3. Run the [live-provider and physical-device checks](AUDIO_ACCEPTANCE.md#physicallive-provider-qualification) for that SHA, and save the provider smoke and signed-off reports as described below.
+4. Run `pnpm release:check --sha <full-sha>` with GitHub CLI authenticated. The command checks the GitHub push and all release evidence. Once it prints eligibility, the release owner chooses **Manual Deploy → Deploy a specific commit** in Render. Verify the exact commit in Deploys and confirm `/readyz` succeeds.
+
 Live-provider tests consume API usage and require keys in the process environment
-or a local ignored `.env`. Run `pnpm verify:providers`; use `TEST_URL` with
+or a local ignored `.env`. From the clean candidate checkout, save the JSON output of
+`DOTENV_CONFIG_QUIET=true pnpm --silent verify:providers` as
+`output/release/<full-sha>/provider-smoke.json`. Use `TEST_URL` with
 `scripts/health-check.ts` and `pnpm verify:match` for public HTTPS/WSS and synthetic
 match checks. Keep `EXPORT_REHEARSAL` unset. Synthetic checks do not establish
 physical microphone/speaker quality or performance across two real networks.
+
+Save each physical session's generated audio report as a distinct JSON file in the
+same directory. After reviewing the evidence, the release owner creates `physical.json`
+with the full SHA, their name, approval timestamp, and the report filenames and device
+pairs. Use the codes `desktop-chrome`, `android-chrome`, and `iphone-safari`. List
+each of the three pairings on RTC and WSS, with at least 100 paired judge utterances
+per transport across their sessions. For example, this is one session entry in an
+otherwise incomplete sign-off.
+
+```json
+{
+  "sha": "0000000000000000000000000000000000000000",
+  "approvedBy": "Release owner",
+  "approvedAt": "2026-11-18T12:00:00Z",
+  "sessions": [
+    { "report": "rtc-desktop-iphone.json", "platforms": ["desktop-chrome", "iphone-safari"] }
+  ]
+}
+```
 
 In Render, inspect Deploys and Logs after release. Free compute does not expose
 CPU/RAM usage graphs, so passing smoke checks does not establish capacity headroom.
@@ -58,10 +84,8 @@ and rematch. Run one idle/wake check without persistent browser sockets or polli
 Use existing Render failure notifications; do not add uptime keep-alive requests.
 
 For a bad release, use Render's Deploys page to roll back to a known-good deploy.
-A dashboard rollback disables automatic deployments. Revert the offending change
-in Git, wait for its CI checks to pass, then restore **After CI Checks Pass** in
-Settings and verify the corrected commit deploys; deploy that checked commit
-manually if it is not automatically queued. Rollback also reuses the selected
+Revert or fix the offending change in Git, qualify the corrected `main` SHA, then
+deploy that specific commit. Rollback also reuses the selected
 deployment's environment values: check that its secrets and proxy settings are
 still appropriate and that temporary proxy diagnostics were disabled. A normal
 subsequent deploy uses the service's current configuration. See
@@ -78,7 +102,7 @@ The Blueprint omits `maxShutdownDelaySeconds`: Render rejects that setting on Fr
 
 Release the scoring/deadline, worklet-cache, and lobby-lease changes as one matching client/server build between matches. Judge scores now publish per completed, validated batch; monitor `scoringMs`, `judgment_timeout`, and other `judgment_*` counters during provider qualification. Logical judging has one 12-second budget including retry. Lobby reservations and disconnected seats expire after 60 seconds; authenticated control/audio/video connections retain their seat while permissions are pending. Active-match recovery limits and finished verdict retention are unchanged.
 
-All three stable worklet URLs are served and fetched with `no-store`; fingerprinted assets retain caching. Validate both a warm-cache upgrade and rollback with an ordinary refresh. Rolling back to a build predating this cache fix restores its old caching policy, so require a hard refresh if that build serves stale worklets. No protocol or data migration is needed. Keep the hosted no-retry repetition and physical/provider matrix outstanding until actually run; do not infer either from synthetic CI. Restarts/rollbacks still discard the in-memory rooms.
+All three stable worklet URLs are served and fetched with `no-store`; fingerprinted assets retain caching. Validate both a warm-cache upgrade and rollback with an ordinary refresh. Rolling back to a build predating this cache fix restores its old caching policy, so require a hard refresh if that build serves stale worklets. Complete local regression repetition and physical/provider qualification before release.
 
 ## Free-tier limits
 

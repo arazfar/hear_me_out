@@ -156,7 +156,7 @@ test.beforeEach(async ({ request }) => {
   await request.post("/__test/reset");
 });
 
-test("two players complete a scored match, recover media, and rematch", async ({
+test("two players complete a scored match, recover media, and rematch", { tag: ["@mobile-matrix", "@case-match"] }, async ({
   browser,
   baseURL,
   request,
@@ -751,7 +751,7 @@ test("two players complete a scored match, recover media, and rematch", async ({
   await video?.saveAs(root + "/match-" + info.project.name + ".webm");
 });
 
-test("two players replace an expired lobby seat and negotiate fresh media", async ({
+test("two players replace an expired lobby seat and negotiate fresh media", { tag: ["@mobile-matrix"] }, async ({
   browser,
   baseURL,
   request,
@@ -827,7 +827,7 @@ test("two players replace an expired lobby seat and negotiate fresh media", asyn
   }
 });
 
-test("visual matrix, accessibility, error and fallback states", async ({
+test("visual matrix, accessibility, error and fallback states", { tag: ["@rtc-only"] }, async ({
   browser,
   baseURL,
   request,
@@ -1185,7 +1185,7 @@ test("visual matrix, accessibility, error and fallback states", async ({
   await cb.close();
 });
 
-test("phone layouts preserve full captions, user wording and a single status owner", async ({
+test("phone layouts preserve full captions, user wording and a single status owner", { tag: ["@mobile-matrix", "@case-captions"] }, async ({
   browser,
   baseURL,
   request,
@@ -1714,7 +1714,7 @@ test("phone layouts preserve full captions, user wording and a single status own
   }
 });
 
-test("mandatory device setup, retries, cancellation, clipboard failure and missing scene", async ({
+test("mandatory device setup, retries, cancellation, clipboard failure and missing scene", { tag: ["@rtc-only"] }, async ({
   browser,
   baseURL,
 }, info) => {
@@ -2294,7 +2294,7 @@ test("busy scoring combines gains without collisions in either motion setting", 
   await video?.saveAs(`${root}/award-queue-${info.project.name}.webm`);
 });
 
-test("two players receive decision feedback while a rematch waits for complete playback", async ({
+test("two players receive decision feedback while a rematch waits for complete playback", { tag: ["@mobile-matrix", "@case-rematch-feedback"] }, async ({
   browser,
   baseURL,
   request,
@@ -2782,7 +2782,7 @@ test("two players receive decision feedback while a rematch waits for complete p
 });
 
 audioTest(
-  "two players render a long judge line completely through asymmetric delivery and explicit mute",
+  "two players render a long judge line completely through asymmetric delivery and explicit mute", { tag: ["@mobile-matrix", "@case-long-audio"] },
   async ({ browser, baseURL, request, audioCleanup }, info) => {
     const phone = /^(phone|webkit)/.test(info.project.name);
     const aContext = await browser.newContext({
