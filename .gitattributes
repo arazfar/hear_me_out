@@ -1,0 +1,2 @@
+# Unified-diff context lines begin with a space, including before source tabs.
+patches/*.patch text eol=lf whitespace=-blank-at-eol,-space-before-tab,-blank-at-eof

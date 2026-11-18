@@ -1,0 +1,116 @@
+diff --git a/build/three.module.js b/build/three.module.js
+index c52087acfabae80efabb8cc05e3a1d96e35a1426..7670ad714e15c06310060c2831a788045f0a138f 100644
+--- a/build/three.module.js
++++ b/build/three.module.js
+@@ -16339,6 +16339,7 @@ class WebGLRenderer {
+ 
+ 		let _isContextLost = false;
+ 		let _nodesHandler = null;
++		let _dfgLUT = null;
+ 
+ 		let _scratchFramebuffer = null;
+ 		let _srcFramebuffer = null;
+@@ -17122,6 +17123,8 @@ class WebGLRenderer {
+ 		 */
+ 		this.dispose = function () {
+ 
++			releaseDFGLUT();
++
+ 			canvas.removeEventListener( 'webglcontextlost', onContextLost, false );
+ 			canvas.removeEventListener( 'webglcontextrestored', onContextRestore, false );
+ 			canvas.removeEventListener( 'webglcontextcreationerror', onContextCreationError, false );
+@@ -17147,6 +17150,17 @@ class WebGLRenderer {
+ 
+ 		// Events
+ 
++		function releaseDFGLUT() {
++
++			if ( _dfgLUT !== null ) {
++
++				_dfgLUT.dispose();
++				_dfgLUT = null;
++
++			}
++
++		}
++
+ 		function onContextLost( event ) {
+ 
+ 			event.preventDefault();
+@@ -17154,6 +17168,7 @@ class WebGLRenderer {
+ 			log( 'WebGLRenderer: Context Lost.' );
+ 
+ 			_isContextLost = true;
++			releaseDFGLUT();
+ 
+ 		}
+ 
+@@ -18779,7 +18794,9 @@ class WebGLRenderer {
+ 			// Set DFG LUT for physically-based materials
+ 			if ( m_uniforms.dfgLUT !== undefined ) {
+ 
+-				m_uniforms.dfgLUT.value = getDFGLUT();
++				// The lookup texels are shared. The texture owns this renderer's disposal listener.
++				if ( _dfgLUT === null ) _dfgLUT = getDFGLUT().clone();
++				m_uniforms.dfgLUT.value = _dfgLUT;
+ 
+ 			}
+ 
+diff --git a/src/renderers/WebGLRenderer.js b/src/renderers/WebGLRenderer.js
+index bb101cfc282f2f874f0766243129911c95af8c2a..e9cc53641a67c51b8867571d838e21326479f62c 100644
+--- a/src/renderers/WebGLRenderer.js
++++ b/src/renderers/WebGLRenderer.js
+@@ -302,6 +302,7 @@ class WebGLRenderer {
+ 
+ 		let _isContextLost = false;
+ 		let _nodesHandler = null;
++		let _dfgLUT = null;
+ 
+ 		let _scratchFramebuffer = null;
+ 		let _srcFramebuffer = null;
+@@ -1085,6 +1086,8 @@ class WebGLRenderer {
+ 		 */
+ 		this.dispose = function () {
+ 
++			releaseDFGLUT();
++
+ 			canvas.removeEventListener( 'webglcontextlost', onContextLost, false );
+ 			canvas.removeEventListener( 'webglcontextrestored', onContextRestore, false );
+ 			canvas.removeEventListener( 'webglcontextcreationerror', onContextCreationError, false );
+@@ -1110,6 +1113,17 @@ class WebGLRenderer {
+ 
+ 		// Events
+ 
++		function releaseDFGLUT() {
++
++			if ( _dfgLUT !== null ) {
++
++				_dfgLUT.dispose();
++				_dfgLUT = null;
++
++			}
++
++		}
++
+ 		function onContextLost( event ) {
+ 
+ 			event.preventDefault();
+@@ -1117,6 +1131,7 @@ class WebGLRenderer {
+ 			log( 'WebGLRenderer: Context Lost.' );
+ 
+ 			_isContextLost = true;
++			releaseDFGLUT();
+ 
+ 		}
+ 
+@@ -2742,7 +2757,9 @@ class WebGLRenderer {
+ 			// Set DFG LUT for physically-based materials
+ 			if ( m_uniforms.dfgLUT !== undefined ) {
+ 
+-				m_uniforms.dfgLUT.value = getDFGLUT();
++				// The lookup texels are shared. The texture owns this renderer's disposal listener.
++				if ( _dfgLUT === null ) _dfgLUT = getDFGLUT().clone();
++				m_uniforms.dfgLUT.value = _dfgLUT;
+ 
+ 			}
+ 

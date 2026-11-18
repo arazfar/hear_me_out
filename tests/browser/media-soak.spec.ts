@@ -71,8 +71,8 @@ test("media resources are released after leaving and rejoining courts", async ({
   request,
 }, info) => {
   const cycles = Number(process.env.MEDIA_SOAK_CYCLES || 1);
-  if (!Number.isInteger(cycles) || cycles < 1 || cycles > 100)
-    throw Error("MEDIA_SOAK_CYCLES must be 1–100");
+  if (!Number.isInteger(cycles) || cycles < 1)
+    throw Error("MEDIA_SOAK_CYCLES must be a positive integer");
   test.setTimeout(cycles * 70000 + 30000);
   await request.post("/__test/reset");
   const contexts = await Promise.all(
@@ -91,6 +91,7 @@ test("media resources are released after leaving and rejoining courts", async ({
     const sessions = await Promise.all(
       contexts.map((c, i) => c.newCDPSession(pages[i])),
     );
+    await Promise.all(sessions.map((s) => s.send("DOM.enable")));
     const created: number[] = [];
     await Promise.all(
       pages.map((p, i) =>
@@ -137,6 +138,8 @@ test("media resources are released after leaving and rejoining courts", async ({
           await expect.poll(pixels).not.toBe(first);
         }
       }
+      for (const page of pages)
+        await expect(page.locator(".stage[data-quality] canvas")).toBeVisible();
       const acquired = await Promise.all(pages.map(resources));
       for (const r of acquired) {
         expect(r.liveTracks).toBe(2);
@@ -172,7 +175,23 @@ test("media resources are released after leaving and rejoining courts", async ({
             const r = window.courtResources;
             for (const list of Object.values(r)) list.length = 0;
           });
-          await sessions[i].send("HeapProfiler.collectGarbage");
+          // The scene can finish an in-flight frame after the menu becomes visible.
+          // A renderer-held lookup texture previously retained the whole retired court.
+          await expect
+            .poll(async () => {
+              await sessions[i].send("HeapProfiler.collectGarbage");
+              const { detachedNodes } = await sessions[i].send(
+                "DOM.getDetachedDomNodes",
+              );
+              return detachedNodes.filter(({ treeNode }) => {
+                const attrs = treeNode.attributes || [];
+                const cls = attrs[attrs.indexOf("class") + 1] || "";
+                return /(?:^| )(room-scroll|title-layout|stage)(?: |$)/.test(
+                  cls,
+                );
+              }).length;
+            })
+            .toBe(0);
           const { usedSize } = await sessions[i].send("Runtime.getHeapUsage");
           const { documents, nodes } = await sessions[i].send(
             "Memory.getDOMCounters",
