@@ -463,7 +463,6 @@ export class Client {
         this.send({ type: "snapshot_request" });
       if (this.state && this.state.mediaEpoch !== data.snapshot.mediaEpoch) {
         this.video.resetVideo();
-        this.video.videoInFlight.clear();
         this.peer.remote = null;
       }
       const previousMode = this.state?.mediaMode;
@@ -529,27 +528,11 @@ export class Client {
     this.invalidateConnection();
     this.clock.reset();
 
-    this.peer.reset();
-    this.video.resetVideo();
-    this.video.videoInFlight.clear();
-    this.sound.peerPlayback?.port.postMessage({ type: "flush" });
-    for (const timer of [
-      this.video.frameTimer,
-      this.statusTimer,
-      this.pingTimer,
-    ])
-      if (timer) clearInterval(timer);
+    this.peer.leave();
+    this.video.stop();
     this.playback.resetJudgePlayback();
     this.capture.stop();
-    if (this.video.cameraVideo) {
-      this.video.cameraVideo.srcObject = null;
-      this.video.cameraVideo = null;
-    }
-    this.peer.pcEpoch = -1;
-    this.peer.pendingCandidates = [];
-    this.peer.pendingSignals = [];
-    this.capture.worklet?.disconnect();
-    this.capture.source?.disconnect();
+    this.sound.close();
     this.session = null;
     this.state = null;
     sessionStorage.removeItem("hmo-seat");

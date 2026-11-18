@@ -9,7 +9,7 @@ export class RelayVideo {
   localTime = -1;
   lastProbe = 0;
   remoteFrame = false;
-  remoteCanvas: HTMLCanvasElement | null = null;
+  private frameCanvas: HTMLCanvasElement | null = null;
   remoteFrameAt = 0;
   private pendingVideo: VideoPacket | null = null;
   private decodingVideo = false;
@@ -17,8 +17,9 @@ export class RelayVideo {
   remoteFrameSeq = 0;
   videoSeq = 0;
   videoInFlight = new Map<number, number>();
-  frameTimer: ReturnType<typeof setInterval> | null = null;
-  cameraVideo: HTMLVideoElement | null = null;
+  private frameTimer: ReturnType<typeof setInterval> | null = null;
+  private cameraVideo: HTMLVideoElement | null = null;
+  private frameCallback: number | null = null;
   captureGeneration = 0;
   private pageActive = true;
   private frameReader: FileReader | null = null;
@@ -54,6 +55,26 @@ export class RelayVideo {
       }
     });
   }
+  private createFrameCanvas() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 144;
+    return canvas;
+  }
+  /** Decode into the card itself. Keep the latest pixels when a card remounts. */
+  attachDisplay(canvas: HTMLCanvasElement) {
+    if (this.remoteFrame && this.frameCanvas)
+      canvas.getContext("2d")!.drawImage(this.frameCanvas, 0, 0);
+    this.frameCanvas = canvas;
+    return () => {
+      if (this.frameCanvas !== canvas) return;
+      this.frameCanvas = null;
+      if (this.remoteFrame) {
+        this.frameCanvas = this.createFrameCanvas();
+        this.frameCanvas.getContext("2d")!.drawImage(canvas, 0, 0);
+      }
+    };
+  }
   resetVideo() {
     this.cancelFrameRead();
     this.videoGeneration++;
@@ -62,7 +83,7 @@ export class RelayVideo {
     this.remoteFrameAt = 0;
     this.remoteFrame = false;
     this.videoInFlight.clear();
-    this.remoteCanvas?.getContext("2d")?.clearRect(0, 0, 256, 144);
+    this.frameCanvas?.getContext("2d")?.clearRect(0, 0, 256, 144);
   }
   async receive(raw: ArrayBuffer) {
     const frame = decodeVideo(new Uint8Array(raw));
@@ -94,10 +115,9 @@ export class RelayVideo {
             frame.seq <= this.remoteFrameSeq
           )
             continue;
-          this.remoteCanvas ||= document.createElement("canvas");
-          if (this.remoteCanvas.width !== 256) this.remoteCanvas.width = 256;
-          if (this.remoteCanvas.height !== 144) this.remoteCanvas.height = 144;
-          this.remoteCanvas.getContext("2d")!.drawImage(bitmap, 0, 0, 256, 144);
+          this.frameCanvas ||= this.createFrameCanvas();
+          this.frameCanvas.getContext("2d")!.drawImage(bitmap, 0, 0, 256, 144);
+          const firstFrame = !this.remoteFrame;
           this.remoteFrameSeq = frame.seq;
           this.remoteFrame = true;
           this.remoteFrameAt = Date.now();
@@ -106,7 +126,7 @@ export class RelayVideo {
             seq: frame.seq,
             mediaEpoch: frame.epoch,
           });
-          this.client.notify({ media: true });
+          if (firstFrame) this.client.notify({ media: true });
         } catch {
           /* Keep the last good frame; the next frame can recover. */
         } finally {
@@ -143,11 +163,30 @@ export class RelayVideo {
       /* A failed decode is not a delivery receipt. */
     }
   }
+  private stopCamera() {
+    this.cancelFrameRead();
+    if (this.frameTimer !== null) clearInterval(this.frameTimer);
+    this.frameTimer = null;
+    if (this.cameraVideo) {
+      if (this.frameCallback !== null)
+        this.cameraVideo.cancelVideoFrameCallback?.(this.frameCallback);
+      this.cameraVideo.srcObject = null;
+      this.cameraVideo = null;
+    }
+    this.frameCallback = null;
+  }
+  stop() {
+    this.stopCamera();
+    this.resetVideo();
+    this.frameCanvas = null;
+    this.localFrames = 0;
+    this.localTime = -1;
+    this.lastProbe = 0;
+  }
   prepareVideo() {
     if (!this.client.capture.stream) return;
-    this.cancelFrameRead();
+    this.stopCamera();
     const captureGeneration = ++this.captureGeneration;
-    if (this.cameraVideo) this.cameraVideo.srcObject = null;
     this.localTime = -1;
     this.cameraVideo = document.createElement("video");
     this.cameraVideo.muted = true;
@@ -171,10 +210,9 @@ export class RelayVideo {
           video.getVideoPlaybackQuality?.().totalVideoFrames || 0,
         ),
       );
-      video.requestVideoFrameCallback?.(presented);
+      this.frameCallback = video.requestVideoFrameCallback?.(presented) ?? null;
     };
-    video.requestVideoFrameCallback?.(presented);
-    if (this.frameTimer) clearInterval(this.frameTimer);
+    this.frameCallback = video.requestVideoFrameCallback?.(presented) ?? null;
     const canvas = document.createElement("canvas");
     canvas.width = 256;
     canvas.height = 144;

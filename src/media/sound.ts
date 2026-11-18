@@ -35,6 +35,30 @@ export class AudioOutput {
   cancelInitialization() {
     this.initialization?.controller.abort(new Error("Setup cancelled."));
   }
+  close() {
+    this.cancelInitialization();
+    this.stopEffects();
+    for (const node of [this.judgePlayback, this.peerPlayback]) {
+      if (!node) continue;
+      node.onprocessorerror = null;
+      node.port.onmessage = null;
+      node.port.close();
+      node.disconnect();
+    }
+    this.judgeGain?.disconnect();
+    this.peerGain?.disconnect();
+    this.effectsGain?.disconnect();
+    this.analyser?.disconnect();
+    const context = this.context;
+    this.peerPlayback = this.judgePlayback = null;
+    this.peerGain = this.judgeGain = this.effectsGain = null;
+    this.analyser = null;
+    this.context = null;
+    this.effectAt = -Infinity;
+    this.speechUntil = 0;
+    if (context && context.state !== "closed")
+      void context.close().catch(() => {});
+  }
   unlock() {
     if (this.initialization) {
       void this.context?.resume().catch(() => {});
