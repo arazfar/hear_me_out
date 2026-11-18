@@ -125,20 +125,13 @@ export class Game {
     this.player(id).connected = true;
   }
   disconnectPlayer(id: string) {
-    Object.assign(this.player(id), {
-      connected: false,
-      mediaReady: false,
-      captureReady: false,
-      ready: false,
-    });
+    const player = this.player(id);
+    player.connected = false;
+    player.captureReady = false;
+    this.setMediaReady(id, false);
   }
   resumePlayer(id: string) {
-    Object.assign(this.player(id), {
-      connected: false,
-      captureReady: false,
-      mediaReady: false,
-    });
-    if (this.state.phase === "LOBBY") this.player(id).ready = false;
+    this.disconnectPlayer(id);
     this.state.mediaEpoch++;
     this.state.mediaMode = "connecting";
   }

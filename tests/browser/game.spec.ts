@@ -2356,14 +2356,48 @@ test("two players receive decision feedback while a rematch waits for complete p
     [a, [] as string[]],
     [b, [] as string[]],
   ]);
-  for (const page of [a, b])
+  const histories = [a, b].map((page) => {
+    const transitions: {
+      event: string;
+      seq: number;
+      at: number;
+      phase: string;
+      judge: string | null;
+      epoch: number | null;
+      seats: { ready: boolean; voted: boolean; blockers: string[] }[];
+    }[] = [];
+    let previous = "";
     page.on("websocket", (socket) => {
       if (!socket.url().includes("/socket/control")) return;
       socket.on("framereceived", ({ payload }) => {
         const data = JSON.parse(payload.toString());
         if (data.type === "coin_committed") coins.get(page)!.push(data.matchId);
+        const state: Snapshot | undefined = data.snapshot;
+        if (!state || state.phase !== "MATCH_RESULT") return;
+        const observation = {
+          phase: state.phase,
+          judge: state.judge?.status ?? null,
+          epoch: state.judge?.epoch ?? null,
+          seats: state.players.map((p) => ({
+            ready: p.mediaReady,
+            voted: state.rematchReady.includes(p.id),
+            blockers: p.readiness?.blockers ?? [],
+          })),
+        };
+        const key = JSON.stringify(observation);
+        if (key === previous) return;
+        previous = key;
+        transitions.push({
+          event: data.type,
+          seq: state.seq,
+          at: state.serverNow,
+          ...observation,
+        });
+        if (transitions.length > 128) transitions.shift();
       });
     });
+    return transitions;
+  });
   const announcement = (page: Page) =>
     page.locator('.app > [aria-live="polite"]');
   let code = "";
@@ -2525,10 +2559,6 @@ test("two players receive decision feedback while a rematch waits for complete p
     await openMedia(a);
     await a.getByRole("button", { name: /^Bonk & effects / }).click();
     await a.keyboard.press("Escape");
-    const voice = await request.post("/__test/voice/" + code);
-    expect(voice.ok()).toBe(true);
-    const { epoch, samples } = await voice.json();
-    await expect(a.locator(".caption-status")).toHaveText("Sound off");
     for (const page of [a, b]) {
       coins.get(page)!.length = 0;
       await page.evaluate(() => ((window as any).__decisionAnnouncements = []));
@@ -2561,7 +2591,27 @@ test("two players receive decision feedback while a rematch waits for complete p
       const values = resultGeometry.slice(2).map((frame) => frame[axis]);
       expect(Math.max(...values) - Math.min(...values)).toBeLessThan(0.5);
     }
+    // Reserve the other lobby before timing playback. It only claims the stage
+    // after both votes have reached the authoritative room.
+    const busy = await (
+      await request.post("/api/rooms", { data: { name: "Other court" } })
+    ).json();
+    const busyCode = busy.session.code;
+    const voice = await request.post("/__test/voice/" + code);
+    expect(voice.ok()).toBe(true);
+    const { epoch, samples } = await voice.json();
+    await expect(a.locator(".caption-status")).toHaveText("Sound off");
     await b.getByRole("button", { name: "Rematch", exact: true }).click();
+    await expect
+      .poll(async () => (await snapshot(request, code)).rematchReady.length)
+      .toBe(2);
+    expect(
+      (
+        await request.post("/__test/present/" + busyCode, {
+          data: { phase: "TOPIC_SELECT", phaseDeadline: Date.now() + 60000 },
+        })
+      ).ok(),
+    ).toBe(true);
     for (const page of [a, b]) {
       await expect(
         page.getByRole("button", { name: "Rematch queued", exact: true }),
@@ -2575,22 +2625,12 @@ test("two players receive decision feedback while a rematch waits for complete p
       ]);
       await noOverlap(page);
     }
-    // Another room occupies the stage after both rematch votes were accepted.
-    const busy = await (
-      await request.post("/api/rooms", {
-        data: { name: "Other court" },
-      })
-    ).json();
-    const busyCode = busy.session.code;
-    expect(
-      (
-        await request.post("/__test/present/" + busyCode, {
-          data: { phase: "TOPIC_SELECT", phaseDeadline: Date.now() + 60000 },
-        })
-      ).ok(),
-    ).toBe(true);
     await request.post("/__test/replay/" + code);
-    await shot(a, "decision-queued-" + info.project.name);
+    // Capture the queued decision in its existing viewport. Switching the
+    // foreground player here can interrupt the other seat's camera delivery.
+    await a.screenshot({
+      path: `${root}/decision-queued-${info.project.name}.png`,
+    });
     expect((await snapshot(request, code)).phase).toBe("MATCH_RESULT");
     for (const page of [a, b]) {
       expect(coins.get(page)).toEqual([]);
@@ -2693,6 +2733,7 @@ test("two players receive decision feedback while a rematch waits for complete p
       await info.attach("rematch-diagnostics", {
         body: Buffer.from(
           JSON.stringify({
+            decisionTransitions: histories,
             state: await snapshot(request, code),
             timeline: await (
               await request.post("/__test/timeline/" + code)

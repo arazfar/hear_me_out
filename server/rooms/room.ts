@@ -366,7 +366,6 @@ export class RoomController {
     if (game.state.phase === "MATCH_RESULT") {
       // The seat is gone, but the finished verdict still refers to this player.
       game.disconnectPlayer(id);
-      game.setMediaReady(id, false);
       game.setCaptureReady(id, false, false);
     } else game.removePlayer(id);
     game.emit("player_left");
