@@ -8,7 +8,7 @@ A party game targeting desktop Chrome, Android Chrome, and iPhone Safari, with p
 
 Requires the Node version in `.node-version` and pnpm 10.12.1. No LiveKit or managed media account is used.
 
-For hosted operation, see [Render deployment](docs/RENDER.md). The Blueprint deploys the app on Render Free with CI-gated updates.
+For hosted operation, see [Render deployment](docs/RENDER.md). Release a specific tested commit to Render Free after GitHub's Linux checks and local browser qualification pass.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -111,11 +111,11 @@ Requests capture their match, round, turn or connection ownership. Rematch/dispo
 
 ## Verification and limits
 
-Run `pnpm check`, `pnpm test`, `pnpm build`, and `pnpm test:ui` before merging. Browser acceptance covers complete matches, recovery, rematch, rewards, and private-check isolation in Chrome with RTC and forced relay, plus phone-sized Chrome and WebKit journeys under both transports. Multi-second deterministic PCM verifies final sample accounting and asymmetric rebuffering. CI installs the browser dependencies and retains reports and failure traces. These tests use synthetic media and mock providers; [the test guide](tests/browser/README.md) describes coverage and its limits.
+GitHub runs `pnpm check`, `pnpm test`, and `pnpm build` on pull requests and pushes to `main`. Before deployment, run `pnpm verify:release` on an Apple silicon Mac. Browser acceptance covers complete matches, recovery, rematch, rewards, and private-check isolation in Chrome with RTC and forced relay, plus phone-sized Chrome and WebKit journeys under both transports. Multi-second deterministic PCM verifies final sample accounting and asymmetric rebuffering. The local command saves test reports and diagnostics by commit. The tests use synthetic media and mock providers. [Browser acceptance guide](tests/browser/README.md)
 
 Focused reliability regressions cover clean/abnormal Cartesia SDK drainage against a local WebSocket server, settlement across recovered transcription sessions, repeated provider-error cleanup, abort ownership, authenticated microphone catch-up and overflow, relay admission under asymmetric delay and varying jitter with independent client clocks, source-muted mic repair, and deferred match admission. These tests make no paid provider calls. See `tests/transcription-lifecycle.test.ts`, `tests/transcription-recovery.test.ts`, `tests/audio-ingress.test.ts`, `tests/relay-admission.test.ts`, `tests/setup.test.ts`, and `tests/match-admission.test.ts`.
 
-Live-provider rehearsal and physical two-player matches on desktop Chrome, Android Chrome, and iPhone Safari remain release requirements for the current required-media flow. Acoustic balance, mobile interruptions, real-network behavior, and hosted CI execution also need verification.
+Live-provider rehearsal and physical two-player matches on desktop Chrome, Android Chrome, and iPhone Safari remain release requirements for the current required-media flow. Verify acoustic balance, mobile interruptions, and real-network behavior during physical qualification.
 
 ### Historical measurements
 

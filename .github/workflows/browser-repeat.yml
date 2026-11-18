@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Record tested revision
         run: |
-          echo "Diagnostic repetition only; full Verify game checks remain required." >> "$GITHUB_STEP_SUMMARY"
+          echo "Hosted diagnostics. Run pnpm verify:release locally to qualify a deploy." >> "$GITHUB_STEP_SUMMARY"
           git rev-parse HEAD >> "$GITHUB_STEP_SUMMARY"
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4

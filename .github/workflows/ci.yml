@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: verify-${{ github.ref }}
+  group: verify-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' }}
   cancel-in-progress: true
 jobs:
   verify:
@@ -26,6 +26,7 @@ jobs:
       - run: pnpm build
   browser:
     needs: verify
+    if: github.event_name == 'workflow_dispatch'
     # Native media clocks/codecs match the locally validated Safari/Chrome suite.
     runs-on: macos-26
     timeout-minutes: 20
@@ -62,6 +63,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   ui-review:
+    if: github.event_name == 'workflow_dispatch'
     # Synthetic review data only; no game build, providers or local review archives.
     runs-on: macos-26
     timeout-minutes: 10

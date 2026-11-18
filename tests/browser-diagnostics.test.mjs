@@ -9,15 +9,16 @@ import { promisify } from "node:util";
 import test from "node:test";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const output = join(repository, "output/browser-diagnostics");
+const releaseOutput = process.env.BROWSER_DIAGNOSTICS_OUTPUT_DIR;
+const output = releaseOutput || join(repository, "output/browser-diagnostics");
 const cli = createRequire(import.meta.url).resolve("@playwright/test/cli");
 
 test(
   "real Playwright failures retain diagnostics and close contexts",
   { timeout: 45000 },
   async (t) => {
-    await rm(output, { recursive: true, force: true });
-    await mkdir(output, { recursive: true });
+    if (!releaseOutput) await rm(output, { recursive: true, force: true });
+    await mkdir(output, { recursive: !releaseOutput });
     const server = createServer((req, res) => {
       res.setHeader("Content-Type", "application/json");
       res.end(
