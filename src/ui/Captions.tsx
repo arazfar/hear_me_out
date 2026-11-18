@@ -11,7 +11,7 @@ import { useMediaVersion } from "./hooks";
 import { Icon } from "./Icon";
 import { Dialog } from "./Dialog";
 import { speakingState } from "./presentation";
-import { latestPhrase, spokenPhrase } from "./caption-phrases";
+import { captionBoundary, latestPhrase, spokenPhrase } from "./caption-phrases";
 
 export function Captions({
   state,
@@ -46,13 +46,13 @@ export function Captions({
     text: string;
     name: string;
   } | null>(null);
-  const [samples, setSamples] = useState(0);
+  const [visibleBoundary, setVisibleBoundary] = useState(-1);
   const timed =
     !!judge?.alignment?.cues.length &&
     !client.sound.judgeMuted &&
     judge.status !== "captions";
   useLayoutEffect(() => {
-    setSamples(0);
+    setVisibleBoundary(-1);
   }, [contentKey]);
   useLayoutEffect(() => {
     setReader((old) =>
@@ -62,17 +62,22 @@ export function Captions({
     );
   }, [contentKey, text]);
   useEffect(() => {
-    if (!timed || !judge) return;
+    if (!timed || !judge?.alignment) return;
+    const { cues } = judge.alignment;
     let frame = 0;
     const tick = () => {
-      setSamples(client.playback.renderedSamples(judge.epoch));
+      setVisibleBoundary(
+        captionBoundary(cues, client.playback.renderedSamples(judge.epoch)),
+      );
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [timed, judge?.epoch]);
+  }, [timed, judge?.epoch, judge?.alignment?.revision]);
   const phrase =
-    timed && samples > 0 ? spokenPhrase(judge!.alignment!.cues, samples) : null;
+    timed && visibleBoundary >= 0
+      ? spokenPhrase(judge!.alignment!.cues, visibleBoundary)
+      : null;
   useLayoutEffect(() => {
     const old = previousContent.current;
     const node = viewport.current;
