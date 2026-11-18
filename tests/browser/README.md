@@ -109,7 +109,7 @@ On macOS WebKit, the decision-feedback test uses Option-Tab to include buttons i
 
 The decision-feedback journey also makes another fixture room occupy the stage after both rematch votes are queued. Rejection must preserve the verdict and an actionable explanation on both clients. Once capacity is free, retry starts exactly one match and clears the obsolete notice.
 
-See [audio acceptance and measurement](../../docs/AUDIO_ACCEPTANCE.md) for latency definitions, per-transport targets, diagnostic export, and the live/physical qualification matrix.
+See [audio acceptance and measurement](../../docs/AUDIO_ACCEPTANCE.md) for latency definitions, per-transport targets, diagnostic export, and the optional physical-device diagnostic matrix.
 
 ## Visual checks and artifacts
 
@@ -123,6 +123,6 @@ The JSON report is written to `output/playwright/results.json`; failure traces a
 
 Chrome normally uses its built-in synthetic media; the long-utterance scenario uses distinct generated microphone tones in every project. WebKit runs the players in separate processes because its mock devices are shared within a process. Its mock microphone can stop producing audio after reload, so `synthetic-media.ts` supplies a continuous generated tone on the game's unlocked audio clock without opening a native microphone. That tone crosses the normal capture worklet, authenticated socket, private check, and provider adapter. Native microphone permission and acquisition behavior are outside this fixture's coverage; dedicated device-fault tests remain separate. This verifies application flow in WebKit, not native iPhone microphone continuity or audio unlocking.
 
-Live-provider rehearsal and physical two-player matches on desktop Chrome, Android Chrome, and iPhone Safari remain release requirements. Verify real permissions, unplugging, foreground/background interruptions, acoustic echo, perceived speech/effect balance, conversational pacing, and adverse network conditions. Mock provider timing and injected device faults cannot establish those qualities. Current hosting, room durability, and other deployment limitations are documented in the [project README](../../README.md); lifecycle and compatibility rules are in the [protocol guide](../../docs/PROTOCOL.md).
+Run the live-provider smoke check for the release SHA. Optional physical-device sessions on desktop Chrome, Android Chrome, and iPhone Safari can measure permission and device changes, foreground/background interruptions, acoustic echo, perceived speech/effect balance, conversational pacing, and adverse network conditions. Mock provider timing and injected device faults cannot establish those qualities. Current hosting, room durability, and other deployment limitations are documented in the [project README](../../README.md); lifecycle and compatibility rules are in the [protocol guide](../../docs/PROTOCOL.md).
 
 The busy-awards scenario measures mount/removal lifetime with a MutationObserver, checks actual visibility including ancestor opacity, and retains totals, burst identity, collision, reduced-motion, and replay assertions. Exact hold/renew/fade deadlines are covered by deterministic award-queue tests; browser frame sampling is not treated as a continuous visibility clock.

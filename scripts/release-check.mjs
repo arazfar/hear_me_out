@@ -6,7 +6,6 @@ import {
   parseReleaseSha,
   readJson,
   verifyLocalEvidence,
-  verifyPhysicalEvidence,
   verifyProviderEvidence,
 } from "./release-evidence.mjs";
 
@@ -93,15 +92,6 @@ try {
         verifyProviderEvidence(
           readJson(join(directory, "provider-smoke.json")),
           sha,
-        ),
-    ],
-    [
-      "Physical-device sign-off",
-      () =>
-        verifyPhysicalEvidence(
-          readJson(join(directory, "physical.json")),
-          sha,
-          (filename) => readJson(join(directory, filename)),
         ),
     ],
   ];

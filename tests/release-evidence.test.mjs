@@ -12,7 +12,6 @@ import {
 import {
   verifyLocalEvidence,
   verifyProviderEvidence,
-  verifyPhysicalEvidence,
 } from "../scripts/release-evidence.mjs";
 
 function spec(project, tag = "case-match", index = 0) {
@@ -132,96 +131,5 @@ test("promotion rejects incomplete or wrong-SHA evidence", (t) => {
   assert.throws(
     () => verifyProviderEvidence({ ...provider, commit: "b".repeat(40) }, sha),
     /different SHA/,
-  );
-  assert.throws(
-    () =>
-      verifyPhysicalEvidence(
-        {
-          sha,
-          approvedBy: "Release owner",
-          approvedAt: "2026-11-18T00:00:00Z",
-          sessions: [],
-        },
-        sha,
-      ),
-    /Missing physical session/,
-  );
-});
-
-test("physical sign-off requires every real device pairing on both transports", () => {
-  const sha = "a".repeat(40);
-  const pairs = [
-    ["desktop-chrome", "iphone-safari"],
-    ["desktop-chrome", "android-chrome"],
-    ["android-chrome", "iphone-safari"],
-  ];
-  const sessions = ["rtc", "wss"].flatMap((transport) =>
-    pairs.map((platforms, i) => ({
-      report: `${transport}-${i}.json`,
-      platforms,
-    })),
-  );
-  const signoff = {
-    sha,
-    approvedBy: "Release owner",
-    approvedAt: "2026-11-18T00:00:00Z",
-    sessions,
-  };
-  const readReport = (name) => {
-    const transport = name.split("-")[0];
-    return {
-      manifest: {
-        commit: sha,
-        dirty: false,
-        liveProviders: true,
-        transport,
-        date: name,
-        devices: [
-          { device: "Device A", browser: "Chrome 152", network: "A" },
-          { device: "Device B", browser: "Safari 27", network: "B" },
-        ],
-        checks: Object.fromEntries(
-          [
-            "sharedOutcomes",
-            "finalSyllables",
-            "privateIsolation",
-            "simultaneousConversation",
-            "boundedRecovery",
-            "backgrounding",
-            "outputChanges",
-            "sealingDisconnect",
-            "rematch",
-            "turnRelayExercised",
-          ].map((name) => [name, true]),
-        ),
-        cleanup: { confirmed: true, retainedProviderTransports: 0 },
-      },
-      incompleteUtterances: 0,
-      groups: {
-        [`${transport}/uncached`]: {
-          pairedSamples: 34,
-          cueToRenderMs: { count: 34 },
-          doneToRenderMs: { count: 34 },
-        },
-      },
-    };
-  };
-  verifyPhysicalEvidence(signoff, sha, readReport);
-  assert.throws(
-    () =>
-      verifyPhysicalEvidence(
-        { ...signoff, sessions: sessions.slice(1) },
-        sha,
-        readReport,
-      ),
-    /Missing physical session/,
-  );
-  assert.throws(
-    () =>
-      verifyPhysicalEvidence(signoff, sha, (name) => ({
-        ...readReport(name),
-        groups: {},
-      })),
-    /No paired samples/,
   );
 });

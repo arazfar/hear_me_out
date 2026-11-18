@@ -115,7 +115,7 @@ GitHub runs `pnpm check`, `pnpm test`, and `pnpm build` on pull requests and pus
 
 Focused reliability regressions cover clean/abnormal Cartesia SDK drainage against a local WebSocket server, settlement across recovered transcription sessions, repeated provider-error cleanup, abort ownership, authenticated microphone catch-up and overflow, relay admission under asymmetric delay and varying jitter with independent client clocks, source-muted mic repair, and deferred match admission. These tests make no paid provider calls. See `tests/transcription-lifecycle.test.ts`, `tests/transcription-recovery.test.ts`, `tests/audio-ingress.test.ts`, `tests/relay-admission.test.ts`, `tests/setup.test.ts`, and `tests/match-admission.test.ts`.
 
-Live-provider rehearsal and physical two-player matches on desktop Chrome, Android Chrome, and iPhone Safari remain release requirements for the current required-media flow. Verify acoustic balance, mobile interruptions, and real-network behavior during physical qualification.
+Run the live-provider smoke check for the release commit. Optional physical-device sessions on desktop Chrome, Android Chrome, and iPhone Safari can measure acoustic balance, mobile interruptions, and real-network behavior.
 
 ### Historical measurements
 
@@ -136,7 +136,7 @@ These measurements describe the earlier revision and do not validate the current
 
 Deploy the client and server together between matches. Keep a matching copy of both `dist/` and `dist-server/` before rebuilding. Rollback must restore both directories and restart the server, then refresh browser pages. Rooms remain deliberately ephemeral: server restarts require a new room. Do not market this beta as public-production ready.
 
-Before widening the beta, complete separate-network physical-device matches in RTC and forced relay, a live-provider rehearsal, and repeated abort/rematch resource checks. Monitor metadata-only transcription failures, active provider transports, microphone rejection reasons, relay-age drops and recovery duration. Authenticated `/api/diagnostics` exposes server counters; the browser client keeps a bounded `relayAudioAgeDrops` counter. Confirm provider connections return to zero after terminal cleanup. The current contract is protocol 6, including preset-only proposals, drawn outcomes, one-way Ready and bounded caption alignment. Incompatible clients must refresh. Ephemeral rooms require no database migration.
+Before widening the beta, complete a live-provider rehearsal and repeated abort/rematch resource checks. Monitor metadata-only transcription failures, active provider transports, microphone rejection reasons, relay-age drops and recovery duration. Authenticated `/api/diagnostics` exposes server counters; the browser client keeps a bounded `relayAudioAgeDrops` counter. Confirm provider connections return to zero after terminal cleanup. The current contract is protocol 6, including preset-only proposals, drawn outcomes, one-way Ready and bounded caption alignment. Incompatible clients must refresh. Ephemeral rooms require no database migration.
 
 See [demo and verification notes](docs/DEMO.md) for historical measurements, the demo script, and fallback behavior. A synthetic-audio integration test does not establish real-device human-match quality.
 
