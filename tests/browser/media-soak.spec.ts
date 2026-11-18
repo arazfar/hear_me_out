@@ -5,6 +5,7 @@ type MediaResources = {
   contexts: AudioContext[];
   sockets: WebSocket[];
   peers: RTCPeerConnection[];
+  worklets: { name: string; retired: boolean }[];
 };
 
 declare global {
@@ -20,6 +21,7 @@ async function observeMedia(context: BrowserContext) {
       contexts: [],
       sockets: [],
       peers: [],
+      worklets: [],
     };
     Object.assign(window, { courtResources: resources });
     const acquire = navigator.mediaDevices.getUserMedia.bind(
@@ -34,6 +36,16 @@ async function observeMedia(context: BrowserContext) {
       constructor(...args: ConstructorParameters<typeof AudioContext>) {
         super(...args);
         resources.contexts.push(this);
+      }
+    };
+    window.AudioWorkletNode = class extends AudioWorkletNode {
+      constructor(...args: ConstructorParameters<typeof AudioWorkletNode>) {
+        super(...args);
+        const record = { name: args[1], retired: false };
+        resources.worklets.push(record);
+        this.port.addEventListener("message", ({ data }) => {
+          if (data.type === "retired") record.retired = true;
+        });
       }
     };
     window.WebSocket = class extends WebSocket {
@@ -60,6 +72,7 @@ async function resources(page: Page) {
       openSockets: r.sockets.filter((s) => s.readyState !== WebSocket.CLOSED)
         .length,
       openPeers: r.peers.filter((p) => p.connectionState !== "closed").length,
+      processors: r.worklets.filter((w) => !w.retired).length,
       seat: sessionStorage.getItem("hmo-seat") !== null,
     };
   });
@@ -88,10 +101,7 @@ test("media resources are released after leaving and rejoining courts", async ({
     await Promise.all(contexts.map(observeMedia));
     const pages = await Promise.all(contexts.map((c) => c.newPage()));
     const [a, b] = pages;
-    const sessions = await Promise.all(
-      contexts.map((c, i) => c.newCDPSession(pages[i])),
-    );
-    await Promise.all(sessions.map((s) => s.send("DOM.enable")));
+    for (const page of pages) page.setDefaultTimeout(30000);
     const created: number[] = [];
     await Promise.all(
       pages.map((p, i) =>
@@ -109,8 +119,16 @@ test("media resources are released after leaving and rejoining courts", async ({
         const remaining = created.shift()! + 61000 - Date.now();
         if (remaining > 0) await a.waitForTimeout(remaining);
       }
+      const [reservation] = await Promise.all([
+        a.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname === "/api/rooms" &&
+            response.request().method() === "POST",
+        ),
+        a.getByRole("button", { name: "Create room", exact: true }).click(),
+      ]);
+      expect(reservation.ok()).toBe(true);
       created.push(Date.now());
-      await a.getByRole("button", { name: "Create room", exact: true }).click();
       const code = (
         await a.locator(".room-code b, .invite-code span").innerText()
       ).trim();
@@ -144,7 +162,13 @@ test("media resources are released after leaving and rejoining courts", async ({
       for (const r of acquired) {
         expect(r.liveTracks).toBe(2);
         expect(r.openAudio).toBe(1);
+        expect(r.processors).toBe(3);
         expect(r.openSockets).toBeGreaterThanOrEqual(3);
+      }
+      if (cycle === 2) {
+        await a.evaluate(() =>
+          window.courtResources.contexts.at(-1)!.suspend(),
+        );
       }
       for (const p of pages) {
         await p.getByRole("button", { name: "Leave", exact: true }).click();
@@ -154,6 +178,7 @@ test("media resources are released after leaving and rejoining courts", async ({
           .toEqual({
             liveTracks: 0,
             openAudio: 0,
+            processors: 0,
             openSockets: 0,
             openPeers: 0,
             seat: false,
@@ -175,28 +200,39 @@ test("media resources are released after leaving and rejoining courts", async ({
             const r = window.courtResources;
             for (const list of Object.values(r)) list.length = 0;
           });
-          // The scene can finish an in-flight frame after the menu becomes visible.
-          // A renderer-held lookup texture previously retained the whole retired court.
+          // A DOM agent assigns IDs to detached nodes that it observes. Use a fresh
+          // agent after GC on every observation so the test cannot retain its own samples.
+          let sample = { jsHeapBytes: 0, documents: 0, nodes: 0 };
           await expect
             .poll(async () => {
-              await sessions[i].send("HeapProfiler.collectGarbage");
-              const { detachedNodes } = await sessions[i].send(
-                "DOM.getDetachedDomNodes",
-              );
-              return detachedNodes.filter(({ treeNode }) => {
-                const attrs = treeNode.attributes || [];
-                const cls = attrs[attrs.indexOf("class") + 1] || "";
-                return /(?:^| )(room-scroll|title-layout|stage)(?: |$)/.test(
-                  cls,
+              const session = await contexts[i].newCDPSession(page);
+              try {
+                await session.send("HeapProfiler.collectGarbage");
+                const { usedSize } = await session.send("Runtime.getHeapUsage");
+                const { documents, nodes } = await session.send(
+                  "Memory.getDOMCounters",
                 );
-              }).length;
+                sample = { jsHeapBytes: usedSize, documents, nodes };
+                await session.send("DOM.enable");
+                const { detachedNodes } = await session.send(
+                  "DOM.getDetachedDomNodes",
+                );
+                return detachedNodes.filter(({ treeNode }) => {
+                  const attrs = treeNode.attributes || [];
+                  const cls = attrs.indexOf("class");
+                  return (
+                    cls >= 0 &&
+                    /(?:^| )(room-scroll|title-layout|stage)(?: |$)/.test(
+                      attrs[cls + 1],
+                    )
+                  );
+                }).length;
+              } finally {
+                await session.detach();
+              }
             })
             .toBe(0);
-          const { usedSize } = await sessions[i].send("Runtime.getHeapUsage");
-          const { documents, nodes } = await sessions[i].send(
-            "Memory.getDOMCounters",
-          );
-          return { jsHeapBytes: usedSize, documents, nodes };
+          return sample;
         }),
       );
       results.push({ cycle, acquired, retained });
