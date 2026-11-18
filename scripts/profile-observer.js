@@ -4,8 +4,7 @@ function installFrameObserver() {
   const cues = [];
   const done = [];
   window.gameInteractions = { cues, done };
-  function observeVisible(check, record) {
-    const received = performance.now();
+  function observeVisible(received, check, record) {
     const tick = () => {
       const now = performance.now();
       if (check()) record(now - received, performance.timeOrigin + now);
@@ -23,6 +22,7 @@ function installFrameObserver() {
         event.target.closest(".yield-button")
       )
         observeVisible(
+          performance.now(),
           () => !!document.querySelector(".turn-panel.is-settling"),
           (ms) => done.push(ms),
         );
@@ -34,7 +34,7 @@ function installFrameObserver() {
     if (typeof data === "string" && this.url.endsWith("/socket/control")) {
       if (!observedSockets.has(this)) {
         observedSockets.add(this);
-        this.addEventListener("message", ({ data }) => {
+        this.addEventListener("message", ({ data, timeStamp }) => {
           if (typeof data !== "string" || !data.includes('"floor_opened"'))
             return;
           const event = JSON.parse(data);
@@ -43,6 +43,9 @@ function installFrameObserver() {
             (p) => p.id === event.payload.playerId,
           );
           observeVisible(
+            // Client.onmessage ran first. The native event timestamp includes
+            // the synchronous parse, state update and subscriber work.
+            timeStamp,
             () => {
               const face = document.querySelector(".face.has-floor");
               return (
