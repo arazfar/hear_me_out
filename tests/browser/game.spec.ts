@@ -3226,6 +3226,7 @@ audioTest(
         conversation.every((sample: any) => sample.rms > 0.01),
         JSON.stringify({
           zero: conversation.filter((s: any) => s.rms <= 0.01).length,
+          firstQuietWindow: conversation.find((s: any) => s.rms <= 0.01),
           samples: conversation.length,
           min: Math.min(...conversation.map((s: any) => s.rms)),
           max: Math.max(...conversation.map((s: any) => s.rms)),
