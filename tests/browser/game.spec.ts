@@ -2795,6 +2795,7 @@ audioTest(
       await context.addInitScript(() => {
         const Socket = WebSocket;
         (window as any).__judgeSockets = [];
+        let mode = "connecting";
         const inspectPCM = (raw: unknown) => {
           if (
             !(raw instanceof ArrayBuffer) ||
@@ -2810,6 +2811,7 @@ audioTest(
           return {
             count,
             rms: Math.sqrt(squares / Math.max(1, count)),
+            at: Date.now(),
             age: Date.now() - view.getFloat64(17, true),
             purpose: view.getUint8(25),
           };
@@ -2830,6 +2832,15 @@ audioTest(
             if (String(args[0]).includes("/socket/judge"))
               (window as any).__judgeSockets.push(this);
             this.addEventListener("message", (event) => {
+              if (
+                this.url.endsWith("/socket/control") &&
+                typeof event.data === "string" &&
+                event.data.includes('"media_mode_changed"')
+              ) {
+                const message = JSON.parse(event.data);
+                if (message.type === "media_mode_changed")
+                  mode = message.payload.mode;
+              }
               const sample = inspectPCM(event.data);
               if (sample) {
                 const frames = (window as any).__receivedFrames;
@@ -2893,9 +2904,19 @@ audioTest(
           let peak = 1;
           for (let i = 2; i < spectrum.length; i++)
             if (spectrum[i] > spectrum[peak]) peak = i;
+          const rms = Math.sqrt(squares / pcm.length);
           (window as any).__conversation.push({
-            rms: Math.sqrt(squares / pcm.length),
+            at: Date.now(),
+            outputTime: output.context.currentTime,
+            mode,
+            rms,
             frequency: (peak * output.context.sampleRate) / pcm.length,
+            ...(rms <= 0.01 && {
+              gain: output.gain.gain.value,
+              context: output.context.state,
+              mic: (window as any).__micFrames.slice(),
+              received: (window as any).__receivedFrames.slice(),
+            }),
           });
           if ((window as any).__conversation.length > 1200)
             (window as any).__conversation.shift();
