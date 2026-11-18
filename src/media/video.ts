@@ -10,9 +10,10 @@ export class RelayVideo {
   lastProbe = 0;
   remoteFrame = false;
   private frameCanvas: HTMLCanvasElement | null = null;
+  private displayCanvas: HTMLCanvasElement | null = null;
   remoteFrameAt = 0;
   private pendingVideo: VideoPacket | null = null;
-  private decodingVideo = false;
+  private decodingGeneration: number | null = null;
   private videoGeneration = 0;
   remoteFrameSeq = 0;
   videoSeq = 0;
@@ -61,18 +62,31 @@ export class RelayVideo {
     canvas.height = 144;
     return canvas;
   }
-  /** Decode into the card itself. Keep the latest pixels when a card remounts. */
+  private paint(canvas: HTMLCanvasElement, source: CanvasImageSource) {
+    try {
+      const context = canvas.getContext("2d");
+      if (!context) return false;
+      context.drawImage(source, 0, 0, 256, 144);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  /** Decode into the card itself. Keep the latest successful paint across remounts. */
   attachDisplay(canvas: HTMLCanvasElement) {
-    if (this.remoteFrame && this.frameCanvas)
-      canvas.getContext("2d")!.drawImage(this.frameCanvas, 0, 0);
-    this.frameCanvas = canvas;
+    this.displayCanvas = canvas;
+    if (
+      this.remoteFrame &&
+      this.frameCanvas &&
+      this.paint(canvas, this.frameCanvas)
+    )
+      this.frameCanvas = canvas;
     return () => {
-      if (this.frameCanvas !== canvas) return;
-      this.frameCanvas = null;
-      if (this.remoteFrame) {
-        this.frameCanvas = this.createFrameCanvas();
-        this.frameCanvas.getContext("2d")!.drawImage(canvas, 0, 0);
-      }
+      if (this.displayCanvas !== canvas) return;
+      this.displayCanvas = null;
+      if (!this.remoteFrame || this.frameCanvas !== canvas) return;
+      const saved = this.createFrameCanvas();
+      if (this.paint(saved, canvas)) this.frameCanvas = saved;
     };
   }
   resetVideo() {
@@ -95,14 +109,14 @@ export class RelayVideo {
     return this.decodePending();
   }
   private async decodePending() {
-    if (this.decodingVideo) return;
-    this.decodingVideo = true;
+    const generation = this.videoGeneration;
+    if (this.decodingGeneration === generation) return;
+    this.decodingGeneration = generation;
     try {
-      while (this.pendingVideo) {
+      while (generation === this.videoGeneration && this.pendingVideo) {
         const frame = this.pendingVideo;
         this.pendingVideo = null;
         if (!this.canProcessFrames) continue;
-        const generation = this.videoGeneration;
         let bitmap: ImageBitmap | null = null;
         try {
           bitmap = await createImageBitmap(
@@ -115,8 +129,10 @@ export class RelayVideo {
             frame.seq <= this.remoteFrameSeq
           )
             continue;
-          this.frameCanvas ||= this.createFrameCanvas();
-          this.frameCanvas.getContext("2d")!.drawImage(bitmap, 0, 0, 256, 144);
+          const target =
+            this.displayCanvas || this.frameCanvas || this.createFrameCanvas();
+          if (!this.paint(target, bitmap)) continue;
+          this.frameCanvas = target;
           const firstFrame = !this.remoteFrame;
           this.remoteFrameSeq = frame.seq;
           this.remoteFrame = true;
@@ -134,7 +150,8 @@ export class RelayVideo {
         }
       }
     } finally {
-      this.decodingVideo = false;
+      if (this.decodingGeneration === generation)
+        this.decodingGeneration = null;
     }
   }
   private async probe(frame: VideoPacket) {
@@ -178,7 +195,7 @@ export class RelayVideo {
   stop() {
     this.stopCamera();
     this.resetVideo();
-    this.frameCanvas = null;
+    this.frameCanvas = this.displayCanvas = null;
     this.localFrames = 0;
     this.localTime = -1;
     this.lastProbe = 0;
