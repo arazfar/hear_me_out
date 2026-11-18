@@ -118,7 +118,17 @@ async function measure(
     ]);
     for (const session of sessions) await session.send("Performance.enable");
     await a.bringToFront();
-    await a.goto("data:text/html,<title>Idle cadence</title>");
+    // Keep the renderer warm for continuous counters, and every game asset cold.
+    const idleUrl = url + "/__profile-idle";
+    await a.route(idleUrl, (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        headers: { "cache-control": "no-store" },
+        body: '<!doctype html><title>Idle cadence</title><link rel="icon" href="data:,">',
+      }),
+    );
+    await a.goto(idleUrl);
+    await a.unroute(idleUrl);
     const idle = await sampleFrames(a, sessions[0], () => delay(1800));
     let readyMs = 0;
     const coldTitle = await sampleFrames(

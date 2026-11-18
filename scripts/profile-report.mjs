@@ -13,6 +13,7 @@ assert(
 );
 
 const scenarios = [
+  ["coldTitle", "Cold title"],
   ["activeCase", "Active Case"],
   ["awardBurst", "14 awards"],
   ["alignedJudge", "Aligned judge"],
@@ -84,20 +85,22 @@ function eligible([a, b], stage) {
 }
 
 const metrics = [
+  ["Frame intervals (count)", (s) => s.frames],
+  ["Frame p50 (ms)", (s) => s.p50Ms],
   ["Frame p95 (ms)", (s) => s.p95Ms],
   ["Frame p99 (ms)", (s) => s.p99Ms],
   ["Worst frame (ms)", (s) => s.worstMs],
   ["Frames >50 ms (count)", (s) => s.hitchesOver50Ms],
   ["Window (s)", (s) => s.durationMs / 1000],
-  [
-    "Renderer task (ms/s)",
-    (s) => (s.taskMs == null ? null : (1000 * s.taskMs) / s.durationMs),
-  ],
-  [
-    "Renderer script (ms/s)",
-    (s) => (s.scriptMs == null ? null : (1000 * s.scriptMs) / s.durationMs),
-  ],
+  ["Renderer task (ms/s)", (s) => cpuRate(s, s.taskMs)],
+  ["Renderer script (ms/s)", (s) => cpuRate(s, s.scriptMs)],
 ];
+
+function cpuRate(sample, ms) {
+  // Captures predating counterDurationMs only recorded the frame window.
+  const elapsed = sample.counterDurationMs ?? sample.durationMs;
+  return Number.isFinite(ms) && elapsed > 0 ? (1000 * ms) / elapsed : null;
+}
 
 const latencyNames = {
   cue: "Floor receipt → visible cue (per seat)",
@@ -228,7 +231,7 @@ line(
   `${report.cpu}, ${fmt(report.ramBytes / 2 ** 30)} GiB, ${report.os}, Node ${report.node}. Synthetic loopback, 1280×720 CSS pixels. CPU profiler ${report.cpuProfile ? "on" : "off"}.\n`,
 );
 line(
-  "Frame rows show the median [min, max] across paired runs. Per-run p95 and p99 use foreground animation-frame intervals. Renderer task and script are main-thread durations per elapsed second. Paired Δ is candidate minus baseline for eligible same-round pairs. It describes the observed spread without a significance test.\n",
+  "Frame rows show the median [min, max] across paired runs. Per-run percentiles use foreground animation-frame intervals. Renderer task and script are main-thread durations per elapsed counter second. Earlier captures use the recorded frame window. Paired Δ is candidate minus baseline for eligible same-round pairs. It describes the observed spread without a significance test.\n",
 );
 line(
   "Eligibility requires matching Chrome, foreground seat, renderer, backing size, DPR and stable quality tier with idle median cadence within 10% of baseline. Cold-title eligibility compares the final tier.\n",
@@ -255,9 +258,9 @@ for (const [transport, rounds] of transports) {
   );
   for (const configuration of configurations) line(configuration + ".\n");
   line(
-    "| Round | Idle median ms, baseline → candidate | Quality, baseline → candidate (Case / awards / judge) | Eligible scenarios |",
+    "| Round | Idle median ms, baseline → candidate | Quality, baseline → candidate (title / Case / awards / judge) | Title CPU counters, baseline → candidate | Eligible scenarios |",
   );
-  line("|---:|---|---|---|");
+  line("|---:|---|---|---|---|");
   for (const [round, pair] of entries) {
     const [a, b] = pair;
     const describe = (f) =>
@@ -267,12 +270,12 @@ for (const [transport, rounds] of transports) {
     );
     const accepted =
       a && b
-        ? [["coldTitle", "Title"], ...scenarios]
+        ? scenarios
             .filter(([stage]) => eligible(pair, stage))
             .map(([, name]) => name)
         : [];
     line(
-      `| ${round} | ${describe((r) => fmt(r.idle.p50Ms))} | ${tiers} | ${accepted.join(", ") || "None"} |`,
+      `| ${round} | ${describe((r) => fmt(r.idle.p50Ms))} | ${tiers} | ${describe((r) => r.coldTitle.counterStatus ?? "unmeasured")} | ${accepted.join(", ") || "None"} |`,
     );
   }
   if (!pairs.length) {

@@ -29,7 +29,7 @@ declare global {
   }
 }
 
-async function durations(session: CDPSession) {
+async function durations(session: CDPSession): Promise<Record<string, number>> {
   const { metrics } = await session.send("Performance.getMetrics");
   return Object.fromEntries(
     metrics.map(({ name, value }: { name: string; value: number }) => [
@@ -45,13 +45,38 @@ export async function sampleFrames(
   run: () => Promise<void>,
   navigation = false,
 ) {
-  const before = navigation ? undefined : await durations(session);
+  const isolateBefore = navigation
+    ? (await session.send("Runtime.getIsolateId")).id
+    : undefined;
+  const before = await durations(session);
   if (!navigation) await page.evaluate(() => window.gameFrameObserver.start());
   await run();
   const sample = await page.evaluate(() => window.gameFrameObserver.finish());
-  const after = navigation ? undefined : await durations(session);
+  const after = await durations(session);
+  const isolateAfter = navigation
+    ? (await session.send("Runtime.getIsolateId")).id
+    : undefined;
+  const counters = [
+    "Timestamp",
+    "TaskDuration",
+    "ScriptDuration",
+    "LayoutDuration",
+  ];
+  let counterStatus = "ok";
+  if (isolateBefore !== isolateAfter) counterStatus = "renderer changed";
+  else if (
+    counters.some(
+      (key) => !Number.isFinite(before[key]) || !Number.isFinite(after[key]),
+    )
+  )
+    counterStatus = "counter missing";
+  else if (
+    after.Timestamp === before.Timestamp ||
+    counters.some((key) => after[key] < before[key])
+  )
+    counterStatus = "counter reset";
   const delta = (name: string) =>
-    before && after ? (after[name] - before[name]) * 1000 : null;
+    counterStatus === "ok" ? (after[name] - before[name]) * 1000 : null;
   const sorted = [...sample.intervals].sort((a, b) => a - b);
   if (!sorted.length || sample.hidden)
     throw Error("The measured page did not produce visible frames.");
@@ -64,6 +89,8 @@ export async function sampleFrames(
     p99Ms: percentile(0.99),
     worstMs: sorted.at(-1)!,
     hitchesOver50Ms: sorted.filter((n) => n > 50).length,
+    counterStatus,
+    counterDurationMs: delta("Timestamp"),
     taskMs: delta("TaskDuration"),
     scriptMs: delta("ScriptDuration"),
     layoutMs: delta("LayoutDuration"),
