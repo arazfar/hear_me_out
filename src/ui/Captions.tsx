@@ -220,6 +220,23 @@ function TranscriptReader({ text }: { text: string }) {
       tabIndex={0}
       role="region"
       aria-label="Full transcript"
+      onKeyDown={(event) => {
+        if (
+          event.altKey ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.shiftKey ||
+          (event.key !== "Home" && event.key !== "End")
+        )
+          return;
+        // Apply these navigation keys to the focused reader inside the modal.
+        event.preventDefault();
+        const reader = event.currentTarget;
+        reader.scrollTo({
+          top: event.key === "Home" ? 0 : reader.scrollHeight,
+          behavior: "instant",
+        });
+      }}
     >
       <p>{text}</p>
     </div>

@@ -2862,19 +2862,34 @@ audioTest(
         const Original = window.AudioWorkletNode;
         (window as any).__judgeRender = [];
         (window as any).__captionSamples = [];
+        let judgeContext: AudioContext | undefined;
         let cursor = { epoch: 0, samples: 0 };
         setInterval(() => {
           const active = document.querySelector<HTMLElement>(
             ".spoken-word[data-cue-start]",
           );
-          if (active)
+          if (active && judgeContext) {
+            const at = performance.now();
+            const stamp = judgeContext.getOutputTimestamp?.();
+            // A cursor arrives from the render thread ahead of the speaker.
+            // Capture the device's clock at the same observation as the DOM.
+            const outputTime =
+              stamp?.contextTime && stamp.performanceTime
+                ? stamp.contextTime + (at - stamp.performanceTime) / 1000
+                : judgeContext.currentTime -
+                  Math.max(
+                    judgeContext.outputLatency || 0,
+                    judgeContext.baseLatency || 0,
+                  );
             (window as any).__captionSamples.push({
-              at: performance.now(),
+              at,
+              outputTime,
               ...cursor,
               start: Number(active.dataset.cueStart),
               end: Number(active.dataset.cueEnd),
               text: active.textContent,
             });
+          }
           if ((window as any).__captionSamples.length > 1200)
             (window as any).__captionSamples.shift();
         }, 100);
@@ -2885,7 +2900,8 @@ audioTest(
             options?: AudioWorkletNodeOptions,
           ) {
             super(context, name, options);
-            if (name === "judge-playback")
+            if (name === "judge-playback") {
+              judgeContext = context as AudioContext;
               this.port.addEventListener("message", (event) => {
                 if (event.data.type === "cursor") cursor = event.data;
                 if (event.data.type === "rendering")
@@ -2901,6 +2917,7 @@ audioTest(
                 if ((window as any).__judgeRender.length > 512)
                   (window as any).__judgeRender.shift();
               });
+            }
           }
         };
       });
@@ -2943,6 +2960,22 @@ audioTest(
       ),
     );
     const code = (courtCode = await enter(a, b, baseURL!));
+    // Check and expose controls before starting the time-limited audio line.
+    // On WebKit a focus transfer and separate button actionability waits can
+    // otherwise outlast playback before the mute click is dispatched.
+    await openMedia(b);
+    await expect(
+      b.getByRole("button", { name: "Mic on", exact: true }),
+    ).toBeEnabled();
+    await closeMedia(b);
+    await a.bringToFront();
+    await openMedia(a);
+    await expect(
+      a.getByRole("button", { name: "Mic on", exact: true }),
+    ).toBeEnabled();
+    const bonkControl = a.getByRole("button", { name: /^Bonk & effects / });
+    await expect(bonkControl).toHaveAttribute("aria-pressed", "true");
+    await expect(a.locator(".turn-label")).toHaveCount(0);
     const response = await request.post("/__test/voice/" + code, {
       data: { aligned: true },
     });
@@ -2961,25 +2994,13 @@ audioTest(
     await expect(a.locator(".caption-heading .caption-status")).toHaveText(
       "Speaking",
     );
-    await openMedia(a);
-    await openMedia(b);
-    await expect(
-      a.getByRole("button", { name: "Mic on", exact: true }),
-    ).toBeEnabled();
-    await expect(
-      b.getByRole("button", { name: "Mic on", exact: true }),
-    ).toBeEnabled();
-
-    await expect(a.locator(".turn-label")).toHaveCount(0);
-    await openMedia(a);
-    // Bonk mute is gain-only: completion must still account for the full utterance.
-    const bonkControl = a.getByRole("button", { name: /^Bonk & effects / });
-    await expect(bonkControl).toBeVisible();
+    // The peer keeps audible alignment while this player switches to full text.
     await bonkControl.click();
-    await a.keyboard.press("Escape");
+    await expect(bonkControl).toHaveAttribute("aria-pressed", "false");
     await expect(a.locator(".judge-caption .caption-text")).toHaveText(
       "Every last syllable gets its day in court. Case closed.",
     );
+    await a.keyboard.press("Escape");
     await expect
       .poll(async () => (await snapshot(request, code)).judge?.status, {
         timeout: 20000,
@@ -2993,24 +3014,54 @@ audioTest(
           .map((e: any) => e.samples),
       ).toEqual([samples]);
     }
-    const captionSamples = await b.evaluate(
-      () => (window as any).__captionSamples,
-    );
+    const { captionSamples, renderEvents } = await b.evaluate(() => ({
+      captionSamples: (window as any).__captionSamples as {
+        epoch: number;
+        samples: number;
+        start: number;
+        end: number;
+        text: string;
+        outputTime: number;
+      }[],
+      renderEvents: (window as any).__judgeRender as {
+        epoch: number;
+        samples: number;
+        type: string;
+        contextTime: number;
+      }[],
+    }));
     const alignedSamples = captionSamples.filter(
-      (sample: any) => sample.epoch === epoch,
+      (sample) => sample.epoch === epoch,
     );
     expect(
-      new Set(alignedSamples.map((sample: any) => sample.text)).size,
+      new Set(alignedSamples.map((sample) => sample.text)).size,
     ).toBeGreaterThanOrEqual(8);
-    // Worklet processing can lead device output slightly; allow 150 ms for output
-    // latency and the scoped caption animation frame, never wall-clock guessing.
+    // Reconstruct the audible position independently from worklet start, stall
+    // and drain events. The fixed-rate source advances only while rendering.
+    const boundaries = renderEvents
+      .filter((event) => event.epoch === epoch && event.type !== "ready")
+      .reverse();
+    const outsideTolerance = alignedSamples.flatMap((sample) => {
+      const boundary = boundaries.find(
+        (event) => event.contextTime <= sample.outputTime,
+      );
+      const outputSamples =
+        boundary?.type === "rendering"
+          ? Math.min(
+              samples,
+              boundary.samples +
+                Math.floor((sample.outputTime - boundary.contextTime) * 44100),
+            )
+          : (boundary?.samples ?? 0);
+      return outputSamples < sample.start - 6615 ||
+        outputSamples > sample.end + 6615
+        ? [{ ...sample, outputSamples }]
+        : [];
+    });
     expect(
-      alignedSamples.every(
-        (sample: any) =>
-          sample.samples >= sample.start - 6615 &&
-          sample.samples <= sample.end + 6615,
-      ),
-    ).toBe(true);
+      outsideTolerance,
+      "Highlighted words within 150 ms of device output",
+    ).toEqual([]);
     const timeline = await (
       await request.post("/__test/timeline/" + code)
     ).json();
