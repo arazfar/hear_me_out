@@ -2998,28 +2998,6 @@ audioTest(
       });
     const a = await aContext.newPage(),
       b = await bContext.newPage();
-    let held = false,
-      released = false;
-    // Delay an ordered middle burst for one second, preserving message order.
-    await b.routeWebSocket("**/socket/judge", (ws) => {
-      const server = ws.connectToServer();
-      const queue: (string | Buffer)[] = [];
-      server.onMessage((message) => {
-        const pcm = typeof message !== "string" && message[0] === 2;
-        if (!released && pcm && message.readUInt32LE(5) >= 45) {
-          queue.push(message);
-          if (!held) {
-            held = true;
-            setTimeout(() => {
-              released = true;
-              for (const packet of queue) ws.send(packet);
-              queue.length = 0;
-            }, 1000);
-          }
-        } else if (held && !released) queue.push(message);
-        else ws.send(message);
-      });
-    });
     let courtCode: string | undefined;
     let failed = true;
     audioCleanup(() =>
@@ -3051,8 +3029,11 @@ audioTest(
     const bonkControl = a.getByRole("button", { name: /^Bonk & effects / });
     await expect(bonkControl).toHaveAttribute("aria-pressed", "true");
     await expect(a.locator(".turn-label")).toHaveCount(0);
+    const delaySeat = await b.evaluate(
+      () => JSON.parse(sessionStorage.getItem("hmo-seat")!).playerId,
+    );
     const response = await request.post("/__test/voice/" + code, {
-      data: { aligned: true },
+      data: { aligned: true, delaySeat },
     });
     expect(response.ok()).toBe(true);
     const { epoch, samples } = await response.json();
@@ -3140,6 +3121,13 @@ audioTest(
     const timeline = await (
       await request.post("/__test/timeline/" + code)
     ).json();
+    const delayed = timeline.filter(
+      (e: any) =>
+        e.stage === "fixture_judge_burst_released" && e.speechEpoch === epoch,
+    );
+    expect(delayed).toHaveLength(1);
+    expect(delayed[0].delayMs).toBeGreaterThanOrEqual(990);
+    expect(delayed[0].packets).toBeGreaterThan(1);
     const complete = timeline.filter(
       (e: any) => e.stage === "render_complete" && e.speechEpoch === epoch,
     );

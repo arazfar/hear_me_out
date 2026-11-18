@@ -1,7 +1,9 @@
 /** Local-only browser acceptance server. Never loaded by the production entrypoint. */
 import { randomUUID } from "node:crypto";
+import type WebSocket from "ws";
 import { createApp } from "../server/app";
 import { CRITERIA, snapshotSchema } from "../shared/domain";
+import { decodeJudgeAudio } from "../shared/media";
 import type { GameEvent } from "../shared/protocol";
 import { PreparedVoice } from "../server/judge/voice-cache";
 import { services } from "../tests/fixtures";
@@ -143,11 +145,58 @@ runtime.app.post("/__test/state/:code", (req, res) => {
 runtime.app.post("/__test/timeline/:code", (req, res) => {
   res.json(runtime.registry.rooms.get(req.params.code)?.timeline || []);
 });
+
+/** Hold one seat's middle burst at the socket, preserving packet and callback order. */
+function delayJudgeBurst(
+  socket: WebSocket,
+  released: (epoch: number, count: number, ms: number) => void,
+) {
+  const original = socket.send;
+  const pending: (() => void)[] = [];
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const restore = () => {
+    clearTimeout(timer);
+    socket.send = original;
+    socket.off("close", restore);
+    pending.length = 0;
+  };
+  socket.once("close", restore);
+  socket.send = (...args) => {
+    const deliver = () => Reflect.apply(original, socket, args);
+    if (timer) {
+      pending.push(deliver);
+      return;
+    }
+    const data = args[0];
+    const frame = data instanceof Uint8Array ? decodeJudgeAudio(data) : null;
+    if (!frame || frame.seq !== 45) return deliver();
+    const start = performance.now();
+    pending.push(deliver);
+    timer = setTimeout(() => {
+      const batch = pending.splice(0);
+      restore();
+      for (const send of batch) send();
+      released(frame.epoch, batch.length, performance.now() - start);
+    }, 1000);
+  };
+}
+
 runtime.app.post("/__test/voice/:code", (req, res) => {
   const room = runtime.registry.rooms.get(req.params.code);
   if (!room || room.playback.speech) {
     res.status(409).end();
     return;
+  }
+  if (req.body?.delaySeat) {
+    const socket = room.seats.get(req.body.delaySeat)?.sockets.get("judge");
+    if (!socket) return res.status(409).end();
+    delayJudgeBurst(socket, (speechEpoch, packets, delayMs) => {
+      room.trace("fixture_judge_burst_released", {
+        speechEpoch,
+        packets,
+        delayMs,
+      });
+    });
   }
   const samples = 44100 * 9 + 13;
   const text = "Every last syllable gets its day in court. Case closed.";

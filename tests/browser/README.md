@@ -33,6 +33,8 @@ CI treats a pass after retry as a failed check (`failOnFlakyTests`); retries ret
 
 Long-playback tests attach bounded caption cursor samples, render events, current fixture state, server timeline, and failure screenshots in test-scoped fixture teardown, before closing contexts. The fixture has its own 10-second teardown budget so a test-body timeout cannot dispose browser/request resources before evidence is collected. Continuous media traces remain disabled in CI. Fixture updates await App subscription; font and post-resize geometry settle before face-position baselines. Rematch checks require a new match ID, coin event, and reset totals, and accept either the coin phase or its valid topic successor. Exact audio sample counts and the 150 ms caption tolerance remain unchanged.
 
+The asymmetric playback scenario holds the second seat's judge socket at packet 45 for one second inside the loopback fixture. The fixture releases queued packets in order and records the hold duration. Both browsers use their native sockets throughout. Quiet friend-output windows retain the output clock, transport, gain and recent microphone and receive timestamps for diagnosis.
+
 `pnpm test:browser-diagnostics` launches an isolated real Chrome/Playwright subprocess with intentional assertion and test-timeout failures. The outer check passes only when both failures retain valid sample/state/timeline/screenshot attachments and context cleanup completes. It uses synthetic data and runs once in the normal CI `rtc` job; reports are retained under `output/browser-diagnostics/`. It does not require provider credentials or count as gameplay/provider qualification.
 
 ## Coverage
