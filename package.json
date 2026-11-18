@@ -15,6 +15,7 @@
     "verify:judge": "tsx scripts/judge-check.ts",
     "verify:match": "tsx scripts/socket-check.ts",
     "verify:idle": "tsx scripts/idle-check.ts",
+    "profile:game": "tsx scripts/profile-game.ts",
     "test:ui": "playwright test",
     "test:browser-diagnostics": "node --test tests/browser-diagnostics.test.mjs",
     "ui:review": "node tools/ui-review/server.mjs",
