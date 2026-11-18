@@ -72,12 +72,13 @@ export function validateMatrix(report) {
   );
   for (const tag of caseTags) {
     for (const project of projects) {
-      assert.equal(
-        tests.filter(
-          (test) => test.projectName === project && test.tags.includes(tag),
-        ).length,
-        1,
-        `Expected one ${tag} in ${project}`,
+      const matches = tests.filter(
+        (test) => test.projectName === project && test.tags.includes(tag),
+      );
+      assert.equal(matches.length, 1, `Expected one ${tag} in ${project}`);
+      assert(
+        !matches[0].tags.includes("@rtc-only"),
+        `Required case ${tag} must run on both transports`,
       );
     }
   }
@@ -107,7 +108,8 @@ export function validateRepeat(report, project) {
 }
 
 export function validateResults(discovered, completed) {
-  const key = (test) => `${test.projectName}:${test.id}`;
+  const key = (test) =>
+    JSON.stringify([test.projectName, test.id, [...test.tags].sort()]);
   const expected = reportRows(discovered);
   const actual = reportRows(completed);
   assert.deepEqual(

@@ -45,6 +45,12 @@ test("the browser matrix depends on tags and catches omitted project coverage", 
     cases.map((name) => spec(project, `case-${name}`)),
   );
   validateMatrix(report(specs));
+  const markedDesktopOnly = structuredClone(specs);
+  markedDesktopOnly[0].tags.push("rtc-only");
+  assert.throws(
+    () => validateMatrix(report(markedDesktopOnly)),
+    /must run on both transports/,
+  );
   assert.throws(
     () => validateMatrix(report(specs.slice(1))),
     /Expected one @case-match in rtc/,
