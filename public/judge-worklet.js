@@ -2,9 +2,15 @@
 class JudgePlayback extends AudioWorkletProcessor {
   constructor() {
     super();
+    this.retiring = false;
     this.pcm = new Float32Array(44100 * 20);
     this.reset(0);
     this.port.onmessage = ({ data }) => {
+      if (data.type === "retire") {
+        this.retiring = true;
+        return;
+      }
+      if (this.retiring) return;
       if (data.type === "reset") {
         this.reset(data.epoch);
         return;
@@ -50,6 +56,14 @@ class JudgePlayback extends AudioWorkletProcessor {
     });
   }
   process(_inputs, outputs) {
+    if (this.retiring) {
+      if (this.port.onmessage) {
+        this.port.postMessage({ type: "retired" });
+        this.port.onmessage = null;
+        this.port.close();
+      }
+      return false;
+    }
     const out = outputs[0][0];
     out.fill(0);
     if (!this.epoch || this.complete) return true;

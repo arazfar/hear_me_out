@@ -32,7 +32,7 @@ export function PlayerCard({
   const [award, setAward] = useState<AwardNotice | null>(null);
   const [winPulse, setWinPulse] = useState(false);
   const [announcement, setAnnouncement] = useState("");
-  const version = useMediaVersion();
+  const mediaVersion = useMediaVersion();
   const active =
     !client.reconnecting &&
     judgeIsListening(state, player?.id || null) &&
@@ -73,12 +73,18 @@ export function PlayerCard({
     if (!video.current) return;
     if (video.current.srcObject !== media) video.current.srcObject = media;
     video.current.muted = muted;
-    if (media) void video.current.play().catch(() => {});
-    if (showRelay && relayCanvas.current && client.video.remoteCanvas)
+    if (media && video.current.paused)
+      void video.current.play().catch(() => {});
+  }, [media, muted, showVideo, mediaVersion]);
+  useEffect(() => {
+    if (
+      !local &&
+      player?.id &&
+      state.mediaMode === "wss" &&
       relayCanvas.current
-        .getContext("2d")
-        ?.drawImage(client.video.remoteCanvas, 0, 0, 256, 144);
-  }, [media, muted, showRelay, version]);
+    )
+      return client.video.attachDisplay(relayCanvas.current);
+  }, [local, player?.id, state.mediaMode]);
   useEffect(() => {
     const timers = new Set<ReturnType<typeof setTimeout>>();
     const queue = new AwardQueue();

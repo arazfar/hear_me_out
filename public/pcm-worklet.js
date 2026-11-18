@@ -1,6 +1,7 @@
 class PCM extends AudioWorkletProcessor {
   constructor() {
     super();
+    this.retiring = false;
     this.phase = 0;
     this.sum = 0;
     this.count = 0;
@@ -11,6 +12,11 @@ class PCM extends AudioWorkletProcessor {
     this.endsAt = null;
     this.firstAt = 0;
     this.port.onmessage = ({ data }) => {
+      if (data.type === "retire") {
+        this.retiring = true;
+        return;
+      }
+      if (this.retiring) return;
       if (data.type === "clock") {
         // Device clocks can drift or pause independently of the server clock.
         // Finish the old timestamped frame before changing the mapping; keep
@@ -81,6 +87,14 @@ class PCM extends AudioWorkletProcessor {
       this.port.postMessage({ type: "end", ...this.tag, capturedAt: at, done });
   }
   process(inputs) {
+    if (this.retiring) {
+      if (this.port.onmessage) {
+        this.port.postMessage({ type: "retired" });
+        this.port.onmessage = null;
+        this.port.close();
+      }
+      return false;
+    }
     const input = inputs[0]?.[0];
     if (!input) return true;
     for (let i = 0; i < input.length; i++) {

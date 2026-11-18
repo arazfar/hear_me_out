@@ -46,8 +46,8 @@ this setting if adding another proxy or changing ingress topology.
 
 1. Confirm **Auto-Deploy** is **Off** in the Render service settings and in the Blueprint. Land changes through a PR with GitHub's `verify` check.
 2. On an interactive Apple silicon Mac, check out the full SHA from `main` using the pinned Node and pnpm. Run `pnpm verify:release --sha <full-sha>`. The command builds and tests in its own detached worktree. Run it again for a different release SHA.
-3. Run the [live-provider and physical-device checks](AUDIO_ACCEPTANCE.md#physicallive-provider-qualification) for that SHA, and save the provider smoke and signed-off reports as described below.
-4. Run `pnpm release:check --sha <full-sha>` with GitHub CLI authenticated. The command checks the GitHub push and all release evidence. Once it prints eligibility, the release owner chooses **Manual Deploy → Deploy a specific commit** in Render. Verify the exact commit in Deploys and confirm `/readyz` succeeds.
+3. Run the live-provider smoke check for that SHA and save its report as described below.
+4. Run `pnpm release:check --sha <full-sha>` with GitHub CLI authenticated. The command checks the Linux push run, the full local browser qualification, and the live-provider smoke report for that SHA. Once it prints eligibility, the release owner chooses **Manual Deploy → Deploy a specific commit** in Render. Verify the exact commit in Deploys and confirm `/readyz` succeeds.
 
 Live-provider tests consume API usage and require keys in the process environment
 or a local ignored `.env`. From the clean candidate checkout, save the JSON output of
@@ -57,24 +57,7 @@ or a local ignored `.env`. From the clean candidate checkout, save the JSON outp
 match checks. Keep `EXPORT_REHEARSAL` unset. Synthetic checks do not establish
 physical microphone/speaker quality or performance across two real networks.
 
-Save each physical session's generated audio report as a distinct JSON file in the
-same directory. After reviewing the evidence, the release owner creates `physical.json`
-with the full SHA, their name, approval timestamp, and the report filenames and device
-pairs. Use the codes `desktop-chrome`, `android-chrome`, and `iphone-safari`. List
-each of the three pairings on RTC and WSS, with at least 100 paired judge utterances
-per transport across their sessions. For example, this is one session entry in an
-otherwise incomplete sign-off.
-
-```json
-{
-  "sha": "0000000000000000000000000000000000000000",
-  "approvedBy": "Release owner",
-  "approvedAt": "2026-11-18T12:00:00Z",
-  "sessions": [
-    { "report": "rtc-desktop-iphone.json", "platforms": ["desktop-chrome", "iphone-safari"] }
-  ]
-}
-```
+For acoustic, device, or real-network investigations, use the [optional physical-device diagnostics](AUDIO_ACCEPTANCE.md#optional-physical-device-diagnostics).
 
 In Render, inspect Deploys and Logs after release. Free compute does not expose
 CPU/RAM usage graphs, so passing smoke checks does not establish capacity headroom.
@@ -102,7 +85,7 @@ The Blueprint omits `maxShutdownDelaySeconds`: Render rejects that setting on Fr
 
 Release the scoring/deadline, worklet-cache, and lobby-lease changes as one matching client/server build between matches. Judge scores now publish per completed, validated batch; monitor `scoringMs`, `judgment_timeout`, and other `judgment_*` counters during provider qualification. Logical judging has one 12-second budget including retry. Lobby reservations and disconnected seats expire after 60 seconds; authenticated control/audio/video connections retain their seat while permissions are pending. Active-match recovery limits and finished verdict retention are unchanged.
 
-All three stable worklet URLs are served and fetched with `no-store`; fingerprinted assets retain caching. Validate both a warm-cache upgrade and rollback with an ordinary refresh. Rolling back to a build predating this cache fix restores its old caching policy, so require a hard refresh if that build serves stale worklets. Complete local regression repetition and physical/provider qualification before release.
+All three stable worklet URLs are served and fetched with `no-store`; fingerprinted assets retain caching. Validate both a warm-cache upgrade and rollback with an ordinary refresh. Rolling back to a build predating this cache fix restores its old caching policy, so require a hard refresh if that build serves stale worklets. Complete local browser qualification and the live-provider smoke check before release.
 
 ## Free-tier limits
 

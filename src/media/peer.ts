@@ -64,6 +64,13 @@ export class PeerMedia {
     this.remote = null;
     this.remoteFrames = 0;
   }
+  leave() {
+    this.reset();
+    this.pendingCandidates = [];
+    this.pendingSignals = [];
+    this.ice = null;
+    this.iceOwner = "";
+  }
   syncAudio() {
     const sender = this.audioSender;
     if (!sender) return this.audioSync;

@@ -1,5 +1,5 @@
 import type { Client } from "../game/client";
-import { loadWorklet } from "./worklet";
+import { loadWorklet, retireWorklet } from "./worklet";
 
 type Initialization = {
   controller: AbortController;
@@ -32,8 +32,47 @@ export class AudioOutput {
     return Math.sqrt(total / 128);
   }
   private initialization: Initialization | null = null;
+  private retirements = new Set<Promise<void>>();
+  retire(node: AudioWorkletNode | null) {
+    if (!node) return Promise.resolve();
+    const group = this.retirements;
+    const done = retireWorklet(node);
+    group.add(done);
+    void done.then(() => group.delete(done));
+    return done;
+  }
   cancelInitialization() {
     this.initialization?.controller.abort(new Error("Setup cancelled."));
+  }
+  async close(captureRetired = Promise.resolve()) {
+    this.cancelInitialization();
+    this.stopEffects();
+    const context = this.context;
+    const outputs = [this.judgeGain, this.peerGain, this.effectsGain];
+    for (const gain of outputs) {
+      if (!gain || !context) continue;
+      gain.gain.cancelScheduledValues(context.currentTime);
+      gain.gain.setValueAtTime(0, context.currentTime);
+    }
+    void this.retire(this.judgePlayback);
+    void this.retire(this.peerPlayback);
+    // Include staged and replaced graphs that belong to this context.
+    const retired = Promise.all([captureRetired, ...this.retirements]);
+    this.retirements = new Set();
+    const analyser = this.analyser;
+    this.peerPlayback = this.judgePlayback = null;
+    this.peerGain = this.judgeGain = this.effectsGain = null;
+    this.analyser = null;
+    this.context = null;
+    this.effectAt = -Infinity;
+    this.speechUntil = 0;
+    if (context && context.state !== "running" && context.state !== "closed")
+      void context.resume().catch(() => {});
+    await retired;
+    for (const gain of outputs) gain?.disconnect();
+    analyser?.disconnect();
+    if (context && context.state !== "closed")
+      await context.close().catch(() => {});
   }
   unlock() {
     if (this.initialization) {
@@ -53,7 +92,7 @@ export class AudioOutput {
         clearTimeout(deadline);
         clearTimeout(attempt.resumeTimeout);
         attempt.controller.signal.removeEventListener("abort", cancelled);
-        attempt.playback?.disconnect();
+        if (attempt.playback) void this.retire(attempt.playback);
         if (this.initialization === attempt) this.initialization = null;
         error ? reject(error) : resolve();
       };

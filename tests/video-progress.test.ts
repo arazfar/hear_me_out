@@ -9,6 +9,7 @@ test("a delayed frame callback cannot count a cached decoder frame twice", (t) =
   const saved = Object.getOwnPropertyDescriptor(globalThis, "document");
   let decoded = 0;
   const videos: { callback?: VideoFrameRequestCallback }[] = [];
+  const cancelled: number[] = [];
   Object.defineProperty(globalThis, "document", {
     configurable: true,
     value: {
@@ -20,7 +21,9 @@ test("a delayed frame callback cannot count a cached decoder frame twice", (t) =
           getVideoPlaybackQuality: () => ({ totalVideoFrames: decoded }),
           requestVideoFrameCallback: (callback: VideoFrameRequestCallback) => {
             video.callback = callback;
+            return 21;
           },
+          cancelVideoFrameCallback: (id: number) => cancelled.push(id),
         };
         videos.push(video);
         return video;
@@ -68,6 +71,22 @@ test("a delayed frame callback cannot count a cached decoder frame twice", (t) =
   Object.assign(videos[1], { getVideoPlaybackQuality: undefined });
   videos[1].callback!(0, { presentedFrames: 3 } as VideoFrameCallbackMetadata);
   assert.equal(client.video.localFrames, recreated + 1);
+  client.video.stop();
+  decoded = 100;
+  t.mock.timers.tick(1100);
+  videos[1].callback!(0, {
+    presentedFrames: 100,
+  } as VideoFrameCallbackMetadata);
+  assert.equal(
+    client.video.localFrames,
+    0,
+    "the departed camera cannot report progress",
+  );
+  assert.deepEqual(
+    cancelled,
+    [21, 21],
+    "replacement and departure release presentation callbacks",
+  );
 });
 
 test("failed or obsolete camera Blob reads are discarded and the encoder can retry", async (t) => {
@@ -429,4 +448,157 @@ test("page restoration accepts fresh video but never renders or acknowledges obs
     { type: "video_ack", seq: 4, mediaEpoch: 7 },
     { type: "video_ack", probe: true, seq: 5, mediaEpoch: 7 },
   ]);
+});
+
+test("relay pixels update the mounted card directly and publish only availability changes", async (t) => {
+  const f = decodeFixture(t);
+  const copied: unknown[] = [],
+    nextCopied: unknown[] = [];
+  let notifications = 0;
+  f.client.on((u) => {
+    if (u.media) notifications++;
+  });
+  const card = {
+    getContext: () => ({
+      drawImage: (source: unknown) => copied.push(source),
+      clearRect() {},
+    }),
+  } as unknown as HTMLCanvasElement;
+  const next = {
+    getContext: () => ({
+      drawImage: (source: unknown) => nextCopied.push(source),
+      clearRect() {},
+    }),
+  } as unknown as HTMLCanvasElement;
+  const detach = f.video.attachDisplay(card);
+  for (const seq of [1, 2]) {
+    const decoded = f.video.receive(f.frame(seq));
+    f.decoded.at(-1)!.finish();
+    await decoded;
+  }
+  assert.equal(copied.length, 2);
+  assert.deepEqual(f.counts(), { closed: 2, drawn: 0, cleared: 0 });
+  assert.equal(notifications, 1);
+  detach();
+  assert.equal(
+    f.counts().drawn,
+    1,
+    "one saved frame survives the card unmount",
+  );
+  f.video.attachDisplay(next);
+  assert.equal(
+    nextCopied.length,
+    1,
+    "the remounted canvas immediately shows the saved image",
+  );
+  detach();
+  const third = f.video.receive(f.frame(3));
+  f.decoded.at(-1)!.finish();
+  await third;
+  assert.equal(nextCopied.length, 2, "old cleanup cannot detach a new card");
+  assert.equal(notifications, 1);
+  f.video.resetVideo();
+  const fourth = f.video.receive(f.frame(4));
+  f.decoded.at(-1)!.finish();
+  await fourth;
+  assert.equal(notifications, 2);
+  assert.equal(
+    f.acknowledgements.length,
+    4,
+    "every decoded frame still acknowledges delivery",
+  );
+});
+
+test("a relay frame decoded before the card mounts is presented immediately", async (t) => {
+  const f = decodeFixture(t);
+  const first = f.video.receive(f.frame(1));
+  f.decoded[0].finish();
+  await first;
+  const draws: unknown[] = [];
+  const canvas = {
+    getContext: () => ({ drawImage: (source: unknown) => draws.push(source) }),
+  } as unknown as HTMLCanvasElement;
+  f.video.attachDisplay(canvas);
+  assert.equal(draws.length, 1);
+  assert.equal(f.video.remoteFrameSeq, 1);
+});
+
+test("unavailable display or storage contexts preserve the last successful relay paint", async (t) => {
+  const f = decodeFixture(t);
+  const pictures: unknown[] = [];
+  const card = {
+    getContext: () => ({
+      drawImage: (image: unknown) => pictures.push(image),
+      clearRect() {},
+    }),
+  } as unknown as HTMLCanvasElement;
+  const unavailable = {
+    getContext: () => null,
+  } as unknown as HTMLCanvasElement;
+  const detach = f.video.attachDisplay(card);
+  const first = f.video.receive(f.frame(1));
+  f.decoded[0].finish();
+  await first;
+  // The outgoing canvas still owns the only successful paint when storage allocation fails.
+  t.mock.method(f.doc, "createElement", () => unavailable);
+  detach();
+  const leaveUnavailable = f.video.attachDisplay(unavailable);
+  const lost = f.video.receive(f.frame(2));
+  f.decoded[1].finish();
+  await lost;
+  assert.equal(f.video.remoteFrameSeq, 1);
+  assert.equal(f.acknowledgements.length, 1);
+  assert.equal(f.counts().closed, 2);
+  leaveUnavailable();
+  const restored: unknown[] = [];
+  const next = {
+    getContext: () => ({ drawImage: (image: unknown) => restored.push(image) }),
+  } as unknown as HTMLCanvasElement;
+  f.video.attachDisplay(next);
+  assert.deepEqual(restored, [card]);
+  const latest = f.video.receive(f.frame(3));
+  f.decoded[2].finish();
+  await latest;
+  assert.equal(f.video.remoteFrameSeq, 3);
+  assert.equal(restored.length, 2);
+  assert.deepEqual(f.acknowledgements, [
+    { type: "video_ack", seq: 1, mediaEpoch: 7 },
+    { type: "video_ack", seq: 3, mediaEpoch: 7 },
+  ]);
+});
+
+test("a new room decodes while an old bitmap is pending and keeps its own queue", async (t) => {
+  const f = decodeFixture(t);
+  const previous = f.video.receive(f.frame(1));
+  f.video.stop();
+  f.client.state!.mediaEpoch = 8;
+  const current = f.video.receive(f.frame(1, { epoch: 8 }));
+  assert.equal(
+    f.decoded.length,
+    2,
+    "the new room does not wait for the old decoder",
+  );
+  await f.video.receive(f.frame(2, { epoch: 8 }));
+  f.decoded[1].finish();
+  await Promise.resolve();
+  assert.equal(f.video.remoteFrameSeq, 1);
+  assert.equal(f.decoded.length, 3);
+  f.decoded[0].finish();
+  await previous;
+  await f.video.receive(f.frame(3, { epoch: 8 }));
+  assert.equal(
+    f.decoded.length,
+    3,
+    "obsolete completion cannot release the new room's busy decoder",
+  );
+  f.decoded[2].finish();
+  await Promise.resolve();
+  assert.equal(f.decoded.length, 4);
+  f.decoded[3].finish();
+  await current;
+  assert.deepEqual(
+    f.acknowledgements,
+    [1, 2, 3].map((seq) => ({ type: "video_ack", seq, mediaEpoch: 8 })),
+  );
+  assert.deepEqual(f.counts(), { closed: 4, drawn: 3, cleared: 0 });
 });

@@ -46,14 +46,19 @@ function verdict(room: RoomController) {
   room.game.state.players[0].scoreUnits = 20;
   room.game.resolveRound();
   room.game.finishMatch();
-  const speech = fakeSpeech(room);
+  const speech = fakeSpeech(room, {
+    connections: new Map([...room.seats].map(([id, seat]) => [id, seat.epoch])),
+    startedAt: room.services.now() - 1000,
+    done: true,
+    eofSent: true,
+  });
   room.playback.speech = speech;
   room.game.bufferJudge({
     id: speech.id,
     epoch: speech.epoch,
     status: "speaking",
     text: "Case closed.",
-    startAt: 100000,
+    startAt: speech.startedAt,
     expression: "happy",
     targetPlayerId: null,
   });
@@ -81,7 +86,14 @@ test("a queued rematch rechecks admission at real playback completion, preserves
   await send(b, 0, { type: "ready" });
   await send(b, 1, { type: "ready" });
   assert.equal(count(), 1);
-  a.playback.finishSpeech(speech);
+  const complete = (id: string, samples: number) =>
+    a.playback.audioPlayback(id, speech.id, speech.epoch, "complete", samples);
+  const [first, second] = a.game.state.players;
+  complete(first.id, speech.samples);
+  complete(second.id, speech.samples - 1);
+  assert.deepEqual(a.game.state.rematchReady, [first.id, second.id]);
+  assert.equal(a.playback.speech, speech);
+  complete(second.id, speech.samples);
   assert.equal(count(), 1);
   assert.equal(a.game.state.phase, "MATCH_RESULT");
   assert.deepEqual(
@@ -187,4 +199,27 @@ test("departure while a rematch is queued cannot start a match after playback", 
   assert.equal(count(), 0);
   assert.equal(a.game.state.phase, "MATCH_RESULT");
   assert.equal(a.game.state.winnerId, winner);
+});
+
+test("replacing or losing a connection invalidates its queued rematch vote in the first snapshot", async (t) => {
+  const { rooms, send } = fixture(t);
+  for (const [index, room] of rooms.entries()) {
+    const speech = verdict(room);
+    const [healthy, interrupted] = room.game.state.players;
+    const matchId = room.game.state.matchId;
+    await send(room, 0, { type: "rematch", value: true });
+    await send(room, 1, { type: "rematch", value: true });
+    if (index === 0) room.disconnect(interrupted.id);
+    else room.game.resumePlayer(interrupted.id);
+    assert.deepEqual(room.game.snapshot().rematchReady, [healthy.id]);
+    assert.equal(interrupted.mediaReady, false);
+    room.playback.finishSpeech(speech);
+    room.game.connectPlayer(interrupted.id);
+    room.game.setMediaReady(interrupted.id, true);
+    room.game.maybeRematch();
+    assert.equal(room.game.state.matchId, matchId);
+    await send(room, 1, { type: "rematch", value: true });
+    assert.notEqual(room.game.state.matchId, matchId);
+    room.game.abort("Fixture complete");
+  }
 });

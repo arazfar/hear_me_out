@@ -1791,7 +1791,20 @@ test("mandatory device setup, retries, cancellation, clipboard failure and missi
         () => document.documentElement.scrollHeight - innerHeight,
       ),
     ).toBeLessThanOrEqual(1);
-    await expect(help).toHaveCSS("justify-content", "flex-start");
+    const helpOffset = await help.evaluate((summary) => {
+      const text = document.createRange();
+      text.selectNodeContents(summary);
+      const style = getComputedStyle(summary);
+      const contentLeft =
+        summary.getBoundingClientRect().left +
+        parseFloat(style.borderLeftWidth) +
+        parseFloat(style.paddingLeft);
+      return Math.abs(text.getBoundingClientRect().left - contentLeft);
+    });
+    expect(
+      helpOffset,
+      "Device help text starts at its content edge",
+    ).toBeLessThanOrEqual(1);
     if (size.width <= 700)
       await expect(page.locator(".setup-preview")).toHaveCSS(
         "height",
@@ -2356,14 +2369,48 @@ test("two players receive decision feedback while a rematch waits for complete p
     [a, [] as string[]],
     [b, [] as string[]],
   ]);
-  for (const page of [a, b])
+  const histories = [a, b].map((page) => {
+    const transitions: {
+      event: string;
+      seq: number;
+      at: number;
+      phase: string;
+      judge: string | null;
+      epoch: number | null;
+      seats: { ready: boolean; voted: boolean; blockers: string[] }[];
+    }[] = [];
+    let previous = "";
     page.on("websocket", (socket) => {
       if (!socket.url().includes("/socket/control")) return;
       socket.on("framereceived", ({ payload }) => {
         const data = JSON.parse(payload.toString());
         if (data.type === "coin_committed") coins.get(page)!.push(data.matchId);
+        const state: Snapshot | undefined = data.snapshot;
+        if (!state || state.phase !== "MATCH_RESULT") return;
+        const observation = {
+          phase: state.phase,
+          judge: state.judge?.status ?? null,
+          epoch: state.judge?.epoch ?? null,
+          seats: state.players.map((p) => ({
+            ready: p.mediaReady,
+            voted: state.rematchReady.includes(p.id),
+            blockers: p.readiness?.blockers ?? [],
+          })),
+        };
+        const key = JSON.stringify(observation);
+        if (key === previous) return;
+        previous = key;
+        transitions.push({
+          event: data.type,
+          seq: state.seq,
+          at: state.serverNow,
+          ...observation,
+        });
+        if (transitions.length > 128) transitions.shift();
       });
     });
+    return transitions;
+  });
   const announcement = (page: Page) =>
     page.locator('.app > [aria-live="polite"]');
   let code = "";
@@ -2525,10 +2572,6 @@ test("two players receive decision feedback while a rematch waits for complete p
     await openMedia(a);
     await a.getByRole("button", { name: /^Bonk & effects / }).click();
     await a.keyboard.press("Escape");
-    const voice = await request.post("/__test/voice/" + code);
-    expect(voice.ok()).toBe(true);
-    const { epoch, samples } = await voice.json();
-    await expect(a.locator(".caption-status")).toHaveText("Sound off");
     for (const page of [a, b]) {
       coins.get(page)!.length = 0;
       await page.evaluate(() => ((window as any).__decisionAnnouncements = []));
@@ -2561,7 +2604,27 @@ test("two players receive decision feedback while a rematch waits for complete p
       const values = resultGeometry.slice(2).map((frame) => frame[axis]);
       expect(Math.max(...values) - Math.min(...values)).toBeLessThan(0.5);
     }
+    // Reserve the other lobby before timing playback. It only claims the stage
+    // after both votes have reached the authoritative room.
+    const busy = await (
+      await request.post("/api/rooms", { data: { name: "Other court" } })
+    ).json();
+    const busyCode = busy.session.code;
+    const voice = await request.post("/__test/voice/" + code);
+    expect(voice.ok()).toBe(true);
+    const { epoch, samples } = await voice.json();
+    await expect(a.locator(".caption-status")).toHaveText("Sound off");
     await b.getByRole("button", { name: "Rematch", exact: true }).click();
+    await expect
+      .poll(async () => (await snapshot(request, code)).rematchReady.length)
+      .toBe(2);
+    expect(
+      (
+        await request.post("/__test/present/" + busyCode, {
+          data: { phase: "TOPIC_SELECT", phaseDeadline: Date.now() + 60000 },
+        })
+      ).ok(),
+    ).toBe(true);
     for (const page of [a, b]) {
       await expect(
         page.getByRole("button", { name: "Rematch queued", exact: true }),
@@ -2575,22 +2638,12 @@ test("two players receive decision feedback while a rematch waits for complete p
       ]);
       await noOverlap(page);
     }
-    // Another room occupies the stage after both rematch votes were accepted.
-    const busy = await (
-      await request.post("/api/rooms", {
-        data: { name: "Other court" },
-      })
-    ).json();
-    const busyCode = busy.session.code;
-    expect(
-      (
-        await request.post("/__test/present/" + busyCode, {
-          data: { phase: "TOPIC_SELECT", phaseDeadline: Date.now() + 60000 },
-        })
-      ).ok(),
-    ).toBe(true);
     await request.post("/__test/replay/" + code);
-    await shot(a, "decision-queued-" + info.project.name);
+    // Capture the queued decision in its existing viewport. Switching the
+    // foreground player here can interrupt the other seat's camera delivery.
+    await a.screenshot({
+      path: `${root}/decision-queued-${info.project.name}.png`,
+    });
     expect((await snapshot(request, code)).phase).toBe("MATCH_RESULT");
     for (const page of [a, b]) {
       expect(coins.get(page)).toEqual([]);
@@ -2693,6 +2746,7 @@ test("two players receive decision feedback while a rematch waits for complete p
       await info.attach("rematch-diagnostics", {
         body: Buffer.from(
           JSON.stringify({
+            decisionTransitions: histories,
             state: await snapshot(request, code),
             timeline: await (
               await request.post("/__test/timeline/" + code)
@@ -2754,6 +2808,7 @@ audioTest(
       await context.addInitScript(() => {
         const Socket = WebSocket;
         (window as any).__judgeSockets = [];
+        let mode = "connecting";
         const inspectPCM = (raw: unknown) => {
           if (
             !(raw instanceof ArrayBuffer) ||
@@ -2769,6 +2824,7 @@ audioTest(
           return {
             count,
             rms: Math.sqrt(squares / Math.max(1, count)),
+            at: Date.now(),
             age: Date.now() - view.getFloat64(17, true),
             purpose: view.getUint8(25),
           };
@@ -2789,6 +2845,15 @@ audioTest(
             if (String(args[0]).includes("/socket/judge"))
               (window as any).__judgeSockets.push(this);
             this.addEventListener("message", (event) => {
+              if (
+                this.url.endsWith("/socket/control") &&
+                typeof event.data === "string" &&
+                event.data.includes('"media_mode_changed"')
+              ) {
+                const message = JSON.parse(event.data);
+                if (message.type === "media_mode_changed")
+                  mode = message.payload.mode;
+              }
               const sample = inspectPCM(event.data);
               if (sample) {
                 const frames = (window as any).__receivedFrames;
@@ -2852,9 +2917,19 @@ audioTest(
           let peak = 1;
           for (let i = 2; i < spectrum.length; i++)
             if (spectrum[i] > spectrum[peak]) peak = i;
+          const rms = Math.sqrt(squares / pcm.length);
           (window as any).__conversation.push({
-            rms: Math.sqrt(squares / pcm.length),
+            at: Date.now(),
+            outputTime: output.context.currentTime,
+            mode,
+            rms,
             frequency: (peak * output.context.sampleRate) / pcm.length,
+            ...(rms <= 0.01 && {
+              gain: output.gain.gain.value,
+              context: output.context.state,
+              mic: (window as any).__micFrames.slice(),
+              received: (window as any).__receivedFrames.slice(),
+            }),
           });
           if ((window as any).__conversation.length > 1200)
             (window as any).__conversation.shift();
@@ -2862,19 +2937,34 @@ audioTest(
         const Original = window.AudioWorkletNode;
         (window as any).__judgeRender = [];
         (window as any).__captionSamples = [];
+        let judgeContext: AudioContext | undefined;
         let cursor = { epoch: 0, samples: 0 };
         setInterval(() => {
           const active = document.querySelector<HTMLElement>(
             ".spoken-word[data-cue-start]",
           );
-          if (active)
+          if (active && judgeContext) {
+            const at = performance.now();
+            const stamp = judgeContext.getOutputTimestamp?.();
+            // A cursor arrives from the render thread ahead of the speaker.
+            // Capture the device's clock at the same observation as the DOM.
+            const outputTime =
+              stamp?.contextTime && stamp.performanceTime
+                ? stamp.contextTime + (at - stamp.performanceTime) / 1000
+                : judgeContext.currentTime -
+                  Math.max(
+                    judgeContext.outputLatency || 0,
+                    judgeContext.baseLatency || 0,
+                  );
             (window as any).__captionSamples.push({
-              at: performance.now(),
+              at,
+              outputTime,
               ...cursor,
               start: Number(active.dataset.cueStart),
               end: Number(active.dataset.cueEnd),
               text: active.textContent,
             });
+          }
           if ((window as any).__captionSamples.length > 1200)
             (window as any).__captionSamples.shift();
         }, 100);
@@ -2885,7 +2975,8 @@ audioTest(
             options?: AudioWorkletNodeOptions,
           ) {
             super(context, name, options);
-            if (name === "judge-playback")
+            if (name === "judge-playback") {
+              judgeContext = context as AudioContext;
               this.port.addEventListener("message", (event) => {
                 if (event.data.type === "cursor") cursor = event.data;
                 if (event.data.type === "rendering")
@@ -2901,33 +2992,12 @@ audioTest(
                 if ((window as any).__judgeRender.length > 512)
                   (window as any).__judgeRender.shift();
               });
+            }
           }
         };
       });
     const a = await aContext.newPage(),
       b = await bContext.newPage();
-    let held = false,
-      released = false;
-    // Delay an ordered middle burst for one second, preserving message order.
-    await b.routeWebSocket("**/socket/judge", (ws) => {
-      const server = ws.connectToServer();
-      const queue: (string | Buffer)[] = [];
-      server.onMessage((message) => {
-        const pcm = typeof message !== "string" && message[0] === 2;
-        if (!released && pcm && message.readUInt32LE(5) >= 45) {
-          queue.push(message);
-          if (!held) {
-            held = true;
-            setTimeout(() => {
-              released = true;
-              for (const packet of queue) ws.send(packet);
-              queue.length = 0;
-            }, 1000);
-          }
-        } else if (held && !released) queue.push(message);
-        else ws.send(message);
-      });
-    });
     let courtCode: string | undefined;
     let failed = true;
     audioCleanup(() =>
@@ -2943,8 +3013,27 @@ audioTest(
       ),
     );
     const code = (courtCode = await enter(a, b, baseURL!));
+    // Check and expose controls before starting the time-limited audio line.
+    // On WebKit a focus transfer and separate button actionability waits can
+    // otherwise outlast playback before the mute click is dispatched.
+    await openMedia(b);
+    await expect(
+      b.getByRole("button", { name: "Mic on", exact: true }),
+    ).toBeEnabled();
+    await closeMedia(b);
+    await a.bringToFront();
+    await openMedia(a);
+    await expect(
+      a.getByRole("button", { name: "Mic on", exact: true }),
+    ).toBeEnabled();
+    const bonkControl = a.getByRole("button", { name: /^Bonk & effects / });
+    await expect(bonkControl).toHaveAttribute("aria-pressed", "true");
+    await expect(a.locator(".turn-label")).toHaveCount(0);
+    const delaySeat = await b.evaluate(
+      () => JSON.parse(sessionStorage.getItem("hmo-seat")!).playerId,
+    );
     const response = await request.post("/__test/voice/" + code, {
-      data: { aligned: true },
+      data: { aligned: true, delaySeat },
     });
     expect(response.ok()).toBe(true);
     const { epoch, samples } = await response.json();
@@ -2961,25 +3050,13 @@ audioTest(
     await expect(a.locator(".caption-heading .caption-status")).toHaveText(
       "Speaking",
     );
-    await openMedia(a);
-    await openMedia(b);
-    await expect(
-      a.getByRole("button", { name: "Mic on", exact: true }),
-    ).toBeEnabled();
-    await expect(
-      b.getByRole("button", { name: "Mic on", exact: true }),
-    ).toBeEnabled();
-
-    await expect(a.locator(".turn-label")).toHaveCount(0);
-    await openMedia(a);
-    // Bonk mute is gain-only: completion must still account for the full utterance.
-    const bonkControl = a.getByRole("button", { name: /^Bonk & effects / });
-    await expect(bonkControl).toBeVisible();
+    // The peer keeps audible alignment while this player switches to full text.
     await bonkControl.click();
-    await a.keyboard.press("Escape");
+    await expect(bonkControl).toHaveAttribute("aria-pressed", "false");
     await expect(a.locator(".judge-caption .caption-text")).toHaveText(
       "Every last syllable gets its day in court. Case closed.",
     );
+    await a.keyboard.press("Escape");
     await expect
       .poll(async () => (await snapshot(request, code)).judge?.status, {
         timeout: 20000,
@@ -2993,27 +3070,64 @@ audioTest(
           .map((e: any) => e.samples),
       ).toEqual([samples]);
     }
-    const captionSamples = await b.evaluate(
-      () => (window as any).__captionSamples,
-    );
+    const { captionSamples, renderEvents } = await b.evaluate(() => ({
+      captionSamples: (window as any).__captionSamples as {
+        epoch: number;
+        samples: number;
+        start: number;
+        end: number;
+        text: string;
+        outputTime: number;
+      }[],
+      renderEvents: (window as any).__judgeRender as {
+        epoch: number;
+        samples: number;
+        type: string;
+        contextTime: number;
+      }[],
+    }));
     const alignedSamples = captionSamples.filter(
-      (sample: any) => sample.epoch === epoch,
+      (sample) => sample.epoch === epoch,
     );
     expect(
-      new Set(alignedSamples.map((sample: any) => sample.text)).size,
+      new Set(alignedSamples.map((sample) => sample.text)).size,
     ).toBeGreaterThanOrEqual(8);
-    // Worklet processing can lead device output slightly; allow 150 ms for output
-    // latency and the scoped caption animation frame, never wall-clock guessing.
+    // Reconstruct the audible position independently from worklet start, stall
+    // and drain events. The fixed-rate source advances only while rendering.
+    const boundaries = renderEvents
+      .filter((event) => event.epoch === epoch && event.type !== "ready")
+      .reverse();
+    const outsideTolerance = alignedSamples.flatMap((sample) => {
+      const boundary = boundaries.find(
+        (event) => event.contextTime <= sample.outputTime,
+      );
+      const outputSamples =
+        boundary?.type === "rendering"
+          ? Math.min(
+              samples,
+              boundary.samples +
+                Math.floor((sample.outputTime - boundary.contextTime) * 44100),
+            )
+          : (boundary?.samples ?? 0);
+      return outputSamples < sample.start - 6615 ||
+        outputSamples > sample.end + 6615
+        ? [{ ...sample, outputSamples }]
+        : [];
+    });
     expect(
-      alignedSamples.every(
-        (sample: any) =>
-          sample.samples >= sample.start - 6615 &&
-          sample.samples <= sample.end + 6615,
-      ),
-    ).toBe(true);
+      outsideTolerance,
+      "Highlighted words within 150 ms of device output",
+    ).toEqual([]);
     const timeline = await (
       await request.post("/__test/timeline/" + code)
     ).json();
+    const delayed = timeline.filter(
+      (e: any) =>
+        e.stage === "fixture_judge_burst_released" && e.speechEpoch === epoch,
+    );
+    expect(delayed).toHaveLength(1);
+    expect(delayed[0].delayMs).toBeGreaterThanOrEqual(990);
+    expect(delayed[0].packets).toBeGreaterThan(1);
     const complete = timeline.filter(
       (e: any) => e.stage === "render_complete" && e.speechEpoch === epoch,
     );
@@ -3100,6 +3214,7 @@ audioTest(
         conversation.every((sample: any) => sample.rms > 0.01),
         JSON.stringify({
           zero: conversation.filter((s: any) => s.rms <= 0.01).length,
+          firstQuietWindow: conversation.find((s: any) => s.rms <= 0.01),
           samples: conversation.length,
           min: Math.min(...conversation.map((s: any) => s.rms)),
           max: Math.max(...conversation.map((s: any) => s.rms)),

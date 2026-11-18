@@ -142,7 +142,7 @@ test("caption cursor follows output time, freezes in gaps, never guesses future 
 });
 
 test("spoken phrases follow cue offsets, hold between words, and reconcile transcript corrections", async () => {
-  const { spokenPhrase, latestPhrase } =
+  const { spokenPhrase, latestPhrase, captionBoundary } =
     await import("../src/ui/caption-phrases");
   const cues = [
     { text: "A", start: 10, end: 20 },
@@ -153,6 +153,15 @@ test("spoken phrases follow cue offsets, hold between words, and reconcile trans
   assert.deepEqual(spokenPhrase(cues, 25), { cues: [cues[0]], active: -1 });
   assert.equal(spokenPhrase(cues, 35)?.active, 1);
   assert.equal(spokenPhrase(cues, 50)?.active, -1);
+  const aligned = [{ text: "First", start: 0, end: 9 }, ...cues];
+  assert.equal(captionBoundary(aligned, 0), -1);
+  for (let sample = 1; sample <= 50; sample++) {
+    assert.deepEqual(
+      spokenPhrase(aligned, captionBoundary(aligned, sample)),
+      spokenPhrase(aligned, sample),
+    );
+  }
+  assert.equal(captionBoundary(cues, 8), -1);
   assert.equal(latestPhrase("Waffles are better"), "Waffles are better");
   assert.equal(latestPhrase("Waffles were better"), "Waffles were better");
 });

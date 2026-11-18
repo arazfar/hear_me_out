@@ -116,7 +116,7 @@ console.log(
   JSON.stringify(
     {
       qualification:
-        "Requires physical/device and deployment review; synthetic or loopback checks do not qualify a release",
+        "Diagnostic report for audio and device behavior. Release eligibility is checked by pnpm release:check.",
       manifest,
       failures: Object.fromEntries(
         Object.entries(data.failures || {}).filter(

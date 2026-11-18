@@ -35,6 +35,7 @@ type Acquisition = {
   controller: AbortController;
   tracks: Set<MediaStreamTrack>;
   nodes: Set<AudioNode>;
+  worklet?: AudioWorkletNode;
   promise: Promise<void>;
 };
 
@@ -81,14 +82,19 @@ export class DeviceCapture {
     this.clockSyncedAt = 0;
     this.cleanup.splice(0).forEach((fn) => fn());
     this.cleanup = [];
-    this.worklet?.disconnect();
+    const retired = this.releaseGraph();
+    this.stream?.getTracks().forEach((track) => track.stop());
+    this.stream = null;
+    return retired;
+  }
+  private releaseGraph() {
+    const silence = this.silence;
+    const retired = this.client.sound.retire(this.worklet);
     this.source?.disconnect();
-    this.silence?.disconnect();
     this.worklet = null;
     this.source = null;
     this.silence = null;
-    this.stream?.getTracks().forEach((track) => track.stop());
-    this.stream = null;
+    return retired.then(() => silence?.disconnect());
   }
   devices(repair?: "camera", signal?: AbortSignal): Promise<void> {
     if (this.acquisition) {
@@ -110,6 +116,7 @@ export class DeviceCapture {
         clearTimeout(deadline);
         signal?.removeEventListener("abort", cancel);
         attempt.controller.signal.removeEventListener("abort", aborted);
+        if (attempt.worklet) void this.client.sound.retire(attempt.worklet);
         attempt.nodes.forEach((node) => node.disconnect());
         attempt.tracks.forEach((track) => track.stop());
         attempt.nodes.clear();
@@ -231,7 +238,7 @@ export class DeviceCapture {
       const source = context.createMediaStreamSource(new MediaStream([audio]));
       attempt.nodes.add(source);
       const worklet = new AudioWorkletNode(context, "pcm-capture");
-      attempt.nodes.add(worklet);
+      attempt.worklet = worklet;
       const silence = context.createGain();
       attempt.nodes.add(silence);
       silence.gain.value = 0;
@@ -244,15 +251,14 @@ export class DeviceCapture {
     // Commit synchronously after local initialization. Until this point the
     // current stream and graph still belong to the player, not the attempt.
     if (graph) {
-      this.source?.disconnect();
-      this.worklet?.disconnect();
-      this.silence?.disconnect();
+      void this.releaseGraph();
       this.source = graph.source;
       this.worklet = graph.worklet;
       this.silence = graph.silence;
       this.captureFailed = false;
       this.gateKey = "";
       this.listenToAudio(graph.worklet);
+      attempt.worklet = undefined;
       attempt.nodes.clear();
     }
     // Privacy belongs to the player, including choices made while permission

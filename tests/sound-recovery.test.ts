@@ -34,7 +34,14 @@ function soundFixture(t: TestContext) {
     disconnect() {}
   }
   class Playback extends Node {
-    port = { onmessage: null, postMessage() {} };
+    port = {
+      onmessage: null as null | ((event: { data: { type: string } }) => void),
+      postMessage(data: { type?: string }) {
+        if (data.type === "retire")
+          queueMicrotask(() => this.onmessage?.({ data: { type: "retired" } }));
+      },
+      close() {},
+    };
     disconnected = false;
     constructor() {
       super();
@@ -54,6 +61,9 @@ function soundFixture(t: TestContext) {
     state = "running";
     constructor() {
       contexts++;
+    }
+    async close() {
+      this.state = "closed";
     }
     resume() {
       return blocked ? new Promise<void>(() => {}) : Promise.resolve();
@@ -241,4 +251,36 @@ test("audio download timeout aborts its request and a late body cannot load a mo
   await flush();
   assert.equal(f.requests(), 2, "only replacement downloads reach addModule");
   assert.equal(f.playbackNodes.length, 2);
+});
+
+test("closing a room releases its sound context and the next tap acquires a fresh graph", async (t) => {
+  const f = soundFixture(t);
+  await f.client.sound.unlock();
+  const context = f.client.sound.context!;
+  const old = f.playbackNodes.slice();
+  await f.client.sound.close();
+  assert.equal(context.state, "closed");
+  assert.equal(f.client.sound.context, null);
+  assert(old.every((node) => node.disconnected));
+  await f.client.sound.unlock();
+  assert.equal(f.contexts(), 2);
+  assert.equal(f.playbackNodes.length, 4);
+  assert.equal(f.client.sound.context!.state, "running");
+});
+
+test("a legacy or stalled processor cannot hold a departing context open indefinitely", async (t) => {
+  const f = soundFixture(t);
+  await f.client.sound.unlock();
+  const context = f.client.sound.context!;
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const stale = f.playbackNodes[0];
+  stale.port.postMessage = () => {};
+  const close = f.client.sound.close();
+  await flush();
+  t.mock.timers.tick(499);
+  assert.equal(context.state, "running");
+  t.mock.timers.tick(1);
+  await close;
+  assert.equal(context.state, "closed");
+  assert.equal(stale.disconnected, true);
 });

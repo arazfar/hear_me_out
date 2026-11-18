@@ -1,5 +1,15 @@
 import type { CaptionCue } from "../../shared/domain";
 
+/** First sample with the current visible caption, or -1 before audible playback. */
+export function captionBoundary(cues: CaptionCue[], samples: number) {
+  if (samples <= 0) return -1;
+  for (let i = cues.length - 1; i >= 0; i--) {
+    const cue = cues[i];
+    if (samples >= cue.start) return samples < cue.end ? cue.start : cue.end;
+  }
+  return -1;
+}
+
 /** Group actual alignment segments; never invent timing within a segment. */
 export function spokenPhrase(cues: CaptionCue[], samples: number) {
   let active = cues.length - 1;

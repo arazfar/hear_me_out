@@ -1,6 +1,11 @@
 name: Repeat browser regressions
 on:
   workflow_dispatch:
+    inputs:
+      profile_baseline:
+        description: Optional baseline commit for a five-pair frame benchmark
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -58,4 +63,45 @@ jobs:
             output/playwright/ready-together/after/*.png
             output/playwright/recovery-ownership/after/*.png
           if-no-files-found: ignore
+          retention-days: 14
+
+  frame-profile:
+    if: inputs.profile_baseline != ''
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: candidate
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.profile_baseline }}
+          path: baseline
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: candidate/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: candidate/.node-version
+          cache: pnpm
+          cache-dependency-path: candidate/pnpm-lock.yaml
+      - working-directory: baseline
+        run: pnpm install --frozen-lockfile --prod=false && pnpm build
+      - working-directory: candidate
+        run: pnpm install --frozen-lockfile --prod=false && pnpm build
+      - working-directory: candidate
+        run: pnpm exec playwright install --with-deps chrome
+      - working-directory: candidate
+        id: comparison
+        run: pnpm profile:game --app-root ../baseline --compare-root . --runs 5 --output output/profile/comparison.json
+      - name: Capture diagnostic CPU profiles outside the timed comparison
+        if: ${{ !cancelled() && steps.comparison.outcome != 'skipped' }}
+        working-directory: candidate
+        run: pnpm profile:game --app-root ../baseline --compare-root . --cpu-profile --runs 1 --output output/profile/diagnostic.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frame-profile
+          path: candidate/output/profile/
+          if-no-files-found: warn
           retention-days: 14
