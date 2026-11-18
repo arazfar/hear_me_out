@@ -37,3 +37,25 @@ export async function loadWorklet(
     release();
   }
 }
+
+/** Let the processor relinquish its active-source flag before closing the context. */
+export function retireWorklet(node: AudioWorkletNode | null) {
+  if (!node) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const finish = () => {
+      clearTimeout(timer);
+      node.onprocessorerror = null;
+      node.port.onmessage = null;
+      node.port.close();
+      node.disconnect();
+      resolve();
+    };
+    // Older cached processors or an unavailable audio device may never render again.
+    const timer = setTimeout(finish, 500);
+    node.onprocessorerror = finish;
+    node.port.onmessage = ({ data }) => {
+      if (data.type === "retired") finish();
+    };
+    node.port.postMessage({ type: "retire" });
+  });
+}

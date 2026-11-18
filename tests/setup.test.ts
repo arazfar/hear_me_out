@@ -47,8 +47,13 @@ function captureFixture(t: TestContext) {
   }
   class Node {
     port = {
+      close() {},
       onmessage: null as ((event: any) => void) | null,
       postMessage: (data: any) => {
+        if (data.type === "retire")
+          queueMicrotask(() =>
+            this.port.onmessage?.({ data: { type: "retired" } }),
+          );
         if (data.requestId)
           queueMicrotask(() =>
             this.port.onmessage?.({
@@ -396,6 +401,16 @@ for (const failure of ["cancel", "timeout", "module"] as const) {
     f.client.capture.stream = original;
     let disconnected = false;
     const graph = {
+      port: {
+        onmessage: null as null | ((event: { data: { type: string } }) => void),
+        postMessage(data: { type: string }) {
+          if (data.type === "retire")
+            queueMicrotask(() =>
+              this.onmessage?.({ data: { type: "retired" } }),
+            );
+        },
+        close() {},
+      },
       disconnect: () => {
         disconnected = true;
       },

@@ -34,7 +34,14 @@ function soundFixture(t: TestContext) {
     disconnect() {}
   }
   class Playback extends Node {
-    port = { onmessage: null, postMessage() {}, close() {} };
+    port = {
+      onmessage: null as null | ((event: { data: { type: string } }) => void),
+      postMessage(data: { type?: string }) {
+        if (data.type === "retire")
+          queueMicrotask(() => this.onmessage?.({ data: { type: "retired" } }));
+      },
+      close() {},
+    };
     disconnected = false;
     constructor() {
       super();
@@ -251,7 +258,7 @@ test("closing a room releases its sound context and the next tap acquires a fres
   await f.client.sound.unlock();
   const context = f.client.sound.context!;
   const old = f.playbackNodes.slice();
-  f.client.sound.close();
+  await f.client.sound.close();
   assert.equal(context.state, "closed");
   assert.equal(f.client.sound.context, null);
   assert(old.every((node) => node.disconnected));
@@ -259,4 +266,21 @@ test("closing a room releases its sound context and the next tap acquires a fres
   assert.equal(f.contexts(), 2);
   assert.equal(f.playbackNodes.length, 4);
   assert.equal(f.client.sound.context!.state, "running");
+});
+
+test("a legacy or stalled processor cannot hold a departing context open indefinitely", async (t) => {
+  const f = soundFixture(t);
+  await f.client.sound.unlock();
+  const context = f.client.sound.context!;
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const stale = f.playbackNodes[0];
+  stale.port.postMessage = () => {};
+  const close = f.client.sound.close();
+  await flush();
+  t.mock.timers.tick(499);
+  assert.equal(context.state, "running");
+  t.mock.timers.tick(1);
+  await close;
+  assert.equal(context.state, "closed");
+  assert.equal(stale.disconnected, true);
 });

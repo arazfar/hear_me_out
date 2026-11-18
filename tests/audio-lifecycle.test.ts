@@ -24,7 +24,11 @@ function worklet(file: string, rate: number) {
   const messages: any[] = [];
   const scope = {
     AudioWorkletProcessor: class {
-      port = { onmessage: null, postMessage: (m: any) => messages.push(m) };
+      port = {
+        onmessage: null,
+        close() {},
+        postMessage: (m: any) => messages.push(m),
+      };
     },
     Float32Array,
     Int16Array,
@@ -735,4 +739,28 @@ test("deadline settlement keeps only the eligible tail and a racing Done is harm
   await flush();
   assert.notEqual(room.game.state.turn?.id, turn.id);
   room.close();
+});
+
+test("worklet retirement ends processing exactly once while ordinary resets keep the graph active", () => {
+  for (const [file, normal] of [
+    ["pcm-worklet", { type: "clock", contextAt: 0, serverAt: 0 }],
+    ["peer-worklet", { type: "flush" }],
+    ["judge-worklet", { type: "reset", epoch: 0 }],
+  ] as const) {
+    const f = worklet("public/" + file + ".js", 48000);
+    const process = () => f.processor.process([], [[new Float32Array(128)]]);
+    f.send(normal);
+    assert.equal(process(), true);
+    f.send({ type: "retire" });
+    assert.equal(process(), false);
+    assert.deepEqual(
+      f.messages.map((m) => m.type),
+      ["retired"],
+    );
+    assert.equal(process(), false);
+    assert.deepEqual(
+      f.messages.map((m) => m.type),
+      ["retired"],
+    );
+  }
 });

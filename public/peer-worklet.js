@@ -2,6 +2,7 @@
 class PeerPlayback extends AudioWorkletProcessor {
   constructor() {
     super();
+    this.retiring = false;
     this.ring = new Float32Array(4096);
     this.read = 0;
     this.write = 0;
@@ -10,6 +11,11 @@ class PeerPlayback extends AudioWorkletProcessor {
     this.started = false;
     this.last = 0;
     this.port.onmessage = ({ data }) => {
+      if (data.type === "retire") {
+        this.retiring = true;
+        return;
+      }
+      if (this.retiring) return;
       if (data.type === "flush") {
         this.count = 0;
         this.read = this.write;
@@ -31,6 +37,14 @@ class PeerPlayback extends AudioWorkletProcessor {
     };
   }
   process(_inputs, outputs) {
+    if (this.retiring) {
+      if (this.port.onmessage) {
+        this.port.postMessage({ type: "retired" });
+        this.port.onmessage = null;
+        this.port.close();
+      }
+      return false;
+    }
     const output = outputs[0][0];
     // 80 ms absorbs browser message-delivery jitter; late bursts stay bounded
     // to 160 ms and recover to the same target instead of accumulating delay.

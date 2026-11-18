@@ -531,8 +531,7 @@ export class Client {
     this.peer.leave();
     this.video.stop();
     this.playback.resetJudgePlayback();
-    this.capture.stop();
-    this.sound.close();
+    void this.sound.close(this.capture.stop());
     this.session = null;
     this.state = null;
     sessionStorage.removeItem("hmo-seat");
