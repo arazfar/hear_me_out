@@ -1339,12 +1339,21 @@ test("phone layouts preserve full captions, user wording and a single status own
       const reader = a.getByRole("region", { name: "Full transcript" });
       await a.keyboard.press(tab);
       await expect(reader).toBeFocused();
-      expect(await reader.evaluate((el) => el.scrollTop)).toBe(0);
+      const readerTop = () => reader.evaluate((el) => el.scrollTop);
+      expect(await readerTop()).toBe(0);
       await a.keyboard.press("ArrowDown");
+      await expect
+        .poll(readerTop, { message: "Arrow Down scrolls the transcript" })
+        .toBeGreaterThan(0);
+      await a.keyboard.press("Home");
+      await expect.poll(readerTop).toBe(0);
       await a.keyboard.press("PageDown");
       await expect
-        .poll(() => reader.evaluate((el) => el.scrollTop))
+        .poll(readerTop, { message: "Page Down scrolls the transcript" })
         .toBeGreaterThan(0);
+      const paged = await readerTop();
+      await a.keyboard.press("PageUp");
+      await expect.poll(readerTop).toBeLessThan(paged);
       await a.keyboard.press("End");
       await expect
         .poll(() =>
@@ -1353,6 +1362,12 @@ test("phone layouts preserve full captions, user wording and a single status own
           ),
         )
         .toBeLessThanOrEqual(1);
+      const end = await readerTop();
+      await a.keyboard.press("ArrowUp");
+      await expect.poll(readerTop).toBeLessThan(end);
+      await a.keyboard.press("Home");
+      await expect.poll(readerTop).toBe(0);
+      await expect(reader).toBeFocused();
       expect(await reader.locator("p").textContent()).toBe(
         await captionRegion.locator(".sr-only").textContent(),
       );
@@ -2817,20 +2832,37 @@ audioTest(
           )
             return;
           const view = new DataView(raw),
-            count = view.getUint32(13, true);
+            count = view.getUint32(13, true),
+            capturedAt = view.getFloat64(17, true),
+            at = Date.now();
           let squares = 0;
           for (let i = 0; i < count; i++)
             squares += (view.getInt16(31 + i * 2, true) / 32768) ** 2;
           return {
+            mediaEpoch: view.getUint32(1, true),
+            seq: view.getUint32(5, true),
             count,
+            capturedAt,
             rms: Math.sqrt(squares / Math.max(1, count)),
-            at: Date.now(),
-            age: Date.now() - view.getFloat64(17, true),
+            at,
+            age: at - capturedAt,
             purpose: view.getUint8(25),
+            enqueuedAt: null as number | null,
           };
         };
-        (window as any).__micFrames = [];
-        (window as any).__receivedFrames = [];
+        type AudioFrame = NonNullable<ReturnType<typeof inspectPCM>>;
+        const micFrames: AudioFrame[] = [];
+        const receivedFrames: AudioFrame[] = [];
+        const judgeSocketEvents: { type: "open" | "close"; at: number }[] = [];
+        (window as any).__micFrames = micFrames;
+        (window as any).__receivedFrames = receivedFrames;
+        (window as any).__judgeSocketEvents = judgeSocketEvents;
+        let latestReceived: AudioFrame | undefined;
+        const recordFrame = (frames: AudioFrame[], frame: AudioFrame) => {
+          frames.push(frame);
+          // Keep both sides of an earlier dropout available after playback ends.
+          if (frames.length > 2048) frames.shift();
+        };
         const Peer = RTCPeerConnection;
         (window as any).__peers = [];
         window.RTCPeerConnection = class extends Peer {
@@ -2839,11 +2871,21 @@ audioTest(
             (window as any).__peers.push(this);
           }
         };
+        const socketMessage = Object.getOwnPropertyDescriptor(
+          Socket.prototype,
+          "onmessage",
+        )!;
         window.WebSocket = class extends Socket {
           constructor(...args: ConstructorParameters<typeof WebSocket>) {
             super(...args);
-            if (String(args[0]).includes("/socket/judge"))
+            if (this.url.endsWith("/socket/judge")) {
               (window as any).__judgeSockets.push(this);
+              for (const type of ["open", "close"] as const)
+                this.addEventListener(type, () => {
+                  judgeSocketEvents.push({ type, at: Date.now() });
+                  if (judgeSocketEvents.length > 32) judgeSocketEvents.shift();
+                });
+            }
             this.addEventListener("message", (event) => {
               if (
                 this.url.endsWith("/socket/control") &&
@@ -2854,11 +2896,24 @@ audioTest(
                 if (message.type === "media_mode_changed")
                   mode = message.payload.mode;
               }
-              const sample = inspectPCM(event.data);
-              if (sample) {
-                const frames = (window as any).__receivedFrames;
-                frames.push(sample);
-                if (frames.length > 30) frames.shift();
+            });
+          }
+          get onmessage(): WebSocket["onmessage"] {
+            return socketMessage.get!.call(this);
+          }
+          set onmessage(listener: WebSocket["onmessage"]) {
+            if (!listener || !this.url.endsWith("/socket/audio")) {
+              socketMessage.set!.call(this, listener);
+              return;
+            }
+            // Match the synchronous enqueue to this packet in every browser.
+            socketMessage.set!.call(this, (event: MessageEvent) => {
+              latestReceived = inspectPCM(event.data);
+              if (latestReceived) recordFrame(receivedFrames, latestReceived);
+              try {
+                listener.call(this, event);
+              } finally {
+                latestReceived = undefined;
               }
             });
           }
@@ -2869,13 +2924,11 @@ audioTest(
                   data.byteOffset + data.byteLength,
                 )
               : data;
-            const sample = inspectPCM(raw);
-            if (sample) {
-              const frames = (window as any).__micFrames;
-              frames.push(sample);
-              if (frames.length > 30) frames.shift();
-            }
+            const sample = this.url.endsWith("/socket/audio")
+              ? inspectPCM(raw)
+              : undefined;
             super.send(data);
+            if (sample) recordFrame(micFrames, sample);
           }
         };
         const createGain = AudioContext.prototype.createGain;
@@ -2895,7 +2948,13 @@ audioTest(
             const sink = createGain.call(this);
             sink.gain.value = 0;
             analyser.connect(sink).connect(this.destination);
-            (window as any).__friendOutput = { analyser, gain, context: this };
+            (window as any).__friendOutput = {
+              analyser,
+              gain,
+              context: this,
+              pcm: new Float32Array(analyser.fftSize),
+              spectrum: new Float32Array(analyser.frequencyBinCount),
+            };
           }
           return gain;
         };
@@ -2904,7 +2963,7 @@ audioTest(
         setInterval(() => {
           const output = (window as any).__friendOutput;
           if (!output || !(window as any).__judgeActive) return;
-          const pcm = new Float32Array(output.analyser.fftSize);
+          const { pcm, spectrum } = output;
           output.analyser.getFloatTimeDomainData(pcm);
           let squares = 0;
           for (let i = 0; i < pcm.length; i++) {
@@ -2912,7 +2971,6 @@ audioTest(
           }
           // A short jitter-concealment edge changes zero crossings. The dominant
           // spectral bin identifies the source without assuming phase continuity.
-          const spectrum = new Float32Array(output.analyser.frequencyBinCount);
           output.analyser.getFloatFrequencyData(spectrum);
           let peak = 1;
           for (let i = 2; i < spectrum.length; i++)
@@ -2927,8 +2985,8 @@ audioTest(
             ...(rms <= 0.01 && {
               gain: output.gain.gain.value,
               context: output.context.state,
-              mic: (window as any).__micFrames.slice(),
-              received: (window as any).__receivedFrames.slice(),
+              mic: micFrames.slice(-64),
+              received: receivedFrames.slice(-64),
             }),
           });
           if ((window as any).__conversation.length > 1200)
@@ -2957,9 +3015,15 @@ audioTest(
                     judgeContext.baseLatency || 0,
                   );
             (window as any).__captionSamples.push({
+              ...cursor,
               at,
               outputTime,
-              ...cursor,
+              outputStampTime: stamp?.contextTime,
+              outputStampAgeMs: stamp?.performanceTime
+                ? at - stamp.performanceTime
+                : undefined,
+              renderTime: judgeContext.currentTime,
+              foreground: !document.hidden,
               start: Number(active.dataset.cueStart),
               end: Number(active.dataset.cueEnd),
               text: active.textContent,
@@ -2975,6 +3039,23 @@ audioTest(
             options?: AudioWorkletNodeOptions,
           ) {
             super(context, name, options);
+            if (name === "peer-playback") {
+              const port = this.port;
+              // Keep the instrumented port reachable through the live node.
+              Object.defineProperty(this, "port", { value: port });
+              const postMessage = port.postMessage;
+              port.postMessage = (
+                data: unknown,
+                transfer?: Transferable[] | StructuredSerializeOptions,
+              ) => {
+                const frame =
+                  (data as { pcm?: unknown } | null)?.pcm instanceof ArrayBuffer
+                    ? latestReceived
+                    : undefined;
+                Reflect.apply(postMessage, port, [data, transfer]);
+                if (frame) frame.enqueuedAt = Date.now();
+              };
+            }
             if (name === "judge-playback") {
               judgeContext = context as AudioContext;
               this.port.addEventListener("message", (event) => {
@@ -2988,7 +3069,10 @@ audioTest(
                     event.data.type,
                   )
                 )
-                  (window as any).__judgeRender.push(event.data);
+                  (window as any).__judgeRender.push({
+                    ...event.data,
+                    at: Date.now(),
+                  });
                 if ((window as any).__judgeRender.length > 512)
                   (window as any).__judgeRender.shift();
               });
@@ -3173,42 +3257,46 @@ audioTest(
     );
     expect(completed).toHaveLength(2);
     expect(completed.every((e: any) => e.samples === next.samples)).toBe(true);
-    for (const [page, expectedFrequency] of [
-      [a, 550],
-      [b, 330],
-    ] as const) {
-      const conversation = await page.evaluate(
-        () => (window as any).__conversation,
-      );
-      const diagnostics = await page.evaluate(async () => ({
-        microphone: (window as any).__micFrames,
-        received: (window as any).__receivedFrames,
-        gain: (window as any).__friendOutput.gain.gain.value,
-        context: (window as any).__friendOutput.context.state,
-        peers: await Promise.all(
-          (window as any).__peers.map(async (pc: RTCPeerConnection) => ({
-            state: pc.connectionState,
-            transceivers: pc.getTransceivers().map((t) => ({
-              kind: t.receiver.track.kind,
-              mid: t.mid,
-              direction: t.currentDirection,
-              sending: !!t.sender.track,
-            })),
-            senders: pc.getSenders().map((s) => ({
-              kind: s.track?.kind,
-              enabled: s.track?.enabled,
-              muted: s.track?.muted,
-            })),
-            stats: [...(await pc.getStats()).values()].filter(
-              (s) => s.kind === "audio",
+    const friendOutputs = await Promise.all(
+      ([[a, 550], [b, 330]] as const).map(async ([page, expectedFrequency]) => {
+        const { conversation, diagnostics } = await page.evaluate(async () => ({
+          conversation: (window as any).__conversation,
+          diagnostics: {
+            microphone: (window as any).__micFrames.slice(-64),
+            received: (window as any).__receivedFrames.slice(-64),
+            judgeSocketEvents: (window as any).__judgeSocketEvents,
+            renderEvents: (window as any).__judgeRender,
+            gain: (window as any).__friendOutput.gain.gain.value,
+            context: (window as any).__friendOutput.context.state,
+            peers: await Promise.all(
+              (window as any).__peers.map(async (pc: RTCPeerConnection) => ({
+                state: pc.connectionState,
+                transceivers: pc.getTransceivers().map((t) => ({
+                  kind: t.receiver.track.kind,
+                  mid: t.mid,
+                  direction: t.currentDirection,
+                  sending: !!t.sender.track,
+                })),
+                senders: pc.getSenders().map((s) => ({
+                  kind: s.track?.kind,
+                  enabled: s.track?.enabled,
+                  muted: s.track?.muted,
+                })),
+                stats: [...(await pc.getStats()).values()].filter(
+                  (s) => s.kind === "audio",
+                ),
+              })),
             ),
-          })),
-        ),
-      }));
-      await info.attach(`friend-output-${expectedFrequency}`, {
-        body: Buffer.from(JSON.stringify({ conversation, diagnostics })),
-        contentType: "application/json",
-      });
+          },
+        }));
+        await info.attach(`friend-output-${expectedFrequency}`, {
+          body: Buffer.from(JSON.stringify({ conversation, diagnostics })),
+          contentType: "application/json",
+        });
+        return { conversation, diagnostics, expectedFrequency };
+      }),
+    );
+    for (const { conversation, diagnostics, expectedFrequency } of friendOutputs) {
       expect(conversation.length).toBeGreaterThan(150);
       expect(
         conversation.every((sample: any) => sample.rms > 0.01),
