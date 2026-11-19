@@ -226,21 +226,36 @@ function TranscriptReader({ text }: { text: string }) {
       role="region"
       aria-label="Full transcript"
       onKeyDown={(event) => {
-        if (
-          event.altKey ||
-          event.ctrlKey ||
-          event.metaKey ||
-          event.shiftKey ||
-          (event.key !== "Home" && event.key !== "End")
-        )
+        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
           return;
-        // Apply these navigation keys to the focused reader inside the modal.
-        event.preventDefault();
         const reader = event.currentTarget;
-        reader.scrollTo({
-          top: event.key === "Home" ? 0 : reader.scrollHeight,
-          behavior: "instant",
-        });
+        const arrowStep = 40;
+        let top: number;
+        switch (event.key) {
+          case "ArrowUp":
+            top = reader.scrollTop - arrowStep;
+            break;
+          case "ArrowDown":
+            top = reader.scrollTop + arrowStep;
+            break;
+          case "PageUp":
+            top = reader.scrollTop - reader.clientHeight;
+            break;
+          case "PageDown":
+            top = reader.scrollTop + reader.clientHeight;
+            break;
+          case "Home":
+            top = 0;
+            break;
+          case "End":
+            top = reader.scrollHeight;
+            break;
+          default:
+            return;
+        }
+        // Keep navigation inside the focused reader in the modal.
+        event.preventDefault();
+        reader.scrollTo({ top, behavior: "instant" });
       }}
     >
       <p>{text}</p>

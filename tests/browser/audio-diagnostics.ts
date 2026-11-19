@@ -11,16 +11,17 @@ export async function attachAudioDiagnostics(
 ) {
   await Promise.allSettled([
     ...pages.map(async (page, index) => {
-      const samples = await page.evaluate(() => {
+      const samples = await page.evaluate((packetLimit) => {
         const w = window as any;
         return {
           captionSamples: (w.__captionSamples || []).slice(-1200),
           renderEvents: (w.__judgeRender || []).slice(-512),
+          judgeSocketEvents: (w.__judgeSocketEvents || []).slice(-32),
           conversation: (w.__conversation || []).slice(-1200),
-          microphone: (w.__micFrames || []).slice(-30),
-          received: (w.__receivedFrames || []).slice(-30),
+          microphone: (w.__micFrames || []).slice(-packetLimit),
+          received: (w.__receivedFrames || []).slice(-packetLimit),
         };
-      });
+      }, failed ? 2048 : 64);
       await info.attach(`audio-samples-${index}`, {
         body: Buffer.from(JSON.stringify(samples)),
         contentType: "application/json",
