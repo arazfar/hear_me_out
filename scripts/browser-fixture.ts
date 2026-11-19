@@ -122,6 +122,11 @@ const runtime = createApp({
 });
 const awardReplays = new Map<string, GameEvent[]>();
 // Test-only inspection and failure injection. These routes do not exist in production.
+runtime.app.use("/__test", (_req, res, next) => {
+  // Fixture calls can be separated by seconds of UI activity.
+  res.setHeader("Connection", "close");
+  next();
+});
 runtime.app.post("/__test/expire-seat/:code", (req, res) => {
   const room = runtime.registry.rooms.get(req.params.code);
   const seat = room?.seats.get(req.body.playerId);

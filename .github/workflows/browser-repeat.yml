@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       profile_baseline:
-        description: Optional baseline commit for a five-pair frame benchmark
+        description: Leave blank for browser repetitions, or enter a baseline commit to run only the five-pair frame benchmark
         required: false
         type: string
 permissions:
@@ -13,6 +13,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   plan:
+    if: inputs.profile_baseline == ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
