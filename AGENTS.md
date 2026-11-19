@@ -24,7 +24,7 @@ pnpm test:ui --retries=0
 pnpm test:ui-review
 ```
 
-Rebuild after editing the client. Use `-g '<test title>'` and `--project=<name>` for a focused reproduction, then `--repeat-each=10 --retries=0` for timing or recovery changes. The six gameplay projects are `rtc`, `relay`, `phone`, `phone-relay`, `webkit`, and `webkit-relay`. Inspect per-attempt results and attachments in `output/playwright/results.json`. Run `pnpm verify:matrix` for the tagged browser matrix and `pnpm verify:release --sha <full-sha>` for local qualification. Check eligibility with `pnpm release:check --sha <full-sha>` before the release owner deploys. The optional `profile_baseline` input runs the paired profile on a dedicated runner. See [browser acceptance](tests/browser/README.md) and [audio acceptance](docs/AUDIO_ACCEPTANCE.md).
+Rebuild after editing the client. Use `-g '<test title>'` and `--project=<name>` for a focused reproduction, then `--repeat-each=10 --retries=0` for timing or recovery changes. The six gameplay projects are `rtc`, `relay`, `phone`, `phone-relay`, `webkit`, and `webkit-relay`. Inspect per-attempt results and attachments in `output/playwright/results.json`. Run `pnpm verify:matrix` for the tagged browser matrix and `pnpm verify:release --sha <full-sha>` for local qualification. Check eligibility with `pnpm release:check --sha <full-sha>` before the release owner deploys. For **Repeat browser regressions**, leave `profile_baseline` blank to run the repetition matrix. Supply a baseline commit to run only the paired profile on one runner. See [browser acceptance](tests/browser/README.md) and [audio acceptance](docs/AUDIO_ACCEPTANCE.md).
 
 ## Measure frame pacing
 
